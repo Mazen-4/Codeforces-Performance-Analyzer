@@ -91,6 +91,12 @@ def run_test_case(name, command):
         summary = latest_run["summary"]
         print(f"Total time: {summary.get('total_execution_time_seconds', 'N/A')}s")
         print(f"Total memory: {summary.get('total_memory_used_mb', 'N/A')}MB")
+    
+    # Identify bottleneck
+    stages = latest_run.get("stages", [])
+    if stages:
+        bottleneck = max(stages, key=lambda x: x["execution_time_seconds"])
+        print(f"Bottleneck: {bottleneck['stage']} ({bottleneck['execution_time_seconds']:.4f}s)")
 
 
 def main():

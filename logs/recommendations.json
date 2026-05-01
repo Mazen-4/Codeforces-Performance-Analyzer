@@ -1,40 +1,70 @@
 {
   "target_user": "tourist",
-  "num_neighbors": 5,
+  "num_neighbors": 10,
   "neighbors": [
     {
       "rank": 1,
-      "user_handle": "jiangly",
-      "index": 1,
-      "distance": 0.00027490637148730457
+      "user_handle": "tourist",
+      "index": 0,
+      "distance": 0.0002488062309566885
     },
     {
       "rank": 2,
-      "user_handle": "invalid1",
-      "index": 4,
-      "distance": 0.005308002233505249
+      "user_handle": "jiangly",
+      "index": 7,
+      "distance": 0.00027490637148730457
     },
     {
       "rank": 3,
-      "user_handle": "ksun48",
-      "index": 2,
-      "distance": 1.6614644527435303
+      "user_handle": "Petr",
+      "index": 1,
+      "distance": 1.6336779594421387
     },
     {
       "rank": 4,
-      "user_handle": "Radewoosh",
-      "index": 3,
-      "distance": 1.6750340461730957
+      "user_handle": "petr",
+      "index": 8,
+      "distance": 1.6336779594421387
     },
     {
       "rank": 5,
+      "user_handle": "ecnerwala",
+      "index": 6,
+      "distance": 1.6373622417449951
+    },
+    {
+      "rank": 6,
+      "user_handle": "Errichto",
+      "index": 5,
+      "distance": 1.6759774684906006
+    },
+    {
+      "rank": 7,
       "user_handle": "Um_nik",
-      "index": 0,
+      "index": 4,
       "distance": 1.682140827178955
+    },
+    {
+      "rank": 8,
+      "user_handle": "neal",
+      "index": 3,
+      "distance": 1.709185242652893
+    },
+    {
+      "rank": 9,
+      "user_handle": "Benq",
+      "index": 2,
+      "distance": 1.7200740575790405
+    },
+    {
+      "rank": 10,
+      "user_handle": "benq",
+      "index": 9,
+      "distance": 1.7200740575790405
     }
   ],
   "metadata": {
     "distance_metric": "euclidean",
-    "dataset_size": 5
+    "dataset_size": 10
   }
 }
