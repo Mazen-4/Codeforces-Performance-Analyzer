@@ -1,0 +1,65 @@
+{
+  "total_runs": 1,
+  "last_updated": "2026-05-01T16:50:15.375637",
+  "runs": [
+    {
+      "timestamp": "2026-05-01T16:50:12.061068",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 3.3104,
+          "memory_usage_mb": 6.3,
+          "timestamp": "2026-05-01T16:50:15.371635",
+          "metadata": {
+            "target_user": "tourist",
+            "dataset_size": 9
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.0001,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-01T16:50:15.371635",
+          "metadata": {
+            "records_processed": 9
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 0.0002,
+          "memory_usage_mb": 0.06,
+          "timestamp": "2026-05-01T16:50:15.372635",
+          "metadata": {
+            "feature_dimension": 50
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.0001,
+          "memory_usage_mb": 0.1,
+          "timestamp": "2026-05-01T16:50:15.372635",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0026,
+          "memory_usage_mb": 0.01,
+          "timestamp": "2026-05-01T16:50:15.374634",
+          "metadata": {
+            "output_format": "json"
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "tourist",
+        "num_neighbors_returned": 5,
+        "total_execution_time_seconds": 3.3134,
+        "total_memory_used_mb": 6.47,
+        "num_stages": 5
+      }
+    }
+  ]
+}

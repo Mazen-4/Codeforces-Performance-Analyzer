@@ -1,0 +1,40 @@
+{
+  "target_user": "tourist",
+  "num_neighbors": 5,
+  "neighbors": [
+    {
+      "rank": 1,
+      "user_handle": "jiangly",
+      "index": 1,
+      "distance": 0.00027490637148730457
+    },
+    {
+      "rank": 2,
+      "user_handle": "invalid1",
+      "index": 4,
+      "distance": 0.005308002233505249
+    },
+    {
+      "rank": 3,
+      "user_handle": "ksun48",
+      "index": 2,
+      "distance": 1.6614644527435303
+    },
+    {
+      "rank": 4,
+      "user_handle": "Radewoosh",
+      "index": 3,
+      "distance": 1.6750340461730957
+    },
+    {
+      "rank": 5,
+      "user_handle": "Um_nik",
+      "index": 0,
+      "distance": 1.682140827178955
+    }
+  ],
+  "metadata": {
+    "distance_metric": "euclidean",
+    "dataset_size": 5
+  }
+}
