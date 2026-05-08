@@ -11,7 +11,7 @@ import os
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from config import K_NEIGHBORS, KNN_METRIC
+from src.pipeline.config import K_NEIGHBORS, KNN_METRIC
 
 
 def _compute_distances(feature_matrix: np.ndarray, target_features: np.ndarray, metric: str) -> np.ndarray:

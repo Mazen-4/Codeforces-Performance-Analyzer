@@ -49,9 +49,10 @@ TAG_COLS = [
 ]
 
 # Weights — must sum to 1.0
-W_ACCEPTANCE  = 0.40
-W_DIFFICULTY  = 0.40
-W_VOLUME      = 0.20
+W_ACCEPTANCE      = 0.35
+W_DIFFICULTY      = 0.35
+W_SPECIALIZATION  = 0.10
+W_VOLUME          = 0.20
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -87,16 +88,20 @@ def submissions_to_per_problem(df: pd.DataFrame) -> pd.DataFrame:
 # Step 2: Compute per-user, per-tag stats
 # ────────────────────────────────────────────────────────────────────────────
 
-def compute_user_tag_stats(per_prob: pd.DataFrame) -> dict[str, dict[str, dict]]:
+def compute_user_tag_stats(per_prob: pd.DataFrame) -> dict[str, dict]:
     """
     Input:  per-problem DataFrame (output of submissions_to_per_problem).
             May contain rows for multiple users.
 
-    Output: handle → tag → {solved, attempted, avg_difficulty}
+    Output: handle → {
+                "total_solved": int,
+                "tags": tag → {solved, attempted, avg_difficulty}
+            }
     """
-    result: dict[str, dict[str, dict]] = {}
+    result: dict[str, dict] = {}
 
     for handle, user_df in per_prob.groupby("handle"):
+        total_solved = int(user_df["ever_ac"].sum())
         tag_stats: dict[str, dict] = {}
         for tag in TAG_COLS:
             tag_df    = user_df[user_df[tag] == 1]
@@ -112,7 +117,7 @@ def compute_user_tag_stats(per_prob: pd.DataFrame) -> dict[str, dict[str, dict]]
                 "attempted":      attempted,
                 "avg_difficulty": round(avg_diff, 1),
             }
-        result[handle] = tag_stats
+        result[handle] = {"total_solved": total_solved, "tags": tag_stats}
     return result
 
 
@@ -129,29 +134,33 @@ def _median(values: list[float]) -> float:
 
 
 def compute_peer_medians(
-    neighbor_stats: dict[str, dict[str, dict]]
+    neighbor_stats: dict[str, dict]
 ) -> dict[str, dict[str, float]]:
     """
-    Input:  handle → tag → stats   (neighbours only, NOT the target user)
-    Output: tag → {median_solved, median_acceptance, median_difficulty}
+    Input:  handle → {total_solved, tags: tag → stats}  (neighbours only)
+    Output: tag → {median_solved, median_acceptance, median_difficulty, median_specialization}
     """
     medians: dict[str, dict[str, float]] = {}
     for tag in TAG_COLS:
-        solved_vals, acc_vals, diff_vals = [], [], []
-        for stats in neighbor_stats.values():
-            ts        = stats.get(tag, {})
-            solved    = ts.get("solved", 0)
-            attempted = ts.get("attempted", 0)
-            avg_diff  = ts.get("avg_difficulty", 0.0)
+        solved_vals, acc_vals, diff_vals, spec_vals = [], [], [], []
+        for user_data in neighbor_stats.values():
+            total_solved = user_data.get("total_solved", 0)
+            ts           = user_data.get("tags", {}).get(tag, {})
+            solved       = ts.get("solved", 0)
+            attempted    = ts.get("attempted", 0)
+            avg_diff     = ts.get("avg_difficulty", 0.0)
             solved_vals.append(float(solved))
             if attempted > 0:
                 acc_vals.append(solved / attempted)
             if solved > 0:
                 diff_vals.append(avg_diff)
+            if total_solved > 0:
+                spec_vals.append(solved / total_solved)
         medians[tag] = {
-            "median_solved":      _median(solved_vals),
-            "median_acceptance":  _median(acc_vals)  if acc_vals  else 0.0,
-            "median_difficulty":  _median(diff_vals) if diff_vals else 0.0,
+            "median_solved":          _median(solved_vals),
+            "median_acceptance":      _median(acc_vals)  if acc_vals  else 0.0,
+            "median_difficulty":      _median(diff_vals) if diff_vals else 0.0,
+            "median_specialization":  _median(spec_vals) if spec_vals else 0.0,
         }
     return medians
 
@@ -161,7 +170,7 @@ def compute_peer_medians(
 # ────────────────────────────────────────────────────────────────────────────
 
 def compute_tag_strengths(
-    user_stats:   dict[str, dict],
+    user_stats:   dict,
     peer_medians: dict[str, dict[str, float]],
 ) -> dict[str, dict]:
     """
@@ -169,28 +178,31 @@ def compute_tag_strengths(
 
     Parameters
     ----------
-    user_stats   : tag → {solved, attempted, avg_difficulty}
-    peer_medians : tag → {median_solved, median_acceptance, median_difficulty}
+    user_stats   : {total_solved, tags: tag → {solved, attempted, avg_difficulty}}
+    peer_medians : tag → {median_solved, median_acceptance, median_difficulty,
+                          median_specialization}
 
     Returns
     -------
     tag → {
-        strength               – 0–100 float  ← THE main output
-        solved                 – int
-        attempted              – int
-        acceptance_rate        – float 0–1
-        avg_difficulty         – float (avg rating of solved problems)
-        peer_median_solved     – float
-        peer_median_acceptance – float
-        peer_median_difficulty – float
+        strength                  – 0–100 float
+        solved, attempted
+        acceptance_rate           – float 0–1
+        specialization_score      – tag_solved / total_solved
+        avg_difficulty
+        peer_median_*
     }
     """
     results: dict[str, dict] = {}
 
+    total_solved = user_stats.get("total_solved", 0)
+    tag_stats    = user_stats.get("tags", {})
+
     for tag in TAG_COLS:
-        ts = user_stats.get(tag, {"solved": 0, "attempted": 0, "avg_difficulty": 0.0})
+        ts = tag_stats.get(tag, {"solved": 0, "attempted": 0, "avg_difficulty": 0.0})
         pm = peer_medians.get(tag, {
-            "median_solved": 0.0, "median_acceptance": 0.0, "median_difficulty": 0.0
+            "median_solved": 0.0, "median_acceptance": 0.0,
+            "median_difficulty": 0.0, "median_specialization": 0.0,
         })
 
         solved    = ts["solved"]
@@ -214,26 +226,36 @@ def compute_tag_strengths(
         else:
             diff_score = 0.0
 
-        # Sub-score 3: volume of practice vs peer median (soft saturation)
+        # Sub-score 3: specialization — tag_solved / total_solved vs peer median
+        user_spec = solved / total_solved if total_solved > 0 else 0.0
+        peer_spec = pm["median_specialization"]
+        if peer_spec > 0:
+            spec_score = min(user_spec / peer_spec, 1.0)
+        else:
+            spec_score = 1.0 if user_spec > 0 else 0.0
+
+        # Sub-score 4: volume of practice vs peer median (soft saturation)
         peer_solved = pm["median_solved"]
         if peer_solved > 0:
             vol_score = 1.0 - math.exp(-solved / peer_solved)
         else:
             vol_score = 1.0 if solved > 0 else 0.0
 
-        # Weighted total → percentage
-        raw      = W_ACCEPTANCE * acc_score + W_DIFFICULTY * diff_score + W_VOLUME * vol_score
+        raw      = (W_ACCEPTANCE * acc_score + W_DIFFICULTY * diff_score
+                    + W_SPECIALIZATION * spec_score + W_VOLUME * vol_score)
         strength = round(raw * 100, 1)
 
         results[tag] = {
-            "strength":               strength,
-            "solved":                 solved,
-            "attempted":              attempted,
-            "acceptance_rate":        round(user_acc, 3),
-            "avg_difficulty":         avg_diff,
-            "peer_median_solved":     round(pm["median_solved"], 1),
-            "peer_median_acceptance": round(pm["median_acceptance"], 3),
-            "peer_median_difficulty": round(pm["median_difficulty"], 1),
+            "strength":                  strength,
+            "solved":                    solved,
+            "attempted":                 attempted,
+            "acceptance_rate":           round(user_acc, 3),
+            "specialization_score":      round(user_spec, 3),
+            "avg_difficulty":            avg_diff,
+            "peer_median_solved":        round(pm["median_solved"], 1),
+            "peer_median_acceptance":    round(pm["median_acceptance"], 3),
+            "peer_median_difficulty":    round(pm["median_difficulty"], 1),
+            "peer_median_specialization": round(pm["median_specialization"], 3),
         }
 
     return results
@@ -298,10 +320,10 @@ def analyze(
     """
     per_prob       = submissions_to_per_problem(all_submissions)
     all_stats      = compute_user_tag_stats(per_prob)
-    user_stats     = all_stats.get(
-        target_handle,
-        {t: {"solved": 0, "attempted": 0, "avg_difficulty": 0.0} for t in TAG_COLS}
-    )
+    user_stats     = all_stats.get(target_handle, {
+        "total_solved": 0,
+        "tags": {t: {"solved": 0, "attempted": 0, "avg_difficulty": 0.0} for t in TAG_COLS},
+    })
     neighbor_stats = {h: all_stats[h] for h in neighbor_handles if h in all_stats}
     peer_medians   = compute_peer_medians(neighbor_stats)
     return compute_tag_strengths(user_stats, peer_medians)

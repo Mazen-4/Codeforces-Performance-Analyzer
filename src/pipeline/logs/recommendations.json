@@ -1,0 +1,1820 @@
+{
+  "target_user": "hanaebrahiem",
+  "num_neighbors": 50,
+  "recommendation": {
+    "target_user": "hanaebrahiem",
+    "num_neighbors": 50,
+    "neighbors": [
+      {
+        "rank": 1,
+        "user_handle": "MikasaAckermann",
+        "index": 704,
+        "distance": 1.1135598421096802
+      },
+      {
+        "rank": 2,
+        "user_handle": "BlueDiamond",
+        "index": 206,
+        "distance": 1.156949520111084
+      },
+      {
+        "rank": 3,
+        "user_handle": "Caiii",
+        "index": 231,
+        "distance": 1.194196105003357
+      },
+      {
+        "rank": 4,
+        "user_handle": "djdolls",
+        "index": 1598,
+        "distance": 1.1959354877471924
+      },
+      {
+        "rank": 5,
+        "user_handle": "hydd",
+        "index": 1797,
+        "distance": 1.2082217931747437
+      },
+      {
+        "rank": 6,
+        "user_handle": "zdolna_kaczka",
+        "index": 2832,
+        "distance": 1.2188482284545898
+      },
+      {
+        "rank": 7,
+        "user_handle": "marekzby",
+        "index": 2079,
+        "distance": 1.2201008796691895
+      },
+      {
+        "rank": 8,
+        "user_handle": "ChinatsuKano",
+        "index": 249,
+        "distance": 1.229614496231079
+      },
+      {
+        "rank": 9,
+        "user_handle": "Bredor",
+        "index": 216,
+        "distance": 1.2412452697753906
+      },
+      {
+        "rank": 10,
+        "user_handle": "sharrad99",
+        "index": 2458,
+        "distance": 1.2494486570358276
+      },
+      {
+        "rank": 11,
+        "user_handle": "Lepetrandr",
+        "index": 632,
+        "distance": 1.2509328126907349
+      },
+      {
+        "rank": 12,
+        "user_handle": "waterfall",
+        "index": 2719,
+        "distance": 1.257521152496338
+      },
+      {
+        "rank": 13,
+        "user_handle": "Khalid_Kamal_",
+        "index": 590,
+        "distance": 1.260880708694458
+      },
+      {
+        "rank": 14,
+        "user_handle": "pr3pony",
+        "index": 2300,
+        "distance": 1.2625582218170166
+      },
+      {
+        "rank": 15,
+        "user_handle": "liqixian",
+        "index": 2013,
+        "distance": 1.2672295570373535
+      },
+      {
+        "rank": 16,
+        "user_handle": "bayleef",
+        "index": 1419,
+        "distance": 1.2745596170425415
+      },
+      {
+        "rank": 17,
+        "user_handle": "chen___zexing",
+        "index": 1487,
+        "distance": 1.2818715572357178
+      },
+      {
+        "rank": 18,
+        "user_handle": "JXNU_LkKL",
+        "index": 551,
+        "distance": 1.285261631011963
+      },
+      {
+        "rank": 19,
+        "user_handle": "ainu7",
+        "index": 1305,
+        "distance": 1.2854492664337158
+      },
+      {
+        "rank": 20,
+        "user_handle": "HuParry",
+        "index": 495,
+        "distance": 1.2866144180297852
+      },
+      {
+        "rank": 21,
+        "user_handle": "albatross35",
+        "index": 1317,
+        "distance": 1.2872869968414307
+      },
+      {
+        "rank": 22,
+        "user_handle": "Archit_Modi_21",
+        "index": 148,
+        "distance": 1.2875659465789795
+      },
+      {
+        "rank": 23,
+        "user_handle": "IPL",
+        "index": 511,
+        "distance": 1.2892800569534302
+      },
+      {
+        "rank": 24,
+        "user_handle": "BoSinn",
+        "index": 209,
+        "distance": 1.2911351919174194
+      },
+      {
+        "rank": 25,
+        "user_handle": "CoachDanke",
+        "index": 259,
+        "distance": 1.2966585159301758
+      },
+      {
+        "rank": 26,
+        "user_handle": "alan-c",
+        "index": 1314,
+        "distance": 1.300657868385315
+      },
+      {
+        "rank": 27,
+        "user_handle": "xpov1LL",
+        "index": 2765,
+        "distance": 1.3014259338378906
+      },
+      {
+        "rank": 28,
+        "user_handle": "Rohit_varma",
+        "index": 899,
+        "distance": 1.309108853340149
+      },
+      {
+        "rank": 29,
+        "user_handle": "__AlgoXp3rT",
+        "index": 1214,
+        "distance": 1.3105851411819458
+      },
+      {
+        "rank": 30,
+        "user_handle": "clam",
+        "index": 1500,
+        "distance": 1.3110038042068481
+      },
+      {
+        "rank": 31,
+        "user_handle": "noor049",
+        "index": 2216,
+        "distance": 1.3127708435058594
+      },
+      {
+        "rank": 32,
+        "user_handle": "lys1280023",
+        "index": 2051,
+        "distance": 1.3129827976226807
+      },
+      {
+        "rank": 33,
+        "user_handle": "Rishi_677",
+        "index": 892,
+        "distance": 1.3134864568710327
+      },
+      {
+        "rank": 34,
+        "user_handle": "cumshot",
+        "index": 1540,
+        "distance": 1.3152559995651245
+      },
+      {
+        "rank": 35,
+        "user_handle": "RatnaPetit",
+        "index": 878,
+        "distance": 1.316946268081665
+      },
+      {
+        "rank": 36,
+        "user_handle": "amiratou",
+        "index": 1332,
+        "distance": 1.3182717561721802
+      },
+      {
+        "rank": 37,
+        "user_handle": "al13n",
+        "index": 1313,
+        "distance": 1.3189399242401123
+      },
+      {
+        "rank": 38,
+        "user_handle": "Satoru",
+        "index": 942,
+        "distance": 1.3204305171966553
+      },
+      {
+        "rank": 39,
+        "user_handle": "sketchy_life",
+        "index": 2508,
+        "distance": 1.320433497428894
+      },
+      {
+        "rank": 40,
+        "user_handle": "sum",
+        "index": 2556,
+        "distance": 1.3215854167938232
+      },
+      {
+        "rank": 41,
+        "user_handle": "dujunyi",
+        "index": 1621,
+        "distance": 1.3224443197250366
+      },
+      {
+        "rank": 42,
+        "user_handle": "jame0313",
+        "index": 1861,
+        "distance": 1.3245292901992798
+      },
+      {
+        "rank": 43,
+        "user_handle": "yashar_sb_sb",
+        "index": 2790,
+        "distance": 1.3256042003631592
+      },
+      {
+        "rank": 44,
+        "user_handle": "docriz",
+        "index": 1604,
+        "distance": 1.3263081312179565
+      },
+      {
+        "rank": 45,
+        "user_handle": ".rem",
+        "index": 1,
+        "distance": 1.3263438940048218
+      },
+      {
+        "rank": 46,
+        "user_handle": "wshwsh12",
+        "index": 2741,
+        "distance": 1.3273754119873047
+      },
+      {
+        "rank": 47,
+        "user_handle": "hgcnxn",
+        "index": 1764,
+        "distance": 1.3285002708435059
+      },
+      {
+        "rank": 48,
+        "user_handle": "_minhduccp",
+        "index": 1241,
+        "distance": 1.3285012245178223
+      },
+      {
+        "rank": 49,
+        "user_handle": "fpeterfalvi",
+        "index": 1688,
+        "distance": 1.3298977613449097
+      },
+      {
+        "rank": 50,
+        "user_handle": "cologne1723",
+        "index": 1521,
+        "distance": 1.3309253454208374
+      }
+    ],
+    "metadata": {
+      "distance_metric": "euclidean",
+      "dataset_size": 2877
+    }
+  },
+  "format": "json",
+  "saved_to": "/Users/omarkhalifa/cf-analyzer/src/pipeline/logs/recommendations.json",
+  "tag_strengths": {
+    "tag_dp": {
+      "strength": 72.1,
+      "solved": 14,
+      "attempted": 16,
+      "acceptance_rate": 0.875,
+      "specialization_score": 0.066,
+      "avg_difficulty": 1128.6,
+      "peer_median_solved": 19.0,
+      "peer_median_acceptance": 0.906,
+      "peer_median_difficulty": 1652.5,
+      "peer_median_specialization": 0.166
+    },
+    "tag_greedy": {
+      "strength": 86.4,
+      "solved": 77,
+      "attempted": 81,
+      "acceptance_rate": 0.951,
+      "specialization_score": 0.362,
+      "avg_difficulty": 1028.6,
+      "peer_median_solved": 48.0,
+      "peer_median_acceptance": 0.931,
+      "peer_median_difficulty": 1337.1,
+      "peer_median_specialization": 0.428
+    },
+    "tag_graphs": {
+      "strength": 0.0,
+      "solved": 0,
+      "attempted": 0,
+      "acceptance_rate": 0.0,
+      "specialization_score": 0.0,
+      "avg_difficulty": 0.0,
+      "peer_median_solved": 7.0,
+      "peer_median_acceptance": 0.913,
+      "peer_median_difficulty": 1766.7,
+      "peer_median_specialization": 0.064
+    },
+    "tag_math": {
+      "strength": 85.1,
+      "solved": 76,
+      "attempted": 80,
+      "acceptance_rate": 0.95,
+      "specialization_score": 0.357,
+      "avg_difficulty": 902.6,
+      "peer_median_solved": 45.0,
+      "peer_median_acceptance": 0.943,
+      "peer_median_difficulty": 1290.3,
+      "peer_median_specialization": 0.382
+    },
+    "tag_strings": {
+      "strength": 84.5,
+      "solved": 25,
+      "attempted": 28,
+      "acceptance_rate": 0.893,
+      "specialization_score": 0.117,
+      "avg_difficulty": 896.0,
+      "peer_median_solved": 11.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1238.5,
+      "peer_median_specialization": 0.087
+    },
+    "tag_impl": {
+      "strength": 89.7,
+      "solved": 92,
+      "attempted": 97,
+      "acceptance_rate": 0.948,
+      "specialization_score": 0.432,
+      "avg_difficulty": 939.1,
+      "peer_median_solved": 37.0,
+      "peer_median_acceptance": 0.943,
+      "peer_median_difficulty": 1245.8,
+      "peer_median_specialization": 0.302
+    },
+    "tag_binary_search": {
+      "strength": 90.0,
+      "solved": 22,
+      "attempted": 23,
+      "acceptance_rate": 0.957,
+      "specialization_score": 0.103,
+      "avg_difficulty": 1286.4,
+      "peer_median_solved": 12.0,
+      "peer_median_acceptance": 0.917,
+      "peer_median_difficulty": 1598.7,
+      "peer_median_specialization": 0.103
+    },
+    "tag_data_structures": {
+      "strength": 76.2,
+      "solved": 15,
+      "attempted": 19,
+      "acceptance_rate": 0.789,
+      "specialization_score": 0.07,
+      "avg_difficulty": 1326.7,
+      "peer_median_solved": 15.0,
+      "peer_median_acceptance": 0.9,
+      "peer_median_difficulty": 1696.9,
+      "peer_median_specialization": 0.128
+    },
+    "tag_number_theory": {
+      "strength": 74.1,
+      "solved": 10,
+      "attempted": 11,
+      "acceptance_rate": 0.909,
+      "specialization_score": 0.047,
+      "avg_difficulty": 900.0,
+      "peer_median_solved": 10.0,
+      "peer_median_acceptance": 0.949,
+      "peer_median_difficulty": 1409.1,
+      "peer_median_specialization": 0.084
+    },
+    "tag_combinatorics": {
+      "strength": 65.0,
+      "solved": 4,
+      "attempted": 5,
+      "acceptance_rate": 0.8,
+      "specialization_score": 0.019,
+      "avg_difficulty": 1100.0,
+      "peer_median_solved": 6.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1656.5,
+      "peer_median_specialization": 0.047
+    },
+    "tag_geometry": {
+      "strength": 74.8,
+      "solved": 3,
+      "attempted": 3,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.014,
+      "avg_difficulty": 800.0,
+      "peer_median_solved": 3.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1333.3,
+      "peer_median_specialization": 0.023
+    },
+    "tag_trees": {
+      "strength": 0.0,
+      "solved": 0,
+      "attempted": 0,
+      "acceptance_rate": 0.0,
+      "specialization_score": 0.0,
+      "avg_difficulty": 0.0,
+      "peer_median_solved": 4.0,
+      "peer_median_acceptance": 0.941,
+      "peer_median_difficulty": 1857.1,
+      "peer_median_specialization": 0.043
+    },
+    "tag_sortings": {
+      "strength": 90.0,
+      "solved": 34,
+      "attempted": 36,
+      "acceptance_rate": 0.944,
+      "specialization_score": 0.16,
+      "avg_difficulty": 1052.9,
+      "peer_median_solved": 16.0,
+      "peer_median_acceptance": 0.946,
+      "peer_median_difficulty": 1341.7,
+      "peer_median_specialization": 0.135
+    },
+    "tag_two_pointers": {
+      "strength": 90.2,
+      "solved": 14,
+      "attempted": 15,
+      "acceptance_rate": 0.933,
+      "specialization_score": 0.066,
+      "avg_difficulty": 1264.3,
+      "peer_median_solved": 7.0,
+      "peer_median_acceptance": 0.955,
+      "peer_median_difficulty": 1542.9,
+      "peer_median_specialization": 0.06
+    },
+    "tag_bitmasks": {
+      "strength": 81.2,
+      "solved": 10,
+      "attempted": 11,
+      "acceptance_rate": 0.909,
+      "specialization_score": 0.047,
+      "avg_difficulty": 1110.0,
+      "peer_median_solved": 6.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1588.2,
+      "peer_median_specialization": 0.054
+    },
+    "tag_flows": {
+      "strength": 0.0,
+      "solved": 0,
+      "attempted": 0,
+      "acceptance_rate": 0.0,
+      "specialization_score": 0.0,
+      "avg_difficulty": 0.0,
+      "peer_median_solved": 0.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1966.7,
+      "peer_median_specialization": 0.0
+    },
+    "tag_fft": {
+      "strength": 0.0,
+      "solved": 0,
+      "attempted": 0,
+      "acceptance_rate": 0.0,
+      "specialization_score": 0.0,
+      "avg_difficulty": 0.0,
+      "peer_median_solved": 0.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 2400.0,
+      "peer_median_specialization": 0.0
+    },
+    "tag_games": {
+      "strength": 85.7,
+      "solved": 4,
+      "attempted": 4,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.019,
+      "avg_difficulty": 1075.0,
+      "peer_median_solved": 3.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1316.7,
+      "peer_median_specialization": 0.025
+    },
+    "tag_probabilities": {
+      "strength": 79.2,
+      "solved": 1,
+      "attempted": 1,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.005,
+      "avg_difficulty": 1300.0,
+      "peer_median_solved": 1.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 2000.0,
+      "peer_median_specialization": 0.005
+    },
+    "tag_constructive": {
+      "strength": 78.6,
+      "solved": 26,
+      "attempted": 30,
+      "acceptance_rate": 0.867,
+      "specialization_score": 0.122,
+      "avg_difficulty": 1061.5,
+      "peer_median_solved": 25.0,
+      "peer_median_acceptance": 0.929,
+      "peer_median_difficulty": 1354.3,
+      "peer_median_specialization": 0.221
+    }
+  },
+  "weakest_tags": [
+    "tag_combinatorics",
+    "tag_dp",
+    "tag_number_theory",
+    "tag_geometry",
+    "tag_data_structures"
+  ],
+  "strongest_tags": [
+    "tag_greedy",
+    "tag_impl",
+    "tag_binary_search",
+    "tag_sortings",
+    "tag_two_pointers"
+  ],
+  "recommended_problems": [
+    {
+      "id": "2164_B",
+      "rating": 1000,
+      "tags": [
+        "tag_math",
+        "tag_number_theory"
+      ],
+      "success_prob": 0.6962,
+      "weakness_boost": 0.1931,
+      "final_score": 0.495
+    },
+    {
+      "id": "2002_B",
+      "rating": 1000,
+      "tags": [
+        "tag_games",
+        "tag_constructive"
+      ],
+      "success_prob": 0.7094,
+      "weakness_boost": 0.1709,
+      "final_score": 0.494
+    },
+    {
+      "id": "1333_A",
+      "rating": 1000,
+      "tags": [
+        "tag_constructive"
+      ],
+      "success_prob": 0.5613,
+      "weakness_boost": 0.1988,
+      "final_score": 0.4163
+    },
+    {
+      "id": "2178_B",
+      "rating": 900,
+      "tags": [
+        "tag_dp",
+        "tag_greedy",
+        "tag_strings",
+        "tag_impl"
+      ],
+      "success_prob": 0.5749,
+      "weakness_boost": 0.1579,
+      "final_score": 0.4081
+    },
+    {
+      "id": "1359_B",
+      "rating": 1000,
+      "tags": [
+        "tag_dp",
+        "tag_greedy",
+        "tag_impl",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.579,
+      "weakness_boost": 0.1425,
+      "final_score": 0.4044
+    },
+    {
+      "id": "1951_A",
+      "rating": 900,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.5671,
+      "weakness_boost": 0.1553,
+      "final_score": 0.4024
+    },
+    {
+      "id": "1359_A",
+      "rating": 1000,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.579,
+      "weakness_boost": 0.1336,
+      "final_score": 0.4008
+    },
+    {
+      "id": "1991_B",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_bitmasks",
+        "tag_constructive"
+      ],
+      "success_prob": 0.5453,
+      "weakness_boost": 0.1711,
+      "final_score": 0.3957
+    },
+    {
+      "id": "2156_B",
+      "rating": 1000,
+      "tags": [
+        "tag_greedy",
+        "tag_impl",
+        "tag_binary_search"
+      ],
+      "success_prob": 0.5769,
+      "weakness_boost": 0.1051,
+      "final_score": 0.3882
+    },
+    {
+      "id": "1760_D",
+      "rating": 1000,
+      "tags": [
+        "tag_impl",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.5619,
+      "weakness_boost": 0.0954,
+      "final_score": 0.3753
+    },
+    {
+      "id": "1335_B",
+      "rating": 900,
+      "tags": [
+        "tag_constructive"
+      ],
+      "success_prob": 0.4829,
+      "weakness_boost": 0.1988,
+      "final_score": 0.3692
+    },
+    {
+      "id": "2125_B",
+      "rating": 900,
+      "tags": [
+        "tag_math",
+        "tag_number_theory"
+      ],
+      "success_prob": 0.4788,
+      "weakness_boost": 0.1931,
+      "final_score": 0.3645
+    },
+    {
+      "id": "1795_B",
+      "rating": 900,
+      "tags": [
+        "tag_greedy",
+        "tag_geometry"
+      ],
+      "success_prob": 0.4707,
+      "weakness_boost": 0.1893,
+      "final_score": 0.3581
+    },
+    {
+      "id": "1370_B",
+      "rating": 1100,
+      "tags": [
+        "tag_math",
+        "tag_number_theory",
+        "tag_constructive"
+      ],
+      "success_prob": 0.4553,
+      "weakness_boost": 0.195,
+      "final_score": 0.3512
+    },
+    {
+      "id": "1352_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_impl"
+      ],
+      "success_prob": 0.5,
+      "weakness_boost": 0.1188,
+      "final_score": 0.3475
+    },
+    {
+      "id": "2154_B",
+      "rating": 1000,
+      "tags": [
+        "tag_greedy",
+        "tag_constructive"
+      ],
+      "success_prob": 0.4652,
+      "weakness_boost": 0.1627,
+      "final_score": 0.3442
+    },
+    {
+      "id": "2039_B",
+      "rating": 1000,
+      "tags": [
+        "tag_greedy",
+        "tag_strings",
+        "tag_impl",
+        "tag_constructive"
+      ],
+      "success_prob": 0.4725,
+      "weakness_boost": 0.1444,
+      "final_score": 0.3412
+    },
+    {
+      "id": "1343_A",
+      "rating": 900,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.4661,
+      "weakness_boost": 0.1405,
+      "final_score": 0.3359
+    },
+    {
+      "id": "2128_B",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings",
+        "tag_two_pointers",
+        "tag_constructive"
+      ],
+      "success_prob": 0.4671,
+      "weakness_boost": 0.1284,
+      "final_score": 0.3316
+    },
+    {
+      "id": "2124_B",
+      "rating": 1000,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.4652,
+      "weakness_boost": 0.1266,
+      "final_score": 0.3298
+    },
+    {
+      "id": "1370_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_impl",
+        "tag_number_theory"
+      ],
+      "success_prob": 0.4404,
+      "weakness_boost": 0.1525,
+      "final_score": 0.3252
+    },
+    {
+      "id": "2125_C",
+      "rating": 1100,
+      "tags": [
+        "tag_math",
+        "tag_number_theory",
+        "tag_combinatorics",
+        "tag_bitmasks"
+      ],
+      "success_prob": 0.3867,
+      "weakness_boost": 0.2311,
+      "final_score": 0.3245
+    },
+    {
+      "id": "2145_B",
+      "rating": 1000,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.4652,
+      "weakness_boost": 0.1119,
+      "final_score": 0.3239
+    },
+    {
+      "id": "2131_C",
+      "rating": 1100,
+      "tags": [
+        "tag_math",
+        "tag_number_theory"
+      ],
+      "success_prob": 0.3867,
+      "weakness_boost": 0.1931,
+      "final_score": 0.3093
+    },
+    {
+      "id": "1399_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.4416,
+      "weakness_boost": 0.1106,
+      "final_score": 0.3092
+    },
+    {
+      "id": "2162_C",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_bitmasks",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3867,
+      "weakness_boost": 0.1711,
+      "final_score": 0.3005
+    },
+    {
+      "id": "2147_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3867,
+      "weakness_boost": 0.1627,
+      "final_score": 0.2971
+    },
+    {
+      "id": "2002_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_impl",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3946,
+      "weakness_boost": 0.1455,
+      "final_score": 0.295
+    },
+    {
+      "id": "1343_B",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3749,
+      "weakness_boost": 0.1697,
+      "final_score": 0.2928
+    },
+    {
+      "id": "768_A",
+      "rating": 900,
+      "tags": [
+        "tag_sortings",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3889,
+      "weakness_boost": 0.1467,
+      "final_score": 0.292
+    },
+    {
+      "id": "1270_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_games"
+      ],
+      "success_prob": 0.3932,
+      "weakness_boost": 0.1367,
+      "final_score": 0.2906
+    },
+    {
+      "id": "1760_E",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_data_structures"
+      ],
+      "success_prob": 0.3766,
+      "weakness_boost": 0.1604,
+      "final_score": 0.2902
+    },
+    {
+      "id": "2136_B",
+      "rating": 900,
+      "tags": [
+        "tag_greedy",
+        "tag_two_pointers",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3861,
+      "weakness_boost": 0.1397,
+      "final_score": 0.2875
+    },
+    {
+      "id": "1385_A",
+      "rating": 800,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.3793,
+      "weakness_boost": 0.1405,
+      "final_score": 0.2838
+    },
+    {
+      "id": "2163_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_sortings"
+      ],
+      "success_prob": 0.386,
+      "weakness_boost": 0.1206,
+      "final_score": 0.2798
+    },
+    {
+      "id": "2169_A",
+      "rating": 900,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.3906,
+      "weakness_boost": 0.1119,
+      "final_score": 0.2791
+    },
+    {
+      "id": "1399_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.3796,
+      "weakness_boost": 0.1266,
+      "final_score": 0.2784
+    },
+    {
+      "id": "1385_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.3793,
+      "weakness_boost": 0.1266,
+      "final_score": 0.2782
+    },
+    {
+      "id": "2128_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.3877,
+      "weakness_boost": 0.1106,
+      "final_score": 0.2768
+    },
+    {
+      "id": "1333_B",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.3862,
+      "weakness_boost": 0.1119,
+      "final_score": 0.2764
+    },
+    {
+      "id": "1335_C",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_impl",
+        "tag_binary_search",
+        "tag_sortings"
+      ],
+      "success_prob": 0.39,
+      "weakness_boost": 0.1025,
+      "final_score": 0.275
+    },
+    {
+      "id": "1369_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_geometry"
+      ],
+      "success_prob": 0.3261,
+      "weakness_boost": 0.1963,
+      "final_score": 0.2742
+    },
+    {
+      "id": "1991_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.3817,
+      "weakness_boost": 0.1119,
+      "final_score": 0.2738
+    },
+    {
+      "id": "2164_A",
+      "rating": 800,
+      "tags": [
+        "tag_sortings"
+      ],
+      "success_prob": 0.3873,
+      "weakness_boost": 0.0946,
+      "final_score": 0.2702
+    },
+    {
+      "id": "1330_A",
+      "rating": 900,
+      "tags": [
+        "tag_impl"
+      ],
+      "success_prob": 0.3847,
+      "weakness_boost": 0.0971,
+      "final_score": 0.2697
+    },
+    {
+      "id": "2130_B",
+      "rating": 1100,
+      "tags": [
+        "tag_constructive"
+      ],
+      "success_prob": 0.3119,
+      "weakness_boost": 0.1988,
+      "final_score": 0.2666
+    },
+    {
+      "id": "2002_C",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_geometry"
+      ],
+      "success_prob": 0.3187,
+      "weakness_boost": 0.173,
+      "final_score": 0.2605
+    },
+    {
+      "id": "2158_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3252,
+      "weakness_boost": 0.1553,
+      "final_score": 0.2572
+    },
+    {
+      "id": "2133_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_impl",
+        "tag_data_structures"
+      ],
+      "success_prob": 0.3239,
+      "weakness_boost": 0.1506,
+      "final_score": 0.2546
+    },
+    {
+      "id": "2180_A",
+      "rating": 800,
+      "tags": [
+        "tag_number_theory"
+      ],
+      "success_prob": 0.2601,
+      "weakness_boost": 0.2458,
+      "final_score": 0.2544
+    },
+    {
+      "id": "2134_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_impl",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3209,
+      "weakness_boost": 0.1455,
+      "final_score": 0.2508
+    },
+    {
+      "id": "1353_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3112,
+      "weakness_boost": 0.1553,
+      "final_score": 0.2488
+    },
+    {
+      "id": "2131_A",
+      "rating": 800,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.3209,
+      "weakness_boost": 0.1405,
+      "final_score": 0.2488
+    },
+    {
+      "id": "1348_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.3246,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2482
+    },
+    {
+      "id": "2179_C",
+      "rating": 1100,
+      "tags": [
+        "tag_math",
+        "tag_impl",
+        "tag_number_theory",
+        "tag_sortings"
+      ],
+      "success_prob": 0.3159,
+      "weakness_boost": 0.1445,
+      "final_score": 0.2473
+    },
+    {
+      "id": "2125_A",
+      "rating": 800,
+      "tags": [
+        "tag_strings",
+        "tag_impl",
+        "tag_sortings",
+        "tag_constructive"
+      ],
+      "success_prob": 0.3209,
+      "weakness_boost": 0.1364,
+      "final_score": 0.2471
+    },
+    {
+      "id": "1371_A",
+      "rating": 800,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.3165,
+      "weakness_boost": 0.1405,
+      "final_score": 0.2461
+    },
+    {
+      "id": "2178_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_strings"
+      ],
+      "success_prob": 0.3145,
+      "weakness_boost": 0.1408,
+      "final_score": 0.245
+    },
+    {
+      "id": "2133_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.3239,
+      "weakness_boost": 0.1266,
+      "final_score": 0.245
+    },
+    {
+      "id": "1804_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.3189,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2448
+    },
+    {
+      "id": "1951_B",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy",
+        "tag_binary_search",
+        "tag_data_structures"
+      ],
+      "success_prob": 0.3086,
+      "weakness_boost": 0.1442,
+      "final_score": 0.2428
+    },
+    {
+      "id": "1760_C",
+      "rating": 800,
+      "tags": [
+        "tag_impl",
+        "tag_data_structures",
+        "tag_sortings"
+      ],
+      "success_prob": 0.3126,
+      "weakness_boost": 0.1353,
+      "final_score": 0.2417
+    },
+    {
+      "id": "2128_C",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.3131,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2413
+    },
+    {
+      "id": "1360_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.3112,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2401
+    },
+    {
+      "id": "1358_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.3106,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2398
+    },
+    {
+      "id": "1807_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.3135,
+      "weakness_boost": 0.1266,
+      "final_score": 0.2387
+    },
+    {
+      "id": "1760_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_strings",
+        "tag_impl"
+      ],
+      "success_prob": 0.3126,
+      "weakness_boost": 0.1262,
+      "final_score": 0.238
+    },
+    {
+      "id": "2112_B",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.3119,
+      "weakness_boost": 0.1266,
+      "final_score": 0.2378
+    },
+    {
+      "id": "2152_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.3209,
+      "weakness_boost": 0.1119,
+      "final_score": 0.2373
+    },
+    {
+      "id": "908_A",
+      "rating": 800,
+      "tags": [
+        "tag_impl"
+      ],
+      "success_prob": 0.3306,
+      "weakness_boost": 0.0971,
+      "final_score": 0.2372
+    },
+    {
+      "id": "1311_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_impl"
+      ],
+      "success_prob": 0.3098,
+      "weakness_boost": 0.1214,
+      "final_score": 0.2345
+    },
+    {
+      "id": "2134_B",
+      "rating": 1200,
+      "tags": [
+        "tag_math",
+        "tag_number_theory",
+        "tag_constructive"
+      ],
+      "success_prob": 0.2592,
+      "weakness_boost": 0.195,
+      "final_score": 0.2335
+    },
+    {
+      "id": "2107_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_number_theory"
+      ],
+      "success_prob": 0.2618,
+      "weakness_boost": 0.1862,
+      "final_score": 0.2316
+    },
+    {
+      "id": "2126_C",
+      "rating": 1100,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.3123,
+      "weakness_boost": 0.1106,
+      "final_score": 0.2316
+    },
+    {
+      "id": "2126_B",
+      "rating": 800,
+      "tags": [
+        "tag_dp",
+        "tag_greedy"
+      ],
+      "success_prob": 0.2592,
+      "weakness_boost": 0.1897,
+      "final_score": 0.2314
+    },
+    {
+      "id": "1353_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.3112,
+      "weakness_boost": 0.1106,
+      "final_score": 0.231
+    },
+    {
+      "id": "1360_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.3112,
+      "weakness_boost": 0.1106,
+      "final_score": 0.231
+    },
+    {
+      "id": "2193_D",
+      "rating": 1100,
+      "tags": [
+        "tag_binary_search",
+        "tag_sortings",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.3159,
+      "weakness_boost": 0.0933,
+      "final_score": 0.2268
+    },
+    {
+      "id": "1791_C",
+      "rating": 800,
+      "tags": [
+        "tag_impl",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.3116,
+      "weakness_boost": 0.0954,
+      "final_score": 0.2251
+    },
+    {
+      "id": "1270_B",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.2675,
+      "weakness_boost": 0.1553,
+      "final_score": 0.2226
+    },
+    {
+      "id": "2096_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_constructive"
+      ],
+      "success_prob": 0.2624,
+      "weakness_boost": 0.1627,
+      "final_score": 0.2225
+    },
+    {
+      "id": "2179_B",
+      "rating": 800,
+      "tags": [
+        "tag_dp",
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.2621,
+      "weakness_boost": 0.1588,
+      "final_score": 0.2208
+    },
+    {
+      "id": "2153_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_bitmasks"
+      ],
+      "success_prob": 0.2592,
+      "weakness_boost": 0.1573,
+      "final_score": 0.2184
+    },
+    {
+      "id": "2131_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.2592,
+      "weakness_boost": 0.1553,
+      "final_score": 0.2176
+    },
+    {
+      "id": "1870_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.2589,
+      "weakness_boost": 0.1553,
+      "final_score": 0.2175
+    },
+    {
+      "id": "2127_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_constructive"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1553,
+      "final_score": 0.2174
+    },
+    {
+      "id": "2119_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_bitmasks"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1517,
+      "final_score": 0.216
+    },
+    {
+      "id": "2178_C",
+      "rating": 1200,
+      "tags": [
+        "tag_dp",
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.254,
+      "weakness_boost": 0.1588,
+      "final_score": 0.2159
+    },
+    {
+      "id": "1343_C",
+      "rating": 1200,
+      "tags": [
+        "tag_dp",
+        "tag_greedy",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.2524,
+      "weakness_boost": 0.1577,
+      "final_score": 0.2145
+    },
+    {
+      "id": "2151_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_strings"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1478,
+      "final_score": 0.2144
+    },
+    {
+      "id": "1371_B",
+      "rating": 1200,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.2624,
+      "weakness_boost": 0.1405,
+      "final_score": 0.2136
+    },
+    {
+      "id": "2180_B",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_strings"
+      ],
+      "success_prob": 0.2601,
+      "weakness_boost": 0.1408,
+      "final_score": 0.2124
+    },
+    {
+      "id": "2170_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math",
+        "tag_impl",
+        "tag_bitmasks"
+      ],
+      "success_prob": 0.2612,
+      "weakness_boost": 0.1381,
+      "final_score": 0.2119
+    },
+    {
+      "id": "2145_A",
+      "rating": 800,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1405,
+      "final_score": 0.2115
+    },
+    {
+      "id": "2160_A",
+      "rating": 800,
+      "tags": [
+        "tag_math"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1405,
+      "final_score": 0.2115
+    },
+    {
+      "id": "1236_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.2634,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2115
+    },
+    {
+      "id": "2130_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2087
+    },
+    {
+      "id": "2136_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_math"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1336,
+      "final_score": 0.2087
+    },
+    {
+      "id": "1385_C",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy"
+      ],
+      "success_prob": 0.2559,
+      "weakness_boost": 0.1266,
+      "final_score": 0.2042
+    },
+    {
+      "id": "2155_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_impl"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1188,
+      "final_score": 0.2028
+    },
+    {
+      "id": "2112_A",
+      "rating": 800,
+      "tags": [
+        "tag_math",
+        "tag_impl"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1188,
+      "final_score": 0.2028
+    },
+    {
+      "id": "2173_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.2621,
+      "weakness_boost": 0.1119,
+      "final_score": 0.202
+    },
+    {
+      "id": "2134_C",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.2592,
+      "weakness_boost": 0.1119,
+      "final_score": 0.2003
+    },
+    {
+      "id": "2146_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_impl"
+      ],
+      "success_prob": 0.2585,
+      "weakness_boost": 0.1119,
+      "final_score": 0.1998
+    },
+    {
+      "id": "2153_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.2592,
+      "weakness_boost": 0.1106,
+      "final_score": 0.1998
+    },
+    {
+      "id": "2124_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_sortings"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1106,
+      "final_score": 0.1995
+    },
+    {
+      "id": "2154_A",
+      "rating": 800,
+      "tags": [
+        "tag_greedy",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.2588,
+      "weakness_boost": 0.1101,
+      "final_score": 0.1993
+    },
+    {
+      "id": "908_B",
+      "rating": 1200,
+      "tags": [
+        "tag_impl"
+      ],
+      "success_prob": 0.267,
+      "weakness_boost": 0.0971,
+      "final_score": 0.199
+    },
+    {
+      "id": "1399_C",
+      "rating": 1200,
+      "tags": [
+        "tag_greedy",
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.2561,
+      "weakness_boost": 0.1101,
+      "final_score": 0.1977
+    },
+    {
+      "id": "2143_A",
+      "rating": 800,
+      "tags": [
+        "tag_two_pointers"
+      ],
+      "success_prob": 0.2585,
+      "weakness_boost": 0.0936,
+      "final_score": 0.1925
+    },
+    {
+      "id": "1311_B",
+      "rating": 1200,
+      "tags": [
+        "tag_sortings"
+      ],
+      "success_prob": 0.2571,
+      "weakness_boost": 0.0946,
+      "final_score": 0.1921
+    }
+  ]
+}

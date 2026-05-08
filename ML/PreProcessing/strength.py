@@ -78,15 +78,27 @@ user_tag_df['rating_boost']     = ((user_tag_df['cf_rating'] + user_tag_df['cf_m
 user_tag_df['efficiency_score'] = user_tag_df['first_try_rate'].clip(0, 1)
 user_tag_df['volume_score']     = (np.log1p(user_tag_df['ac_count']) / np.log1p(50)).clip(0, 1)
 
+# specialization_score = tag_ac / total_solved_by_user
+# Measures how focused the user is on this tag relative to their overall activity.
+# Uses total_ac from the profiles table (merged in step 2 as a proxy via tag_coverage_pct).
+# We merge total_ac directly from profiles for accuracy.
+user_tag_df = user_tag_df.merge(
+    df_profiles[['handle', 'total_ac']], on='handle', how='left'
+)
+user_tag_df['specialization_score'] = (
+    user_tag_df['ac_count'] / user_tag_df['total_ac'].replace(0, np.nan)
+).fillna(0).clip(0, 1)
+
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 4 — Weighted combination
+# STEP 4 — Weighted combination  (weights must sum to 1.0)
 # ─────────────────────────────────────────────────────────────────────────────
 WEIGHTS = {
-    'acceptance_rate':  0.30,
-    'difficulty_score': 0.30,
-    'rating_boost':     0.20,
-    'efficiency_score': 0.10,
-    'volume_score':     0.10,
+    'acceptance_rate':      0.30,
+    'difficulty_score':     0.30,
+    'rating_boost':         0.20,
+    'specialization_score': 0.10,
+    'efficiency_score':     0.075,
+    'volume_score':         0.075,
 }
 user_tag_df['tag_strength'] = sum(
     user_tag_df[col] * w for col, w in WEIGHTS.items()
@@ -130,7 +142,7 @@ print("✓ df_profiles_enriched shape: ", df_profiles_enriched.shape)
 print("\nSample tag strengths:")
 print(
     user_tag_df[['handle', 'tag', 'acceptance_rate', 'difficulty_score',
-                 'rating_boost', 'efficiency_score', 'volume_score', 'tag_strength']]
+                 'rating_boost', 'specialization_score', 'efficiency_score', 'volume_score', 'tag_strength']]
     .sort_values(['handle', 'tag_strength'], ascending=[True, False])
     .head(15)
     .to_string(index=False)

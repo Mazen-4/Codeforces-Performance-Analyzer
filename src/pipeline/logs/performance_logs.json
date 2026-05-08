@@ -1,0 +1,1282 @@
+{
+  "total_runs": 22,
+  "last_updated": "2026-05-08T23:15:28.433148",
+  "runs": [
+    {
+      "timestamp": "2026-05-08T19:19:13.988535",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 2.6006,
+          "memory_usage_mb": 7.53,
+          "timestamp": "2026-05-08T19:19:16.589264",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.5855,
+          "memory_usage_mb": 858.45,
+          "timestamp": "2026-05-08T19:19:27.174735",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1195,
+          "memory_usage_mb": 2.88,
+          "timestamp": "2026-05-08T19:19:27.294306",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.8882,
+          "memory_usage_mb": 12.8,
+          "timestamp": "2026-05-08T19:19:28.182577",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0035,
+          "memory_usage_mb": 1.06,
+          "timestamp": "2026-05-08T19:19:28.473725",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 14.1973,
+        "total_memory_used_mb": 882.72,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T19:26:04.848342",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 2.456,
+          "memory_usage_mb": 7.36,
+          "timestamp": "2026-05-08T19:26:07.304464",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.6251,
+          "memory_usage_mb": 611.33,
+          "timestamp": "2026-05-08T19:26:17.929538",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.121,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T19:26:18.050642",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.0824,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T19:26:19.133070",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0006,
+          "memory_usage_mb": 0.12,
+          "timestamp": "2026-05-08T19:26:19.178997",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 14.2851,
+        "total_memory_used_mb": 618.81,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T21:53:39.819734",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 29.6728,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T21:54:09.491831",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.967,
+          "memory_usage_mb": 530.89,
+          "timestamp": "2026-05-08T21:54:20.458746",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1154,
+          "memory_usage_mb": 29.78,
+          "timestamp": "2026-05-08T21:54:20.574243",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.9237,
+          "memory_usage_mb": 49.8,
+          "timestamp": "2026-05-08T21:54:21.497990",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0035,
+          "memory_usage_mb": 1.06,
+          "timestamp": "2026-05-08T21:54:21.787994",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 41.6824,
+        "total_memory_used_mb": 611.53,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T21:57:17.776013",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.2242,
+          "memory_usage_mb": 7.42,
+          "timestamp": "2026-05-08T21:57:19.000388",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.8422,
+          "memory_usage_mb": 552.3,
+          "timestamp": "2026-05-08T21:57:29.842480",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1482,
+          "memory_usage_mb": 14.83,
+          "timestamp": "2026-05-08T21:57:29.990782",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.3055,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T21:57:31.296408",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0035,
+          "memory_usage_mb": 1.05,
+          "timestamp": "2026-05-08T21:57:31.585044",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.5236,
+        "total_memory_used_mb": 575.6,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:04:14.714657",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 16.4579,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:04:31.172280",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 12.7914,
+          "memory_usage_mb": 314.89,
+          "timestamp": "2026-05-08T22:04:43.963577",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1489,
+          "memory_usage_mb": 36.11,
+          "timestamp": "2026-05-08T22:04:44.112598",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.883,
+          "memory_usage_mb": 260.19,
+          "timestamp": "2026-05-08T22:04:44.995691",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.03,
+          "timestamp": "2026-05-08T22:04:45.285517",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 30.2846,
+        "total_memory_used_mb": 612.22,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:05:25.495912",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.14,
+          "memory_usage_mb": 7.61,
+          "timestamp": "2026-05-08T22:05:26.636001",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 12.1672,
+          "memory_usage_mb": 38.02,
+          "timestamp": "2026-05-08T22:05:38.803251",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1676,
+          "memory_usage_mb": 47.48,
+          "timestamp": "2026-05-08T22:05:38.971663",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.1929,
+          "memory_usage_mb": 324.72,
+          "timestamp": "2026-05-08T22:05:40.164566",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0035,
+          "memory_usage_mb": 1.08,
+          "timestamp": "2026-05-08T22:05:40.457107",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 14.6712,
+        "total_memory_used_mb": 418.91,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:09:37.963668",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.2892,
+          "memory_usage_mb": 5.97,
+          "timestamp": "2026-05-08T22:09:39.253012",
+          "metadata": {
+            "target_user": "mo.zarad"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.7303,
+          "memory_usage_mb": 811.5,
+          "timestamp": "2026-05-08T22:09:49.983116",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1485,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:09:50.131774",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.0867,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:09:51.218548",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0017,
+          "memory_usage_mb": 0.55,
+          "timestamp": "2026-05-08T22:09:51.353109",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "mo.zarad",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.2564,
+        "total_memory_used_mb": 818.02,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:34:03.242417",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.1868,
+          "memory_usage_mb": 7.62,
+          "timestamp": "2026-05-08T22:34:04.429431",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.0305,
+          "memory_usage_mb": 243.23,
+          "timestamp": "2026-05-08T22:34:15.459766",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1524,
+          "memory_usage_mb": 36.47,
+          "timestamp": "2026-05-08T22:34:15.612269",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.0347,
+          "memory_usage_mb": 134.06,
+          "timestamp": "2026-05-08T22:34:16.646941",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.06,
+          "timestamp": "2026-05-08T22:34:16.936073",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.4078,
+        "total_memory_used_mb": 422.44,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:34:25.860729",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.8719,
+          "memory_usage_mb": 7.58,
+          "timestamp": "2026-05-08T22:34:26.732792",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.5934,
+          "memory_usage_mb": 530.75,
+          "timestamp": "2026-05-08T22:34:37.325907",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1144,
+          "memory_usage_mb": 29.95,
+          "timestamp": "2026-05-08T22:34:37.440443",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.9215,
+          "memory_usage_mb": 0.84,
+          "timestamp": "2026-05-08T22:34:38.361984",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.08,
+          "timestamp": "2026-05-08T22:34:38.651514",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.5046,
+        "total_memory_used_mb": 570.2,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:34:54.570646",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.9779,
+          "memory_usage_mb": 7.66,
+          "timestamp": "2026-05-08T22:34:55.548692",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.6197,
+          "memory_usage_mb": 614.98,
+          "timestamp": "2026-05-08T22:35:06.168146",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1207,
+          "memory_usage_mb": 21.7,
+          "timestamp": "2026-05-08T22:35:06.288950",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.086,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:35:07.375001",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.05,
+          "timestamp": "2026-05-08T22:35:07.662454",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.8077,
+        "total_memory_used_mb": 645.39,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:40:15.920610",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.9643,
+          "memory_usage_mb": 7.67,
+          "timestamp": "2026-05-08T22:40:16.885037",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.7758,
+          "memory_usage_mb": 458.48,
+          "timestamp": "2026-05-08T22:40:27.660598",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1515,
+          "memory_usage_mb": 29.45,
+          "timestamp": "2026-05-08T22:40:27.812206",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.9173,
+          "memory_usage_mb": 19.75,
+          "timestamp": "2026-05-08T22:40:28.729577",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.05,
+          "timestamp": "2026-05-08T22:40:29.017198",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.8123,
+        "total_memory_used_mb": 516.4,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:46:14.656472",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 2.6301,
+          "memory_usage_mb": 6.12,
+          "timestamp": "2026-05-08T22:46:17.286691",
+          "metadata": {
+            "target_user": "mo.zarad"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.8737,
+          "memory_usage_mb": 388.83,
+          "timestamp": "2026-05-08T22:46:28.160190",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1522,
+          "memory_usage_mb": 31.84,
+          "timestamp": "2026-05-08T22:46:28.312462",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.9149,
+          "memory_usage_mb": 126.09,
+          "timestamp": "2026-05-08T22:46:29.227390",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0018,
+          "memory_usage_mb": 0.52,
+          "timestamp": "2026-05-08T22:46:29.360188",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "mo.zarad",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 14.5727,
+        "total_memory_used_mb": 553.4,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:48:10.926803",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.5531,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:48:12.480096",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.8169,
+          "memory_usage_mb": 55.98,
+          "timestamp": "2026-05-08T22:48:24.297395",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1427,
+          "memory_usage_mb": 48.59,
+          "timestamp": "2026-05-08T22:48:24.441031",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.2957,
+          "memory_usage_mb": 315.92,
+          "timestamp": "2026-05-08T22:48:25.736708",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.05,
+          "timestamp": "2026-05-08T22:48:26.031922",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 14.8118,
+        "total_memory_used_mb": 421.54,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:51:37.116329",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.2049,
+          "memory_usage_mb": 7.38,
+          "timestamp": "2026-05-08T22:51:38.321364",
+          "metadata": {
+            "target_user": "hanaebrahiem"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.2151,
+          "memory_usage_mb": 409.42,
+          "timestamp": "2026-05-08T22:51:49.536204",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1728,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:51:49.709116",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.1425,
+          "memory_usage_mb": 106.95,
+          "timestamp": "2026-05-08T22:51:50.851666",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0033,
+          "memory_usage_mb": 1.06,
+          "timestamp": "2026-05-08T22:51:51.123658",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "hanaebrahiem",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.7386,
+        "total_memory_used_mb": 524.81,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:53:21.904777",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.0233,
+          "memory_usage_mb": 7.45,
+          "timestamp": "2026-05-08T22:53:22.928240",
+          "metadata": {
+            "target_user": "tourist"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.2895,
+          "memory_usage_mb": 245.27,
+          "timestamp": "2026-05-08T22:53:34.217492",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1542,
+          "memory_usage_mb": 27.53,
+          "timestamp": "2026-05-08T22:53:34.371789",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.0835,
+          "memory_usage_mb": 169.66,
+          "timestamp": "2026-05-08T22:53:35.455281",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0036,
+          "memory_usage_mb": 1.05,
+          "timestamp": "2026-05-08T22:53:35.812333",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "tourist",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.5541,
+        "total_memory_used_mb": 450.96,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:55:11.027932",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.8542,
+          "memory_usage_mb": 7.7,
+          "timestamp": "2026-05-08T22:55:11.882214",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.0428,
+          "memory_usage_mb": 347.69,
+          "timestamp": "2026-05-08T22:55:22.924811",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1414,
+          "memory_usage_mb": 27.42,
+          "timestamp": "2026-05-08T22:55:23.066265",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.9392,
+          "memory_usage_mb": 136.61,
+          "timestamp": "2026-05-08T22:55:24.005501",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0037,
+          "memory_usage_mb": 1.09,
+          "timestamp": "2026-05-08T22:55:24.296865",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.9813,
+        "total_memory_used_mb": 520.51,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T22:59:20.326566",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.8406,
+          "memory_usage_mb": 6.09,
+          "timestamp": "2026-05-08T22:59:21.167373",
+          "metadata": {
+            "target_user": "mo.zarad"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.0415,
+          "memory_usage_mb": 552.11,
+          "timestamp": "2026-05-08T22:59:32.208645",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1524,
+          "memory_usage_mb": 27.19,
+          "timestamp": "2026-05-08T22:59:32.361113",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.9258,
+          "memory_usage_mb": null,
+          "timestamp": "2026-05-08T22:59:33.286945",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0018,
+          "memory_usage_mb": 0.52,
+          "timestamp": "2026-05-08T22:59:33.423911",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "mo.zarad",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.9621,
+        "total_memory_used_mb": 585.91,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T23:04:54.868082",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.7808,
+          "memory_usage_mb": 5.88,
+          "timestamp": "2026-05-08T23:04:55.648955",
+          "metadata": {
+            "target_user": "mo.zarad"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.0664,
+          "memory_usage_mb": 465.17,
+          "timestamp": "2026-05-08T23:05:06.715154",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1507,
+          "memory_usage_mb": 28.42,
+          "timestamp": "2026-05-08T23:05:06.865910",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.1815,
+          "memory_usage_mb": 36.92,
+          "timestamp": "2026-05-08T23:05:08.047469",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0021,
+          "memory_usage_mb": 0.53,
+          "timestamp": "2026-05-08T23:05:08.192316",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "mo.zarad",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.1815,
+        "total_memory_used_mb": 536.92,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T23:06:04.400229",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.8004,
+          "memory_usage_mb": 7.59,
+          "timestamp": "2026-05-08T23:06:05.200807",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 11.0647,
+          "memory_usage_mb": 416.69,
+          "timestamp": "2026-05-08T23:06:16.265294",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1441,
+          "memory_usage_mb": 33.5,
+          "timestamp": "2026-05-08T23:06:16.409551",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 1.0048,
+          "memory_usage_mb": 63.81,
+          "timestamp": "2026-05-08T23:06:17.414364",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0035,
+          "memory_usage_mb": 1.05,
+          "timestamp": "2026-05-08T23:06:17.707220",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.0175,
+        "total_memory_used_mb": 522.64,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T23:10:49.633089",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 1.6273,
+          "memory_usage_mb": 7.61,
+          "timestamp": "2026-05-08T23:10:51.260479",
+          "metadata": {
+            "target_user": "o.khalifa"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.8536,
+          "memory_usage_mb": 839.92,
+          "timestamp": "2026-05-08T23:11:02.113838",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1394,
+          "memory_usage_mb": 6.05,
+          "timestamp": "2026-05-08T23:11:02.253279",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.8749,
+          "memory_usage_mb": 50.27,
+          "timestamp": "2026-05-08T23:11:03.128230",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0034,
+          "memory_usage_mb": 1.06,
+          "timestamp": "2026-05-08T23:11:03.421236",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "o.khalifa",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 13.4986,
+        "total_memory_used_mb": 904.91,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T23:12:50.697064",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.7467,
+          "memory_usage_mb": 6.02,
+          "timestamp": "2026-05-08T23:12:51.444025",
+          "metadata": {
+            "target_user": "mo.zarad"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.791,
+          "memory_usage_mb": 786.38,
+          "timestamp": "2026-05-08T23:13:02.234836",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1355,
+          "memory_usage_mb": 7.25,
+          "timestamp": "2026-05-08T23:13:02.370463",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.8794,
+          "memory_usage_mb": 115.86,
+          "timestamp": "2026-05-08T23:13:03.249854",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0017,
+          "memory_usage_mb": 0.5,
+          "timestamp": "2026-05-08T23:13:03.385336",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "mo.zarad",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.5543,
+        "total_memory_used_mb": 916.01,
+        "num_stages": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-08T23:15:15.361265",
+      "stages": [
+        {
+          "stage": "data_collection",
+          "execution_time_seconds": 0.9206,
+          "memory_usage_mb": 7.33,
+          "timestamp": "2026-05-08T23:15:16.282060",
+          "metadata": {
+            "target_user": "hanaebrahiem"
+          }
+        },
+        {
+          "stage": "feature_engineering",
+          "execution_time_seconds": 10.856,
+          "memory_usage_mb": 771.22,
+          "timestamp": "2026-05-08T23:15:27.137823",
+          "metadata": {
+            "source": "TagAnalyzer + CSV peers"
+          }
+        },
+        {
+          "stage": "model_inference",
+          "execution_time_seconds": 0.1384,
+          "memory_usage_mb": 4.38,
+          "timestamp": "2026-05-08T23:15:27.276277",
+          "metadata": {
+            "k_neighbors": 50,
+            "metric": "euclidean"
+          }
+        },
+        {
+          "stage": "preprocessing",
+          "execution_time_seconds": 0.8815,
+          "memory_usage_mb": 100.38,
+          "timestamp": "2026-05-08T23:15:28.157758",
+          "metadata": {
+            "source": "04_filtered_submissions.csv"
+          }
+        },
+        {
+          "stage": "recommendation_generation",
+          "execution_time_seconds": 0.0035,
+          "memory_usage_mb": 0.98,
+          "timestamp": "2026-05-08T23:15:28.429486",
+          "metadata": {
+            "limit": 200
+          }
+        }
+      ],
+      "summary": {
+        "user_handle": "hanaebrahiem",
+        "num_neighbors_returned": 50,
+        "total_execution_time_seconds": 12.8,
+        "total_memory_used_mb": 884.29,
+        "num_stages": 5
+      }
+    }
+  ]
+}

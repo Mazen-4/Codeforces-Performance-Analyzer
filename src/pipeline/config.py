@@ -51,7 +51,7 @@ CODEFORCES_API_TIMEOUT = 30  # seconds
 
 # Maximum number of submissions to fetch per user (to optimize API calls)
 # Feature extraction only needs stats, not full history
-MAX_SUBMISSIONS_PER_USER = 200
+MAX_SUBMISSIONS_PER_USER = 500
 
 # Cache settings for API calls (to reduce redundant API calls)
 ENABLE_API_CACHE = True

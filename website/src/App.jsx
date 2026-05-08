@@ -14,31 +14,28 @@ const C = {
 const TAG_COLORS = ["#7c6dfa","#ff4560","#00e396","#feb019","#00b4d8","#f72585","#4cc9f0","#a78bfa","#fb5607","#06d6a0"];
 const accColor = a => a >= 70 ? C.success : a >= 45 ? C.warn : C.danger;
 
-// ── All external fetching is done through the Gemini API (server-side) ────────
-// This completely avoids CORP/CORS issues in the artifact sandbox.
-
 async function fetchCFData(handle) {
   const res = await fetch(`http://localhost:3000/api/cf/${handle}`);
   return res.json();
 }
 
-async function fetchCoachPlan(handle, estimatedRating, weakTags) {
+async function fetchMLAnalysis(handle) {
+  const res = await fetch(`http://localhost:3000/api/ml/analyze/${handle}`);
+  if (!res.ok) throw new Error("ML pipeline failed");
+  return res.json();
+}
+
+async function fetchCoachPlan(handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved) {
   const res = await fetch("http://localhost:3000/api/coach", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      handle,
-      estimatedRating,
-      weakTags: weakTags.map(t => t.tag),
-    }),
+    body: JSON.stringify({ handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved }),
   });
-
   const data = await res.json();
   return data.plan;
 }
 
 // ── Analysis engine ───────────────────────────────────────────────────────────
-
 function analyzeData({ submissions, problems }) {
   const problemMap = {};
   problems.forEach(p => { problemMap[`${p.contestId}-${p.index}`] = p; });
@@ -92,24 +89,15 @@ function analyzeData({ submissions, problems }) {
     .sort((a, b) => a.rating - b.rating);
 
   const estimatedRating = maxRating || 1200;
-  const weakTags = tagData.filter(t => t.accuracy < 50).map(t => t.tag);
-
-  const recommendations = problems.filter(p => {
-    const key = `${p.contestId}-${p.index}`;
-    if (solvedSet.has(key) || !p.rating) return false;
-    if (p.rating < estimatedRating - 300 || p.rating > estimatedRating + 100) return false;
-    return p.tags.some(t => weakTags.includes(t));
-  }).slice(0, 12);
 
   return {
-    stats: { totalSolved: solvedSet.size, totalSubmissions: submissions.length, weakTagCount: weakTags.length, estimatedRating, maxRating },
-    tagData, ratingData, recommendations,
+    stats: { totalSolved: solvedSet.size, totalSubmissions: submissions.length, estimatedRating, maxRating },
+    tagData, ratingData,
   };
 }
 
 // ── UI components ─────────────────────────────────────────────────────────────
-
-function Spinner({ label = "Fetching via Gemini…" }) {
+function Spinner({ label = "Loading…" }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "48px 0" }}>
       <div style={{ width: 28, height: 28, border: `2px solid ${C.border}`, borderTop: `2px solid ${C.accent}`, borderRadius: "50%", animation: "spin .7s linear infinite" }} />
@@ -129,103 +117,145 @@ function StatCard({ label, value, sub, color }) {
   );
 }
 
-function TagRow({ tag, solved, failed, accuracy, rank }) {
-  const color = accColor(accuracy);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: `1px solid ${C.border}`, background: accuracy < 50 ? `${C.danger}09` : "transparent" }}>
-      <div style={{ width: 22, color: C.muted, fontSize: 11, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{rank}</div>
-      <div style={{ flex: 2, color: C.text, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{tag}</div>
-      <div style={{ flex: 1, color: C.muted, fontSize: 11, textAlign: "center" }}>{solved}✓</div>
-      <div style={{ flex: 1, color: C.muted, fontSize: 11, textAlign: "center" }}>{failed}✗</div>
-      <div style={{ flex: 2, display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ flex: 1, height: 5, background: C.border, borderRadius: 3, overflow: "hidden" }}>
-          <div style={{ width: `${Math.min(accuracy, 100)}%`, height: "100%", background: color, borderRadius: 3 }} />
-        </div>
-        <div style={{ width: 36, color, fontSize: 11, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{accuracy}%</div>
-      </div>
-      {accuracy < 50 && <div style={{ color: C.danger, fontSize: 9, fontFamily: "'Space Mono',monospace", background: `${C.danger}20`, padding: "2px 5px", borderRadius: 3 }}>WEAK</div>}
-    </div>
-  );
-}
-
-function ProblemCard({ p }) {
-  return (
-    <a href={`https://codeforces.com/problemset/problem/${p.contestId}/${p.index}`} target="_blank" rel="noopener noreferrer"
-      style={{ display: "block", textDecoration: "none", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "13px 16px", marginBottom: 8, transition: "border-color .2s,transform .15s" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.transform = "translateX(4px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateX(0)"; }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: C.accent, fontSize: 10, fontFamily: "'Space Mono',monospace", marginBottom: 4 }}>{p.contestId}{p.index} · ★{p.rating}</div>
-          <div style={{ color: C.text, fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{p.name}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {p.tags.slice(0, 4).map((t, i) => (
-              <span key={i} style={{ background: `${TAG_COLORS[i % TAG_COLORS.length]}22`, color: TAG_COLORS[i % TAG_COLORS.length], fontSize: 9, padding: "2px 6px", borderRadius: 20, fontFamily: "'Space Mono',monospace" }}>{t}</span>
-            ))}
-          </div>
-        </div>
-        <span style={{ color: C.muted, fontSize: 16 }}>→</span>
-      </div>
-    </a>
-  );
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
-
 export default function App() {
-  const [input, setInput] = useState("");
-  const [handle, setHandle] = useState("");
-  const [phase, setPhase] = useState("idle");
-  const [phaseMsg, setPhaseMsg] = useState("");
-  const [error, setError] = useState("");
-  const [stats, setStats] = useState(null);
-  const [tagData, setTagData] = useState([]);
-  const [ratingData, setRatingData] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
-  const [tab, setTab] = useState("overview");
-  const [aiPlan, setAiPlan] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
+  const [input, setInput]               = useState("");
+  const [handle, setHandle]             = useState("");
+  const [phase, setPhase]               = useState("idle");
+  const [phaseMsg, setPhaseMsg]         = useState("");
+  const [error, setError]               = useState("");
+  const [stats, setStats]               = useState(null);
+  const [tagData, setTagData]           = useState([]);
+  const [ratingData, setRatingData]     = useState([]);
+  const [tab, setTab]                   = useState("overview");
+  const [aiPlan, setAiPlan]             = useState("");
+  const [aiLoading, setAiLoading]       = useState(false);
+  const [mlData, setMlData]             = useState(null);
+  const [mlLoading, setMlLoading]       = useState(false);
+
+  // Derived ML values (safe defaults when ML hasn't loaded yet)
+  const mlTagStrengths  = mlData?.tag_strengths || {};
+  const mlNeighbors     = mlData?.recommendation?.recommendation?.neighbors || [];
+  const mlProblems      = [...(mlData?.recommended_problems || [])].sort((a, b) => b.success_prob - a.success_prob);
+  const mlTagsSorted    = Object.entries(mlTagStrengths)
+    .filter(([, v]) => v.attempted > 0)
+    .sort((a, b) => a[1].strength - b[1].strength);
+  const weakTagCount    = mlTagsSorted.filter(([, v]) => v.strength < 50).length;
 
   const run = useCallback(async h => {
-    setPhase("loading"); setPhaseMsg("Asking Gemini to fetch Codeforces data…");
-    setError(""); setStats(null); setTagData([]); setRatingData([]); setRecommendations([]); setAiPlan("");
+    setPhase("loading"); setPhaseMsg("Fetching Codeforces data…");
+    setError(""); setStats(null); setTagData([]); setRatingData([]);
+    setAiPlan(""); setMlData(null); setMlLoading(true);
+
     try {
-      const raw = await fetchCFData(h);
-      if (raw.status !== "OK") throw new Error(`Handle "${h}" not found on Codeforces`);
-      setPhaseMsg("Analyzing weaknesses…");
-      const result = analyzeData(raw);
-      setStats(result.stats); setTagData(result.tagData);
-      setRatingData(result.ratingData); setRecommendations(result.recommendations);
+      // Fire both requests in parallel
+      const [raw, ml] = await Promise.allSettled([
+        fetchCFData(h),
+        fetchMLAnalysis(h),
+      ]);
+
+      // CF data (required)
+      if (raw.status === "rejected") throw new Error(raw.reason?.message || "CF fetch failed");
+      const cfData = raw.value;
+      if (cfData.status !== "OK") throw new Error(`Handle "${h}" not found on Codeforces`);
+
+      setPhaseMsg("Analyzing…");
+      const result = analyzeData(cfData);
+      setStats(result.stats);
+      setTagData(result.tagData);
+      setRatingData(result.ratingData);
+
+      // ML data (optional — show without it if it fails)
+      if (ml.status === "fulfilled" && ml.value?.success) {
+        setMlData(ml.value);
+      }
+
       setPhase("done");
     } catch (e) {
-      setError(e.message || "Something went wrong"); setPhase("error");
+      setError(e.message || "Something went wrong");
+      setPhase("error");
+    } finally {
+      setMlLoading(false);
     }
   }, []);
 
   const genPlan = async () => {
     setAiLoading(true);
     try {
-      const weak = tagData.filter(t => t.accuracy < 50).slice(0, 5);
-      const plan = await fetchCoachPlan(handle, stats.estimatedRating, weak);
-      console.log("Gemini plan:", plan);
+      const weakTags = mlTagsSorted.length
+        ? mlTagsSorted.slice(0, 8).map(([tag, v]) => ({
+            tag: tag.replace("tag_", "").replace(/_/g, " "),
+            strength: Math.round(v.strength),
+            solved: v.solved,
+            attempted: v.attempted,
+          }))
+        : tagData.filter(t => t.accuracy < 50).slice(0, 8).map(t => ({
+            tag: t.tag, strength: t.accuracy, solved: t.solved, attempted: t.solved + t.failed,
+          }));
+
+      const strongTags = mlTagsSorted.length
+        ? [...mlTagsSorted].reverse().slice(0, 3).map(([tag, v]) => ({
+            tag: tag.replace("tag_", "").replace(/_/g, " "),
+            strength: Math.round(v.strength),
+          }))
+        : [];
+
+      const recommendedProblems = mlProblems.slice(0, 10).map(p => ({
+        id: p.id,
+        rating: p.rating,
+        tags: (p.tags || []).map(t => t.replace("tag_", "").replace(/_/g, " ")),
+        success_prob: Math.round(p.success_prob * 100),
+      }));
+
+      const plan = await fetchCoachPlan(
+        handle, stats.estimatedRating, weakTags, strongTags, recommendedProblems, stats.totalSolved
+      );
       setAiPlan(plan);
     } catch (err) {
-      console.error(err);
       setAiPlan("Could not generate plan. Please try again.");
     } finally {
-      setAiLoading(false); // stop loading in both success and error cases
+      setAiLoading(false);
     }
   };
 
-  const Tab = ({ id, icon, label }) => (
+  const Tab = ({ id, icon, label, badge }) => (
     <button onClick={() => setTab(id)} style={{
       background: tab === id ? C.accent : "transparent", color: tab === id ? "#fff" : C.muted,
       border: `1px solid ${tab === id ? C.accent : C.border}`, borderRadius: 7, padding: "7px 14px",
-      cursor: "pointer", fontSize: 11, fontFamily: "'Space Mono',monospace", letterSpacing: .5, transition: "all .2s",
-    }}>{icon} {label}</button>
+      cursor: "pointer", fontSize: 11, fontFamily: "'Space Mono',monospace", letterSpacing: .5,
+      transition: "all .2s", position: "relative",
+    }}>
+      {icon} {label}
+      {badge != null && (
+        <span style={{ marginLeft: 6, background: tab === id ? "rgba(255,255,255,0.25)" : C.accentSoft, color: tab === id ? "#fff" : C.accent, fontSize: 9, padding: "1px 5px", borderRadius: 10, fontFamily: "'Space Mono',monospace" }}>
+          {badge}
+        </span>
+      )}
+    </button>
   );
 
-  const radarData = tagData.slice(-8).map(t => ({ tag: t.tag.length > 10 ? t.tag.slice(0, 10) + "…" : t.tag, accuracy: t.accuracy }));
+  // Radar uses ML tag strengths (0–100 scale) when available, else CF accuracy
+  const radarData = mlTagsSorted.length
+    ? mlTagsSorted.slice(-10).map(([tag, v]) => ({
+        tag: tag.replace("tag_","").replace(/_/g," ").slice(0,10),
+        accuracy: Math.round(v.strength),
+      }))
+    : tagData.slice(-8).map(t => ({
+        tag: t.tag.length > 10 ? t.tag.slice(0, 10) + "…" : t.tag,
+        accuracy: t.accuracy,
+      }));
+
+  // Merged tag rows: CF accuracy + ML strength side by side
+  const mergedTagData = tagData
+    .map(t => {
+      const key = "tag_" + t.tag.replace(/ /g,"_");
+      const mlInfo = mlTagStrengths[key] || mlTagStrengths[t.tag] || null;
+      return { ...t, mlStrength: mlInfo ? Math.round(mlInfo.strength) : null, mlAttempted: mlInfo?.attempted ?? 0 };
+    })
+    .sort((a, b) => mlData
+      ? (a.mlStrength ?? 101) - (b.mlStrength ?? 101)
+      : a.accuracy - b.accuracy
+    );
 
   return (
     <div style={{ minHeight: "100%", width: "100%", background: C.bg, color: C.text, fontFamily: "'Sora','Segoe UI',sans-serif", paddingBottom: 60 }}>
@@ -244,29 +274,37 @@ export default function App() {
       {/* Nav */}
       <div style={{ borderBottom: `1px solid ${C.border}`, background: `${C.surface}ee`, backdropFilter: "blur(14px)", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 20, height: 20, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}><img src={reactSvg} alt="React" style={{ width: 30, height: 30, borderRadius: 7 }} /></div>
+          <img src={reactSvg} alt="" style={{ width: 28, height: 28, borderRadius: 7 }} />
           <div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>CF Performance Analyzer</div>
-            <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>API fetches Codeforces data</div>
+            <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>
+              {mlData ? "✦ ML model active" : "Codeforces · KNN · Tag Strength"}
+            </div>
           </div>
         </div>
-        {handle && phase === "done" && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: C.accent }}>@{handle}</div>}
+        {handle && phase === "done" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {mlLoading && <span style={{ fontSize: 10, color: C.warn, fontFamily: "'Space Mono',monospace" }}>⟳ ML running…</span>}
+            {mlData && <span style={{ fontSize: 10, color: C.success, fontFamily: "'Space Mono',monospace" }}>✦ ML ready</span>}
+            <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: C.accent }}>@{handle}</div>
+          </div>
+        )}
       </div>
 
       <div style={{ maxWidth: 1060, margin: "0 auto", padding: "36px 20px" }}>
 
-        {/* Search hero */}
+        {/* Search */}
         <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px 28px", marginBottom: 28, textAlign: "center", boxShadow: `0 0 80px ${C.accentSoft}` }}>
           <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -1, marginBottom: 6 }}>
             Diagnose Your <span style={{ color: C.accent }}>CP Weaknesses</span>
           </div>
           <div style={{ color: C.muted, fontSize: 13, marginBottom: 26 }}>
-            API fetches Codeforces data server-side — no CORP/CORS issues
+            Combines Codeforces data with a KNN model trained on 2,877 users
           </div>
           <div style={{ display: "flex", gap: 10, maxWidth: 440, margin: "0 auto" }}>
             <input value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && input.trim()) { setHandle(input.trim()); run(input.trim()); } }}
-              placeholder="e.g. tourist, Um_nik, neal_wu"
+              placeholder="e.g. tourist, Um_nik, o.khalifa"
               style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 9, padding: "11px 14px", color: C.text, fontSize: 13, fontFamily: "'Space Mono',monospace", outline: "none", transition: "border-color .2s" }}
               onFocus={e => e.target.style.borderColor = C.accent}
               onBlur={e => e.target.style.borderColor = C.border}
@@ -290,51 +328,69 @@ export default function App() {
 
         {phase === "done" && stats && (
           <div className="up">
-            {/* Stats */}
+            {/* Stat cards — weak topics count from ML when available */}
             <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
               <StatCard label="Problems Solved" value={stats.totalSolved} sub="unique problems" color={C.success} />
-              <StatCard label="Max Rating Hit" value={stats.maxRating || "—"} sub="hardest solved" color={C.accent} />
-              <StatCard label="Weak Topics" value={stats.weakTagCount} sub="< 50% accuracy" color={C.danger} />
-              <StatCard label="Submissions" value={stats.totalSubmissions} sub="last 500" />
+              <StatCard label="Max Rating Hit"  value={stats.maxRating || "—"} sub="hardest solved" color={C.accent} />
+              <StatCard label="Weak Topics"     value={mlData ? weakTagCount : tagData.filter(t => t.accuracy < 50).length} sub={mlData ? "ML tag strength < 50" : "< 50% accuracy"} color={C.danger} />
+              <StatCard label="Submissions"     value={stats.totalSubmissions} sub="last 500" />
+              {mlData && <StatCard label="KNN Neighbors" value={mlNeighbors.length} sub="similar users found" color={C.accent} />}
             </div>
 
             {/* Tabs */}
             <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
               <Tab id="overview" icon="📊" label="Overview" />
-              <Tab id="tags" icon="🏷" label="Tag Analysis" />
-              <Tab id="ratings" icon="📈" label="Ratings" />
-              <Tab id="recs" icon="🎯" label="Recs" />
-              <Tab id="ai" icon="🤖" label="AI Coach" />
+              <Tab id="tags"     icon="🏷"  label="Tag Analysis" />
+              <Tab id="ratings"  icon="📈"  label="Ratings" />
+              <Tab id="recs"     icon="🎯"  label="Recs" badge={mlData ? mlProblems.length : null} />
+              <Tab id="peers"    icon="👥"  label="Peers" badge={mlData ? mlNeighbors.length : null} />
+              <Tab id="ai"       icon="🤖"  label="AI Coach" />
             </div>
 
-            {/* OVERVIEW */}
+            {/* ── OVERVIEW ── */}
             {tab === "overview" && (
               <div className="up" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                {/* Radar — ML strengths when available */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                  <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 12, letterSpacing: 1 }}>TAG ACCURACY RADAR</div>
+                  <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>
+                    {mlData ? "ML TAG STRENGTH (PEER-BENCHMARKED)" : "TAG ACCURACY RADAR"}
+                  </div>
+                  {mlData && <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 10 }}>✦ powered by KNN model · 0–100 scale</div>}
                   <ResponsiveContainer width="100%" height={250}>
                     <RadarChart data={radarData}>
                       <PolarGrid stroke={C.border} />
                       <PolarAngleAxis dataKey="tag" tick={{ fill: C.muted, fontSize: 9, fontFamily: "Space Mono" }} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: C.muted, fontSize: 8 }} tickCount={4} />
-                      <Radar dataKey="accuracy" stroke={C.accent} fill={C.accent} fillOpacity={0.22} />
+                      <Radar dataKey="accuracy" stroke={mlData ? C.success : C.accent} fill={mlData ? C.success : C.accent} fillOpacity={0.22} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>
+
+                {/* Weakest tags — ML strengths when available */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-                  <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 12, letterSpacing: 1 }}>WEAKEST TAGS (TOP 7)</div>
-                  {tagData.slice(0, 7).map((t, i) => (
-                    <div key={i} style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                        <span style={{ fontSize: 11, fontFamily: "'Space Mono',monospace", color: C.text }}>{t.tag}</span>
-                        <span style={{ fontSize: 11, color: accColor(t.accuracy), fontFamily: "'Space Mono',monospace" }}>{t.accuracy}%</span>
+                  <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>
+                    WEAKEST TAGS (TOP 7)
+                  </div>
+                  {mlData && <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 10 }}>✦ ML peer-benchmarked strength</div>}
+                  {(mlData ? mlTagsSorted.slice(0, 7) : tagData.slice(0, 7).map(t => [t.tag, { strength: t.accuracy, solved: t.solved, attempted: t.solved + t.failed }])).map(([tag, info], i) => {
+                    const label = mlData ? tag.replace("tag_","").replace(/_/g," ") : tag;
+                    const pct   = mlData ? Math.min(info.strength, 100) : info.strength;
+                    const color = accColor(pct);
+                    return (
+                      <div key={i} style={{ marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                          <span style={{ fontSize: 11, fontFamily: "'Space Mono',monospace", color: C.text, textTransform: "capitalize" }}>{label}</span>
+                          <span style={{ fontSize: 11, color, fontFamily: "'Space Mono',monospace" }}>{Math.round(pct)}{mlData ? "" : "%"}</span>
+                        </div>
+                        <div style={{ height: 5, background: C.border, borderRadius: 3 }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3 }} />
+                        </div>
                       </div>
-                      <div style={{ height: 5, background: C.border, borderRadius: 3 }}>
-                        <div style={{ width: `${t.accuracy}%`, height: "100%", background: accColor(t.accuracy), borderRadius: 3 }} />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+
+                {/* Solved by rating bucket */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, gridColumn: "1/-1" }}>
                   <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 12, letterSpacing: 1 }}>SOLVED COUNT BY RATING BUCKET</div>
                   <ResponsiveContainer width="100%" height={160}>
@@ -351,19 +407,58 @@ export default function App() {
               </div>
             )}
 
-            {/* TAGS */}
+            {/* ── TAG ANALYSIS ── */}
             {tab === "tags" && (
               <div className="up" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+                {mlData && (
+                  <div style={{ padding: "10px 16px", background: `${C.accent}0a`, borderBottom: `1px solid ${C.accent}22`, fontSize: 10, color: C.accent, fontFamily: "'Space Mono',monospace" }}>
+                    ✦ ML STRENGTH column = peer-benchmarked score from KNN model (0–100) · CF ACC = raw submission accuracy
+                  </div>
+                )}
                 <div style={{ padding: "13px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", gap: 12 }}>
-                  {["#", "TAG", "SOLVED", "FAILED", "ACCURACY"].map((h, i) => (
-                    <span key={i} style={{ fontSize: 9, color: C.muted, fontFamily: "'Space Mono',monospace", flex: i === 0 ? "0 0 22px" : i === 1 ? 2 : i === 4 ? 2 : 1, textAlign: i > 1 ? "center" : "left" }}>{h}</span>
+                  {["#", "TAG", "SOLVED", "FAILED", "CF ACC", ...(mlData ? ["ML STRENGTH"] : [])].map((h, i) => (
+                    <span key={i} style={{ fontSize: 9, color: C.muted, fontFamily: "'Space Mono',monospace", flex: i === 0 ? "0 0 22px" : i === 1 ? 2 : i === 5 ? 2 : 1, textAlign: i > 1 ? "center" : "left" }}>{h}</span>
                   ))}
                 </div>
-                {tagData.map((t, i) => <TagRow key={t.tag} {...t} rank={i + 1} />)}
+                {mergedTagData.map((t, i) => {
+                  const cfColor = accColor(t.accuracy);
+                  const mlColor = t.mlStrength != null ? accColor(t.mlStrength) : C.muted;
+                  return (
+                    <div key={t.tag} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: `1px solid ${C.border}`, background: (mlData ? t.mlStrength < 50 : t.accuracy < 50) ? `${C.danger}09` : "transparent" }}>
+                      <div style={{ width: 22, color: C.muted, fontSize: 11, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{i + 1}</div>
+                      <div style={{ flex: 2, color: C.text, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{t.tag}</div>
+                      <div style={{ flex: 1, color: C.muted, fontSize: 11, textAlign: "center" }}>{t.solved}✓</div>
+                      <div style={{ flex: 1, color: C.muted, fontSize: 11, textAlign: "center" }}>{t.failed}✗</div>
+                      {/* CF accuracy bar */}
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ flex: 1, height: 5, background: C.border, borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ width: `${t.accuracy}%`, height: "100%", background: cfColor, borderRadius: 3 }} />
+                        </div>
+                        <span style={{ width: 30, color: cfColor, fontSize: 10, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{t.accuracy}%</span>
+                      </div>
+                      {/* ML strength bar */}
+                      {mlData && (
+                        <div style={{ flex: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                          {t.mlStrength != null ? (
+                            <>
+                              <div style={{ flex: 1, height: 5, background: C.border, borderRadius: 3, overflow: "hidden" }}>
+                                <div style={{ width: `${Math.min(t.mlStrength, 100)}%`, height: "100%", background: mlColor, borderRadius: 3 }} />
+                              </div>
+                              <span style={{ width: 30, color: mlColor, fontSize: 10, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{t.mlStrength}</span>
+                              {t.mlStrength < 50 && <span style={{ color: C.danger, fontSize: 9, fontFamily: "'Space Mono',monospace", background: `${C.danger}20`, padding: "2px 5px", borderRadius: 3 }}>WEAK</span>}
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>—</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* RATINGS */}
+            {/* ── RATINGS ── */}
             {tab === "ratings" && (
               <div className="up">
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22, marginBottom: 16 }}>
@@ -374,7 +469,7 @@ export default function App() {
                       <YAxis tick={{ fill: C.muted, fontSize: 9 }} />
                       <Tooltip contentStyle={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontFamily: "Space Mono", fontSize: 10 }} />
                       <Bar dataKey="solved" name="Solved" fill={C.success} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="failed" name="Failed" fill={C.danger} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="failed" name="Failed" fill={C.danger}  radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -390,28 +485,114 @@ export default function App() {
               </div>
             )}
 
-            {/* RECOMMENDATIONS */}
+            {/* ── RECS — ML problems when available ── */}
             {tab === "recs" && (
               <div className="up">
-                <div style={{ background: `${C.accent}0f`, border: `1px solid ${C.accent}30`, borderRadius: 9, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: C.muted }}>
-                  🎯 Unsolved problems in your weak tags · targeting ~{stats.estimatedRating} rating
-                </div>
-                {recommendations.length === 0
-                  ? <div style={{ textAlign: "center", padding: 40, color: C.muted }}>No recommendations found — solve more problems first!</div>
-                  : <div style={{ columns: "2", columnGap: 14 }}>
-                    {recommendations.map((p, i) => <ProblemCard key={i} p={p} />)}
-                  </div>}
+                {mlData ? (
+                  <>
+                    <div style={{ background: `${C.accent}0f`, border: `1px solid ${C.accent}30`, borderRadius: 9, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: C.muted }}>
+                      ✦ ML-ranked · sourced from 50 nearest neighbors · scored by <span style={{ color: C.success }}>success probability</span> + <span style={{ color: C.warn }}>weakness boost</span>
+                    </div>
+                    {mlProblems.length === 0
+                      ? <div style={{ textAlign: "center", padding: 40, color: C.muted }}>No recommendations found.</div>
+                      : (
+                        <div style={{ columns: 2, columnGap: 14 }}>
+                          {mlProblems.slice(0, 20).map((p, i) => {
+                            const [contestId, idx] = p.id.split("_");
+                            return (
+                              <a key={i}
+                                href={`https://codeforces.com/problemset/problem/${contestId}/${idx}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ display: "block", textDecoration: "none", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "13px 16px", marginBottom: 8, transition: "border-color .2s,transform .15s", breakInside: "avoid" }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.transform = "translateX(4px)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "none"; }}>
+                                <div style={{ color: C.accent, fontSize: 10, fontFamily: "'Space Mono',monospace", marginBottom: 4 }}>
+                                  {p.id} · ★{p.rating}
+                                </div>
+                                <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
+                                  <span style={{ fontSize: 10, color: C.success, fontFamily: "'Space Mono',monospace" }}>✓ {(p.success_prob * 100).toFixed(0)}% success</span>
+                                  <span style={{ fontSize: 10, color: C.warn,    fontFamily: "'Space Mono',monospace" }}>↑ {(p.weakness_boost * 100).toFixed(0)}% growth</span>
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                  {(p.tags || []).slice(0, 4).map((t, j) => (
+                                    <span key={j} style={{ background: `${TAG_COLORS[j % TAG_COLORS.length]}22`, color: TAG_COLORS[j % TAG_COLORS.length], fontSize: 9, padding: "2px 6px", borderRadius: 20, fontFamily: "'Space Mono',monospace" }}>
+                                      {t.replace("tag_","").replace(/_/g," ")}
+                                    </span>
+                                  ))}
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )
+                    }
+                  </>
+                ) : (
+                  <div style={{ textAlign: "center", padding: 40, color: C.muted, fontFamily: "'Space Mono',monospace", fontSize: 12 }}>
+                    ML model did not load for this handle — recommendations unavailable.
+                  </div>
+                )}
               </div>
             )}
 
-            {/* AI COACH */}
+            {/* ── PEERS — KNN nearest neighbors ── */}
+            {tab === "peers" && (
+              <div className="up">
+                {!mlData ? (
+                  <div style={{ textAlign: "center", padding: 40, color: C.muted, fontFamily: "'Space Mono',monospace", fontSize: 12 }}>
+                    ML model did not load — peer data unavailable.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ background: `${C.accent}0f`, border: `1px solid ${C.accent}30`, borderRadius: 9, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: C.muted }}>
+                      👥 50 most similar users from a dataset of 2,877 · ranked by Euclidean distance in 20-dimensional tag-strength space
+                    </div>
+                    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+                      {/* Header */}
+                      <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 80px", gap: 12, padding: "11px 18px", borderBottom: `1px solid ${C.border}` }}>
+                        {["RANK", "HANDLE", "SIMILARITY", "DISTANCE"].map((h, i) => (
+                          <span key={i} style={{ fontSize: 9, color: C.muted, fontFamily: "'Space Mono',monospace", textAlign: i > 1 ? "center" : "left" }}>{h}</span>
+                        ))}
+                      </div>
+                      {mlNeighbors.map((n, i) => {
+                        const maxDist = mlNeighbors[mlNeighbors.length - 1]?.distance || 1;
+                        const sim     = Math.max(0, Math.round((1 - n.distance / (maxDist + 0.01)) * 100));
+                        const rowBg   = i % 2 === 0 ? "transparent" : `${C.surface}80`;
+                        return (
+                          <div key={n.user_handle} style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 80px", gap: 12, padding: "10px 18px", borderBottom: `1px solid ${C.border}`, background: rowBg, alignItems: "center" }}>
+                            <span style={{ fontSize: 12, color: i < 3 ? C.accent : C.muted, fontFamily: "'Space Mono',monospace", fontWeight: i < 3 ? 700 : 400 }}>#{n.rank}</span>
+                            <a href={`https://codeforces.com/profile/${n.user_handle}`} target="_blank" rel="noopener noreferrer"
+                              style={{ color: C.text, fontSize: 13, fontFamily: "'Space Mono',monospace", textDecoration: "none", transition: "color .15s" }}
+                              onMouseEnter={e => e.target.style.color = C.accent}
+                              onMouseLeave={e => e.target.style.color = C.text}>
+                              {n.user_handle}
+                            </a>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div style={{ flex: 1, height: 5, background: C.border, borderRadius: 3, overflow: "hidden" }}>
+                                <div style={{ width: `${sim}%`, height: "100%", background: sim > 70 ? C.success : sim > 40 ? C.warn : C.accent, borderRadius: 3 }} />
+                              </div>
+                              <span style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", width: 28, textAlign: "right" }}>{sim}%</span>
+                            </div>
+                            <span style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", textAlign: "center" }}>{n.distance.toFixed(3)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── AI COACH ── */}
             {tab === "ai" && (
               <div className="up">
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24, marginBottom: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>AI Coaching Plan</div>
-                      <div style={{ fontSize: 12, color: C.muted }}>Personalized 7-day study plan based on your weak areas</div>
+                      <div style={{ fontSize: 12, color: C.muted }}>
+                        7-day study plan · {mlData ? "based on ML tag strengths" : "based on CF accuracy"}
+                      </div>
                     </div>
                     <button onClick={genPlan} disabled={aiLoading}
                       style={{ background: `linear-gradient(135deg,${C.accent},#a855f7)`, color: "#fff", border: "none", borderRadius: 9, padding: "11px 18px", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "'Space Mono',monospace", opacity: aiLoading ? 0.5 : 1 }}>
@@ -423,29 +604,38 @@ export default function App() {
                   {aiPlan && (
                     <div style={{ background: C.surface, borderRadius: 10, padding: "18px 22px", borderLeft: `3px solid ${C.accent}`, fontSize: 13, lineHeight: 1.85 }}>
                       <style>{`
-                        .day { padding: 10px 0; border-bottom: 1px solid ${C.border}; }
-                        .day:last-child { border-bottom: none; }
-                        .day-label { color: ${C.accent}; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 1px; }
-                        .day strong { color: ${C.text}; font-size: 13px; }
-                        .day ul { margin: 6px 0 0 16px; }
-                        .day ul li { color: ${C.muted}; font-size: 12px; font-family: 'Space Mono', monospace; margin-bottom: 2px; }
+                        .day{padding:10px 0;border-bottom:1px solid ${C.border}}.day:last-child{border-bottom:none}
+                        .day-label{color:${C.accent};font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px}
+                        .day strong{color:${C.text};font-size:13px}
+                        .day ul{margin:6px 0 0 16px}.day ul li{color:${C.muted};font-size:12px;font-family:'Space Mono',monospace;margin-bottom:2px}
                       `}</style>
                       <div dangerouslySetInnerHTML={{ __html: aiPlan }} />
                     </div>
                   )}
                 </div>
+                {/* Weakness snapshot — ML strengths when available */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>📉 Weakness Snapshot</div>
-                  {tagData.filter(t => t.accuracy < 50).slice(0, 6).map((t, i) => (
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>📉 Weakness Snapshot</div>
+                  {mlData && <div style={{ fontSize: 10, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 14 }}>✦ ML peer-benchmarked scores</div>}
+                  {(mlData
+                    ? mlTagsSorted.filter(([,v]) => v.strength < 50).slice(0, 6).map(([tag, v]) => ({
+                        tag: tag.replace("tag_","").replace(/_/g," "), solved: v.solved, attempted: v.attempted, accuracy: Math.round(v.strength), isML: true
+                      }))
+                    : tagData.filter(t => t.accuracy < 50).slice(0, 6).map(t => ({ ...t, isML: false }))
+                  ).map((t, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
                       <div>
-                        <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12 }}>{t.tag}</span>
-                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 10 }}>{t.solved}✓ {t.failed}✗</span>
+                        <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, textTransform: "capitalize" }}>{t.tag}</span>
+                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 10 }}>{t.solved}✓ {t.attempted - t.solved}✗</span>
                       </div>
-                      <div style={{ background: `${C.danger}18`, color: C.danger, padding: "3px 9px", borderRadius: 5, fontSize: 10, fontFamily: "'Space Mono',monospace" }}>{t.accuracy}%</div>
+                      <div style={{ background: `${C.danger}18`, color: C.danger, padding: "3px 9px", borderRadius: 5, fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
+                        {t.accuracy}{t.isML ? "" : "%"}
+                      </div>
                     </div>
                   ))}
-                  {tagData.filter(t => t.accuracy < 50).length === 0 && <div style={{ color: C.success, fontSize: 13 }}>🎉 No significant weaknesses detected — great work!</div>}
+                  {(mlData ? mlTagsSorted.filter(([,v]) => v.strength < 50).length === 0 : tagData.filter(t => t.accuracy < 50).length === 0) && (
+                    <div style={{ color: C.success, fontSize: 13 }}>🎉 No significant weaknesses detected — great work!</div>
+                  )}
                 </div>
               </div>
             )}
@@ -457,9 +647,9 @@ export default function App() {
           <div style={{ textAlign: "center", padding: "64px 0", color: C.muted }}>
             <div style={{ fontSize: 52, marginBottom: 14 }}>🏆</div>
             <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, marginBottom: 6 }}>Enter a Codeforces handle above</div>
-            <div style={{ fontSize: 12 }}>Try: <span style={{ color: C.accent }}>tourist</span> · <span style={{ color: C.accent }}>Petr</span> · <span style={{ color: C.accent }}>Um_nik</span></div>
+            <div style={{ fontSize: 12 }}>Try: <span style={{ color: C.accent }}>tourist</span> · <span style={{ color: C.accent }}>Petr</span> · <span style={{ color: C.accent }}>o.khalifa</span></div>
             <div style={{ marginTop: 20, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, color: C.muted, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 16px" }}>
-              <span style={{ color: C.success }}>✓</span> No CORS/CORP issues — Gemini fetches all data server-side via web_search tool
+              <span style={{ color: C.success }}>✓</span> CF data + KNN model run in parallel on analyze
             </div>
           </div>
         )}

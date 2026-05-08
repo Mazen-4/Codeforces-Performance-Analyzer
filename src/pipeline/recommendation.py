@@ -11,7 +11,7 @@ import os
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from config import RECOMMENDATION_OUTPUT_FORMAT, RECOMMENDATION_OUTPUT_FILE
+from src.pipeline.config import RECOMMENDATION_OUTPUT_FORMAT, RECOMMENDATION_OUTPUT_FILE
 
 
 class RecommendationGenerator:
@@ -114,24 +114,45 @@ class RecommendationGenerator:
             with open(filename, 'w') as f:
                 f.write('\n'.join(recommendation))
     
-    def generate_and_save(self, inference_result: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_and_save(
+        self,
+        inference_result: Dict[str, Any],
+        tag_strengths: Dict[str, Any] = None,
+        recommended_problems: List[Any] = None,
+    ) -> Dict[str, Any]:
         """
-        Generate recommendation and save to file.
-        
-        Args:
-            inference_result: Result from model_inference stage
-            
-        Returns:
-            The generated recommendation
+        Generate recommendation and save to file, including tag strengths and
+        prioritized problem suggestions when available.
         """
         recommendation = self.generate_recommendation(inference_result)
         user_handle = inference_result["target_user"]
-        self.save_recommendation(recommendation, user_handle)
-        
-        return {
+
+        output = {
             "target_user": user_handle,
             "num_neighbors": inference_result["num_neighbors_found"],
             "recommendation": recommendation,
             "format": self.output_format,
-            "saved_to": RECOMMENDATION_OUTPUT_FILE
+            "saved_to": RECOMMENDATION_OUTPUT_FILE,
         }
+
+        if tag_strengths:
+            ranked = sorted(
+                [(tag, info["strength"]) for tag, info in tag_strengths.items() if info.get("attempted", 0) > 0],
+                key=lambda x: x[1],
+            )
+            output["tag_strengths"] = tag_strengths
+            output["weakest_tags"] = [tag for tag, _ in ranked[:5]]
+            output["strongest_tags"] = [tag for tag, _ in ranked[-5:]]
+
+        if recommended_problems:
+            output["recommended_problems"] = recommended_problems
+
+        if self.output_format == "json":
+            with open(RECOMMENDATION_OUTPUT_FILE, "w") as f:
+                json.dump(output, f, indent=2)
+        elif self.output_format == "csv":
+            self.save_recommendation(recommendation, user_handle)
+        else:
+            self.save_recommendation(recommendation, user_handle)
+
+        return output

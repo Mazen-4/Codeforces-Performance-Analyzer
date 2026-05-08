@@ -87,22 +87,17 @@ class DataPreprocessor:
     
     def preprocess_user_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Preprocess a single user's data. Only keeps stats, discards submission history.
-        
-        Args:
-            user_data: Raw user data
-            
-        Returns:
-            Preprocessed user data (lightweight, stats-only)
+        Preprocess a single user's data.
+
+        Submission rows (already converted to flat dicts with binary tag columns
+        by DataCollector) are kept so TagAnalyzer can consume them downstream.
         """
         user_info = user_data.get("user_info", {})
         submissions = user_data.get("submissions", [])
-        
+
         cleaned_info = self.clean_user_data(user_info)
         submission_stats = self.extract_submission_stats(submissions)
-        
-        # Note: We don't store submission_stats['submissions'] to save memory
-        # Only keep the aggregated statistics
+
         return {
             "user_handle": user_data.get("handle"),
             "user_info": cleaned_info,
@@ -111,7 +106,8 @@ class DataPreprocessor:
                 "accepted_count": submission_stats["accepted_count"],
                 "success_rate": submission_stats["success_rate"]
             },
-            "submission_count": submission_stats["total_submissions"]
+            "submission_count": submission_stats["total_submissions"],
+            "submission_rows": submissions,
         }
     
     def preprocess_dataset(self, collected_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -127,22 +123,21 @@ class DataPreprocessor:
         target_user_data = {
             "handle": collected_data["target_user"],
             "user_info": collected_data["target_user_info"],
-            "submissions": collected_data["target_user_submissions"]
+            "submissions": collected_data["target_user_submissions"],
         }
-        
+
         target_processed = self.preprocess_user_data(target_user_data)
-        
-        # Preprocess dataset users, skipping invalid entries
+
         dataset_processed = {}
         for handle, user_data in collected_data["dataset"].items():
             user_dict = {"handle": handle}
             user_dict.update(user_data)
             dataset_processed[handle] = self.preprocess_user_data(user_dict)
-        
+
         return {
             "target_user": target_processed,
             "dataset": dataset_processed,
             "dataset_size": collected_data["dataset_size"],
             "valid_dataset_size": collected_data.get("valid_dataset_size", len(dataset_processed)),
-            "invalid_handles": collected_data.get("invalid_handles", [])
+            "invalid_handles": collected_data.get("invalid_handles", []),
         }
