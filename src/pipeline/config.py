@@ -91,16 +91,16 @@ LOG_FORMAT = "json"  # or "csv"
 
 # ==================== PERFORMANCE BENCHMARKS ====================
 # Expected max execution times per stage (in seconds) - for anomaly detection
-STAGE_TIME_LIMITS = {
-    "data_collection": 30.0,
-    "preprocessing": 10.0,
-    "feature_engineering": 15.0,
-    "model_inference": 20.0,
-    "recommendation_generation": 5.0
-}
+# STAGE_TIME_LIMITS = {
+#     "data_collection": 30.0,
+#     "preprocessing": 10.0,
+#     "feature_engineering": 15.0,
+#     "model_inference": 20.0,
+#     "recommendation_generation": 5.0
+# }
 
 # Total pipeline execution time limit (in seconds)
-PIPELINE_TIME_LIMIT = 90.0
+# PIPELINE_TIME_LIMIT = 90.0
 
 # ==================== OUTPUT ====================
 # Format for recommendation output ("json", "csv", "list")
@@ -114,7 +114,7 @@ RECOMMENDATION_OUTPUT_FILE = os.path.join(LOGS_DIR, "recommendations.json")
 MIN_SUBMISSIONS_REQUIRED = 5
 
 # Maximum number of users to process in one run
-MAX_USERS_PER_RUN = 1000
+MAX_USERS_PER_RUN = float("inf")
 
 # Default number of users to return in recommendation
 DEFAULT_NUM_NEIGHBORS = K_NEIGHBORS

@@ -58,6 +58,7 @@ class KNNModel:
             target_features = target_features.reshape(1, -1)
         target_vector = target_features[0]
         distances = _compute_distances(self.feature_matrix, target_vector, self.metric)
+        self._all_distances = distances  # full dataset distances from target
         indices = np.argsort(distances)
         k = min(self.k, len(distances))
         return distances[indices][:k], indices[:k]
@@ -66,16 +67,33 @@ class KNNModel:
         self,
         distances: np.ndarray,
         indices: np.ndarray,
-        handles: List[str]
+        handles: List[str],
     ) -> List[Dict[str, Any]]:
-        """Convert neighbor indices and distances to readable info."""
+        """Convert neighbor indices and distances to 0-100 similarity scores.
+
+        Maps the full dataset distance range to [0, 100]:
+          - nearest user in the whole dataset  → 100%
+          - furthest user in the whole dataset → 0%
+        """
+        # Internal weight: 1st neighbor=100%, 50th=0% (used for tag analysis weighting)
+        d_nearest  = float(distances[0])
+        d_furthest = float(distances[-1])
+        d_range    = d_furthest - d_nearest if d_furthest > d_nearest else 1.0
+
+        # Display score: distance=0 → 100%, furthest dataset user → 0%
+        d_global_max = float(self._all_distances.max())
+
         neighbors = []
         for rank, (idx, distance) in enumerate(zip(indices, distances)):
+            similarity         = round((1.0 - (float(distance) - d_nearest) / d_range) * 100, 1)
+            display_similarity = round(max(0.0, (1.0 - float(distance) / d_global_max)) * 100, 1)
             neighbors.append({
-                "rank": rank + 1,
-                "user_handle": handles[int(idx)],
-                "index": int(idx),
-                "distance": float(distance)
+                "rank":               rank + 1,
+                "user_handle":        handles[int(idx)],
+                "index":              int(idx),
+                "distance":           float(distance),
+                "similarity":         similarity,
+                "display_similarity": display_similarity,
             })
         return neighbors
 

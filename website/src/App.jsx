@@ -134,13 +134,14 @@ export default function App() {
   const [mlLoading, setMlLoading]       = useState(false);
 
   // Derived ML values (safe defaults when ML hasn't loaded yet)
-  const mlTagStrengths  = mlData?.tag_strengths || {};
-  const mlNeighbors     = mlData?.recommendation?.recommendation?.neighbors || [];
-  const mlProblems      = [...(mlData?.recommended_problems || [])].sort((a, b) => b.success_prob - a.success_prob);
-  const mlTagsSorted    = Object.entries(mlTagStrengths)
+  const mlTagStrengths   = mlData?.tag_strengths || {};
+  const mlNeighbors      = [...(mlData?.recommendation?.recommendation?.neighbors || [])].sort((a, b) => (b.display_similarity ?? b.similarity ?? 0) - (a.display_similarity ?? a.similarity ?? 0));
+  const mlProblems       = mlData?.recommended_problems || [];
+  const mlTagsSorted     = Object.entries(mlTagStrengths)
     .filter(([, v]) => v.attempted > 0)
     .sort((a, b) => a[1].strength - b[1].strength);
-  const weakTagCount    = mlTagsSorted.filter(([, v]) => v.strength < 50).length;
+  const weakTagCount     = mlTagsSorted.filter(([, v]) => v.strength < 70).length;
+  const tagImpact = (mlData?.tag_impact || []).filter(t => t.delta_problems > 0).slice(0, 8);
 
   const run = useCallback(async h => {
     setPhase("loading"); setPhaseMsg("Fetching Codeforces data…");
@@ -189,7 +190,7 @@ export default function App() {
             solved: v.solved,
             attempted: v.attempted,
           }))
-        : tagData.filter(t => t.accuracy < 50).slice(0, 8).map(t => ({
+        : tagData.filter(t => t.accuracy < 70).slice(0, 8).map(t => ({
             tag: t.tag, strength: t.accuracy, solved: t.solved, attempted: t.solved + t.failed,
           }));
 
@@ -204,7 +205,7 @@ export default function App() {
         id: p.id,
         rating: p.rating,
         tags: (p.tags || []).map(t => t.replace("tag_", "").replace(/_/g, " ")),
-        success_prob: Math.round(p.success_prob * 100),
+        difficulty_match: p.difficulty_match ?? 0,
       }));
 
       const plan = await fetchCoachPlan(
@@ -332,9 +333,17 @@ export default function App() {
             <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
               <StatCard label="Problems Solved" value={stats.totalSolved} sub="unique problems" color={C.success} />
               <StatCard label="Max Rating Hit"  value={stats.maxRating || "—"} sub="hardest solved" color={C.accent} />
-              <StatCard label="Weak Topics"     value={mlData ? weakTagCount : tagData.filter(t => t.accuracy < 50).length} sub={mlData ? "ML tag strength < 50" : "< 50% accuracy"} color={C.danger} />
+              <StatCard label="Weak Topics"     value={mlData ? weakTagCount : tagData.filter(t => t.accuracy < 70).length} sub={mlData ? "ML tag strength < 70" : "< 70% accuracy"} color={C.danger} />
               <StatCard label="Submissions"     value={stats.totalSubmissions} sub="last 500" />
-              {mlData && <StatCard label="KNN Neighbors" value={mlNeighbors.length} sub="similar users found" color={C.accent} />}
+              {tagImpact.length > 0 && (
+                <StatCard
+                  label="Top Tag Gain"
+                  value={`+${tagImpact[0].estimated_rating_gain}`}
+                  sub={`improve ${tagImpact[0].label}`}
+                  color={C.warn}
+                />
+              )}
+              {mlData && tagImpact.length === 0 && <StatCard label="KNN Neighbors" value={mlNeighbors.length} sub="similar users found" color={C.accent} />}
             </div>
 
             {/* Tabs */}
@@ -390,6 +399,38 @@ export default function App() {
                   })}
                 </div>
 
+                {/* Counterfactual Tag Impact card */}
+                {tagImpact.length > 0 && (
+                  <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, gridColumn: "1/-1" }}>
+                    <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>TAG IMPACT ON RATING</div>
+                    <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 16 }}>✦ simulated: boosting each tag by +20% · how many more problems become solvable</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {tagImpact.map((t, i) => {
+                        const barPct = Math.min(100, (t.delta_problems / Math.max(...tagImpact.map(x => x.delta_problems))) * 100);
+                        const color  = i === 0 ? C.warn : i < 3 ? C.accent : C.muted;
+                        return (
+                          <div key={t.tag} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ width: 130, fontSize: 11, fontFamily: "'Space Mono',monospace", color: C.text, textTransform: "capitalize", flexShrink: 0 }}>{t.label}</div>
+                            <div style={{ fontSize: 10, fontFamily: "'Space Mono',monospace", color: C.muted, width: 42, flexShrink: 0 }}>{Math.round(t.strength * 100)}%</div>
+                            <div style={{ flex: 1, height: 6, background: C.border, borderRadius: 3, overflow: "hidden" }}>
+                              <div style={{ width: `${barPct}%`, height: "100%", background: color, borderRadius: 3, transition: "width .4s" }} />
+                            </div>
+                            <div style={{ width: 80, textAlign: "right", fontFamily: "'Space Mono',monospace", fontSize: 11, color, flexShrink: 0 }}>
+                              +{t.delta_problems} probs
+                            </div>
+                            <div style={{ width: 70, textAlign: "right", fontFamily: "'Space Mono',monospace", fontSize: 11, color: C.warn, flexShrink: 0 }}>
+                              ~+{t.estimated_rating_gain}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ marginTop: 14, fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>
+                      current strength · extra solvable problems · estimated rating gain
+                    </div>
+                  </div>
+                )}
+
                 {/* Solved by rating bucket */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, gridColumn: "1/-1" }}>
                   <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 12, letterSpacing: 1 }}>SOLVED COUNT BY RATING BUCKET</div>
@@ -412,30 +453,22 @@ export default function App() {
               <div className="up" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
                 {mlData && (
                   <div style={{ padding: "10px 16px", background: `${C.accent}0a`, borderBottom: `1px solid ${C.accent}22`, fontSize: 10, color: C.accent, fontFamily: "'Space Mono',monospace" }}>
-                    ✦ ML STRENGTH column = peer-benchmarked score from KNN model (0–100) · CF ACC = raw submission accuracy
+                    ✦ ML STRENGTH column = peer-benchmarked score from KNN model (0–100)
                   </div>
                 )}
                 <div style={{ padding: "13px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", gap: 12 }}>
-                  {["#", "TAG", "SOLVED", "FAILED", "CF ACC", ...(mlData ? ["ML STRENGTH"] : [])].map((h, i) => (
-                    <span key={i} style={{ fontSize: 9, color: C.muted, fontFamily: "'Space Mono',monospace", flex: i === 0 ? "0 0 22px" : i === 1 ? 2 : i === 5 ? 2 : 1, textAlign: i > 1 ? "center" : "left" }}>{h}</span>
+                  {["#", "TAG", "SOLVED", "FAILED", ...(mlData ? ["ML STRENGTH"] : [])].map((h, i) => (
+                    <span key={i} style={{ fontSize: 9, color: C.muted, fontFamily: "'Space Mono',monospace", flex: i === 0 ? "0 0 22px" : i === 1 ? 2 : i === 4 ? 2 : 1, textAlign: i > 1 ? "center" : "left" }}>{h}</span>
                   ))}
                 </div>
                 {mergedTagData.map((t, i) => {
-                  const cfColor = accColor(t.accuracy);
                   const mlColor = t.mlStrength != null ? accColor(t.mlStrength) : C.muted;
                   return (
-                    <div key={t.tag} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: `1px solid ${C.border}`, background: (mlData ? t.mlStrength < 50 : t.accuracy < 50) ? `${C.danger}09` : "transparent" }}>
+                    <div key={t.tag} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: `1px solid ${C.border}`, background: (mlData ? t.mlStrength < 70 : t.accuracy < 70) ? `${C.danger}09` : "transparent" }}>
                       <div style={{ width: 22, color: C.muted, fontSize: 11, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{i + 1}</div>
                       <div style={{ flex: 2, color: C.text, fontSize: 12, fontFamily: "'Space Mono',monospace" }}>{t.tag}</div>
                       <div style={{ flex: 1, color: C.muted, fontSize: 11, textAlign: "center" }}>{t.solved}✓</div>
                       <div style={{ flex: 1, color: C.muted, fontSize: 11, textAlign: "center" }}>{t.failed}✗</div>
-                      {/* CF accuracy bar */}
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 5, background: C.border, borderRadius: 3, overflow: "hidden" }}>
-                          <div style={{ width: `${t.accuracy}%`, height: "100%", background: cfColor, borderRadius: 3 }} />
-                        </div>
-                        <span style={{ width: 30, color: cfColor, fontSize: 10, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{t.accuracy}%</span>
-                      </div>
                       {/* ML strength bar */}
                       {mlData && (
                         <div style={{ flex: 2, display: "flex", alignItems: "center", gap: 6 }}>
@@ -445,7 +478,7 @@ export default function App() {
                                 <div style={{ width: `${Math.min(t.mlStrength, 100)}%`, height: "100%", background: mlColor, borderRadius: 3 }} />
                               </div>
                               <span style={{ width: 30, color: mlColor, fontSize: 10, fontFamily: "'Space Mono',monospace", textAlign: "right" }}>{t.mlStrength}</span>
-                              {t.mlStrength < 50 && <span style={{ color: C.danger, fontSize: 9, fontFamily: "'Space Mono',monospace", background: `${C.danger}20`, padding: "2px 5px", borderRadius: 3 }}>WEAK</span>}
+                              {t.mlStrength < 70 && <span style={{ color: C.danger, fontSize: 9, fontFamily: "'Space Mono',monospace", background: `${C.danger}20`, padding: "2px 5px", borderRadius: 3 }}>WEAK</span>}
                             </>
                           ) : (
                             <span style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>—</span>
@@ -491,7 +524,7 @@ export default function App() {
                 {mlData ? (
                   <>
                     <div style={{ background: `${C.accent}0f`, border: `1px solid ${C.accent}30`, borderRadius: 9, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: C.muted }}>
-                      ✦ ML-ranked · sourced from 50 nearest neighbors · scored by <span style={{ color: C.success }}>success probability</span> + <span style={{ color: C.warn }}>weakness boost</span>
+                      ✦ ML-ranked · sourced from 50 nearest neighbors · scored by <span style={{ color: C.success }}>difficulty match</span> + <span style={{ color: C.warn }}>weakness boost</span>
                     </div>
                     {mlProblems.length === 0
                       ? <div style={{ textAlign: "center", padding: 40, color: C.muted }}>No recommendations found.</div>
@@ -509,9 +542,19 @@ export default function App() {
                                 <div style={{ color: C.accent, fontSize: 10, fontFamily: "'Space Mono',monospace", marginBottom: 4 }}>
                                   {p.id} · ★{p.rating}
                                 </div>
-                                <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
-                                  <span style={{ fontSize: 10, color: C.success, fontFamily: "'Space Mono',monospace" }}>✓ {(p.success_prob * 100).toFixed(0)}% success</span>
+                                <div style={{ display: "flex", gap: 10, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
+                                  <span style={{ fontSize: 10, color: C.success, fontFamily: "'Space Mono',monospace" }}>◈ {Math.round(p.difficulty_match * 100)}% match</span>
                                   <span style={{ fontSize: 10, color: C.warn,    fontFamily: "'Space Mono',monospace" }}>↑ {(p.weakness_boost * 100).toFixed(0)}% growth</span>
+                                  {p.estimated_attempts != null && (
+                                    <span style={{
+                                      fontSize: 9, fontFamily: "'Space Mono',monospace",
+                                      padding: "2px 7px", borderRadius: 4,
+                                      background: p.difficulty_label === "easy" ? `${C.success}20` : p.difficulty_label === "moderate" ? `${C.warn}20` : `${C.danger}20`,
+                                      color:      p.difficulty_label === "easy" ? C.success      : p.difficulty_label === "moderate" ? C.warn      : C.danger,
+                                    }}>
+                                      ~{p.estimated_attempts.toFixed(1)} tries
+                                    </span>
+                                  )}
                                 </div>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                                   {(p.tags || []).slice(0, 4).map((t, j) => (
@@ -545,7 +588,7 @@ export default function App() {
                 ) : (
                   <>
                     <div style={{ background: `${C.accent}0f`, border: `1px solid ${C.accent}30`, borderRadius: 9, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: C.muted }}>
-                      👥 50 most similar users from a dataset of 2,877 · ranked by Euclidean distance in 20-dimensional tag-strength space
+                      👥 50 most similar users from a dataset of 2,877 · ranked by Euclidean distance in 82-dimensional tag-strength space
                     </div>
                     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
                       {/* Header */}
@@ -555,8 +598,7 @@ export default function App() {
                         ))}
                       </div>
                       {mlNeighbors.map((n, i) => {
-                        const maxDist = mlNeighbors[mlNeighbors.length - 1]?.distance || 1;
-                        const sim     = Math.max(0, Math.round((1 - n.distance / (maxDist + 0.01)) * 100));
+                        const sim     = n.display_similarity ?? n.similarity ?? Math.max(0, Math.round((1 - n.distance / ((mlNeighbors[mlNeighbors.length - 1]?.distance || 1) + 0.01)) * 100));
                         const rowBg   = i % 2 === 0 ? "transparent" : `${C.surface}80`;
                         return (
                           <div key={n.user_handle} style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 80px", gap: 12, padding: "10px 18px", borderBottom: `1px solid ${C.border}`, background: rowBg, alignItems: "center" }}>
@@ -621,7 +663,7 @@ export default function App() {
                     ? mlTagsSorted.filter(([,v]) => v.strength < 50).slice(0, 6).map(([tag, v]) => ({
                         tag: tag.replace("tag_","").replace(/_/g," "), solved: v.solved, attempted: v.attempted, accuracy: Math.round(v.strength), isML: true
                       }))
-                    : tagData.filter(t => t.accuracy < 50).slice(0, 6).map(t => ({ ...t, isML: false }))
+                    : tagData.filter(t => t.accuracy < 70).slice(0, 6).map(t => ({ ...t, isML: false }))
                   ).map((t, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
                       <div>
@@ -633,7 +675,7 @@ export default function App() {
                       </div>
                     </div>
                   ))}
-                  {(mlData ? mlTagsSorted.filter(([,v]) => v.strength < 50).length === 0 : tagData.filter(t => t.accuracy < 50).length === 0) && (
+                  {(mlData ? mlTagsSorted.filter(([,v]) => v.strength < 50).length === 0 : tagData.filter(t => t.accuracy < 70).length === 0) && (
                     <div style={{ color: C.success, fontSize: 13 }}>🎉 No significant weaknesses detected — great work!</div>
                   )}
                 </div>
