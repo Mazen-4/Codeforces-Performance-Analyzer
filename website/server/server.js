@@ -47,7 +47,7 @@ app.get("/api/cf/:handle", async (req, res) => {
 /* ───────────── Claude Coaching Plan ───────────── */
 
 app.post("/api/coach", async (req, res) => {
-  const { handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved } = req.body;
+  const { handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact } = req.body;
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -55,46 +55,74 @@ app.post("/api/coach", async (req, res) => {
             model: "gemini-2.5-flash"
         });
 
+        // Weak tags: peer-benchmarked strength + solve counts
         const weakSection = (weakTags || [])
-          .map(t => `  - ${t.tag}: strength ${t.strength}/100, ${t.solved} solved / ${t.attempted} attempted`)
+          .map(t => `  - ${t.tag}: peer-benchmarked strength ${t.strength}/100, ${t.solved} solved / ${t.attempted} attempted`)
           .join("\n");
 
+        // Strong tags: skip these in the plan
         const strongSection = (strongTags || [])
           .map(t => `  - ${t.tag}: strength ${t.strength}/100`)
           .join("\n");
 
+        // ML-ranked recommended problems with all three model signals:
+        // difficulty_match = how well the problem fits the user (success model)
+        // weakness_boost   = how much it targets the user's weakest tags vs. peers
+        // estimated_attempts + difficulty_label = predicted solve difficulty (attempts model)
         const recsSection = (recommendedProblems || [])
-          .map(p => `  - ${p.id} (rating ${p.rating}, ${p.success_prob}% success chance) [${p.tags.join(", ")}]`)
+          .map(p => {
+            const match   = Math.round((p.difficulty_match ?? 0) * 100);
+            const boost   = Math.round((p.weakness_boost  ?? 0) * 100);
+            const tries   = p.estimated_attempts != null ? `~${p.estimated_attempts.toFixed(1)} tries (${p.difficulty_label})` : "";
+            return `  - ${p.id} | rating ${p.rating} | tags: [${p.tags.join(", ")}] | ${match}% difficulty match | ${boost}% weakness boost | ${tries}`;
+          })
+          .join("\n");
+
+        // Counterfactual tag impact: which tags give the most rating gain if improved
+        // These come from the success model simulating a +20% strength boost on each tag
+        const impactSection = (tagImpact || [])
+          .map(t => `  - ${t.label}: current strength ${Math.round((t.current_strength ?? t.strength ?? 0) * 100)}%, improving it unlocks +${t.delta_problems} problems → est. +${t.est_rating_gain ?? t.estimated_rating_gain ?? 0} rating pts`)
           .join("\n");
 
         const comfortFloor = Math.max(800,  estimatedRating - 300);
         const comfortCeil  = Math.min(3500, estimatedRating + 100);
         const stretchCeil  = Math.min(3500, estimatedRating + 300);
 
-        const prompt = `You are a Codeforces coach writing a beginner-friendly 7-day plan. Output HTML only — no markdown, no extra text, nothing outside the divs.
+        const prompt = `You are a Codeforces coach writing a personalized 7-day training plan grounded in ML model outputs. Output HTML only — no markdown, no extra text, nothing outside the divs.
 
-          User: ${handle} | Max rating: ${estimatedRating} | Total solved: ${totalSolved}
+USER PROFILE
+Handle: ${handle} | Max rating: ${estimatedRating} | Total problems solved: ${totalSolved}
 
-          Weak tags to fix (weakest first):
-          ${weakSection}
+WEAK TAGS (peer-benchmarked — these are where the user falls behind similar-rated players):
+${weakSection}
 
-          Strong tags (skip these — user is already comfortable):
-          ${strongSection}
+STRONG TAGS (skip these — user already outperforms peers here):
+${strongSection}
 
-          Problems our model says this user can realistically solve:
-          ${recsSection}
+ML-RANKED RECOMMENDED PROBLEMS (ranked by our LightGBM success model):
+Each problem was selected because neighbors solved it and the model predicts it's in the user's "sweet spot".
+- difficulty_match: how cleanly the model predicts the user will solve it (higher = easier)
+- weakness_boost: how much the problem targets the user's weak tags vs. their peer group (higher = more impactful for growth)
+- tries: estimated attempts before AC from the attempts model
+${recsSection}
 
-          Rules — follow every one strictly:
-          1. ONE tag per day. Do not mix topics.
-          2. Day 1–2: problems rated ${comfortFloor}–${comfortCeil} only. Build confidence first.
-          3. Day 3–5: problems rated ${comfortCeil}–${stretchCeil}. Slight stretch.
-          4. Day 6–7: problems rated ${stretchCeil}–${Math.min(3500, estimatedRating + 400)}. Push the limit.
-          5. 3–5 problems per day maximum. This is a focused 1–2 hour session, not a marathon.
-          6. Focus line = ONE concrete micro-skill to practice that day (e.g. "identify when a problem reduces to prefix sums", not just "study arrays").
-          7. Never suggest a tag the user is already strong at.
+COUNTERFACTUAL TAG IMPACT (from the success model — which tags unlock the most problems if improved):
+${impactSection}
 
-          Format each day exactly like this — nothing else:
-          <div class="day"><span class="day-label">Day N</span> – <strong>Topic</strong><ul><li>Difficulty: XXXX–YYYY</li><li>Problems: X problems</li><li>Time: Xhr</li><li>Focus: one concrete micro-skill to drill</li></ul></div>`;
+PLAN RULES — follow every one strictly:
+1. Prioritize tags from the counterfactual impact list first — these are the tags the model says will unlock the most rating gain.
+2. For each day's tag, prefer assigning recommended problems from the list above that match that tag and have high weakness_boost.
+3. For each recommended problem you assign, include its ID and rating — don't invent problem IDs.
+4. Day 1–2: problems rated ${comfortFloor}–${comfortCeil} only. Build confidence with problems the model says are easy/moderate.
+5. Day 3–5: problems rated ${comfortCeil}–${stretchCeil}. Use moderate-difficulty problems from the recommendations.
+6. Day 6–7: problems rated ${stretchCeil}–${Math.min(3500, estimatedRating + 400)}. Harder problems; it's fine if there are no exact matches.
+7. ONE tag per day. Do not mix topics in one day.
+8. 3–5 problems per day. This is a focused 1–2 hour session.
+9. Focus line = ONE concrete micro-skill for that tag (e.g. "identify when a problem reduces to prefix sums", not just "study arrays").
+10. Never assign a tag the user is already strong at.
+
+Format each day exactly like this — nothing else:
+<div class="day"><span class="day-label">Day N</span> – <strong>Topic</strong><ul><li>Difficulty: XXXX–YYYY</li><li>Problems: X problems (include IDs from the recommended list where available, e.g. 1234_A, 1234_B)</li><li>Time: Xhr</li><li>Focus: one concrete micro-skill to drill</li><li>Why: one sentence explaining why the model flagged this tag for this user</li></ul></div>`;
 
         const result = await model.generateContent(prompt);
 
@@ -123,14 +151,12 @@ sys.path.insert(0, os.path.join('${projectRoot}', 'src'))
 sys.path.insert(0, '${projectRoot}')
 from main import main
 result = main('${handle}', verbose=False)
-# strip non-serializable numpy types
 import numpy as np
 def convert(o):
     if isinstance(o, (np.integer,)): return int(o)
     if isinstance(o, (np.floating,)): return float(o)
     if isinstance(o, np.ndarray): return o.tolist()
     raise TypeError(repr(o) + " is not JSON serializable")
-# drop profiling to keep payload small
 result.pop('profiling', None)
 print(json.dumps(result, default=convert))
 `;

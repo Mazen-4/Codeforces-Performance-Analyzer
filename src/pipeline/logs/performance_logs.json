@@ -1,24 +1,24 @@
 {
-  "total_runs": 2,
-  "last_updated": "2026-05-16T02:31:56.881853",
+  "total_runs": 1,
+  "last_updated": "2026-05-16T14:51:22.473615",
   "runs": [
     {
-      "timestamp": "2026-05-16T02:30:51.629667",
+      "timestamp": "2026-05-16T14:51:13.724697",
       "stages": [
         {
           "stage": "data_collection",
-          "execution_time_seconds": 31.1798,
-          "memory_usage_mb": null,
-          "timestamp": "2026-05-16T02:31:22.811788",
+          "execution_time_seconds": 5.5205,
+          "memory_usage_mb": 5.55,
+          "timestamp": "2026-05-16T14:51:19.245344",
           "metadata": {
-            "target_user": "hanaebrahiem"
+            "target_user": "goie"
           }
         },
         {
           "stage": "feature_engineering",
-          "execution_time_seconds": 0.0935,
-          "memory_usage_mb": 19.41,
-          "timestamp": "2026-05-16T02:31:22.906029",
+          "execution_time_seconds": 0.0367,
+          "memory_usage_mb": 1.5,
+          "timestamp": "2026-05-16T14:51:19.282077",
           "metadata": {
             "source": "strength.py formula",
             "dims": 82
@@ -26,9 +26,9 @@
         },
         {
           "stage": "model_inference",
-          "execution_time_seconds": 0.1991,
-          "memory_usage_mb": 43.94,
-          "timestamp": "2026-05-16T02:31:23.105212",
+          "execution_time_seconds": 0.1756,
+          "memory_usage_mb": 41.27,
+          "timestamp": "2026-05-16T14:51:19.457677",
           "metadata": {
             "k_neighbors": 50,
             "metric": "euclidean"
@@ -36,87 +36,28 @@
         },
         {
           "stage": "preprocessing",
-          "execution_time_seconds": 0.0095,
+          "execution_time_seconds": 0.0103,
           "memory_usage_mb": null,
-          "timestamp": "2026-05-16T02:31:24.832471",
+          "timestamp": "2026-05-16T14:51:20.975406",
           "metadata": {
             "source": "04_filtered_submissions.csv"
           }
         },
         {
           "stage": "recommendation_generation",
-          "execution_time_seconds": 1.2362,
-          "memory_usage_mb": 30.5,
-          "timestamp": "2026-05-16T02:31:26.211172",
+          "execution_time_seconds": 1.2257,
+          "memory_usage_mb": 51.08,
+          "timestamp": "2026-05-16T14:51:22.412631",
           "metadata": {
             "limit": 200
           }
         }
       ],
       "summary": {
-        "user_handle": "hanaebrahiem",
+        "user_handle": "goie",
         "num_neighbors_returned": 50,
-        "total_execution_time_seconds": 32.7181,
-        "total_memory_used_mb": 93.85,
-        "num_stages": 5
-      }
-    },
-    {
-      "timestamp": "2026-05-16T02:31:22.543105",
-      "stages": [
-        {
-          "stage": "data_collection",
-          "execution_time_seconds": 31.2935,
-          "memory_usage_mb": null,
-          "timestamp": "2026-05-16T02:31:53.837705",
-          "metadata": {
-            "target_user": "hanaebrahiem"
-          }
-        },
-        {
-          "stage": "feature_engineering",
-          "execution_time_seconds": 0.0241,
-          "memory_usage_mb": 18.28,
-          "timestamp": "2026-05-16T02:31:53.861873",
-          "metadata": {
-            "source": "strength.py formula",
-            "dims": 82
-          }
-        },
-        {
-          "stage": "model_inference",
-          "execution_time_seconds": 0.1674,
-          "memory_usage_mb": 48.62,
-          "timestamp": "2026-05-16T02:31:54.029338",
-          "metadata": {
-            "k_neighbors": 50,
-            "metric": "euclidean"
-          }
-        },
-        {
-          "stage": "preprocessing",
-          "execution_time_seconds": 0.0098,
-          "memory_usage_mb": null,
-          "timestamp": "2026-05-16T02:31:55.536336",
-          "metadata": {
-            "source": "04_filtered_submissions.csv"
-          }
-        },
-        {
-          "stage": "recommendation_generation",
-          "execution_time_seconds": 1.1331,
-          "memory_usage_mb": 47.11,
-          "timestamp": "2026-05-16T02:31:56.803219",
-          "metadata": {
-            "limit": 200
-          }
-        }
-      ],
-      "summary": {
-        "user_handle": "hanaebrahiem",
-        "num_neighbors_returned": 50,
-        "total_execution_time_seconds": 32.6279,
-        "total_memory_used_mb": 114.01,
+        "total_execution_time_seconds": 6.9688,
+        "total_memory_used_mb": 99.4,
         "num_stages": 5
       }
     }

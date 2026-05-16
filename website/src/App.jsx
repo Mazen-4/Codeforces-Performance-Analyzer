@@ -25,11 +25,11 @@ async function fetchMLAnalysis(handle) {
   return res.json();
 }
 
-async function fetchCoachPlan(handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved) {
+async function fetchCoachPlan(handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact) {
   const res = await fetch("http://localhost:3000/api/coach", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved }),
+    body: JSON.stringify({ handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact }),
   });
   const data = await res.json();
   return data.plan;
@@ -206,10 +206,13 @@ export default function App() {
         rating: p.rating,
         tags: (p.tags || []).map(t => t.replace("tag_", "").replace(/_/g, " ")),
         difficulty_match: p.difficulty_match ?? 0,
+        weakness_boost: p.weakness_boost ?? 0,
+        estimated_attempts: p.estimated_attempts ?? null,
+        difficulty_label: p.difficulty_label ?? null,
       }));
 
       const plan = await fetchCoachPlan(
-        handle, stats.estimatedRating, weakTags, strongTags, recommendedProblems, stats.totalSolved
+        handle, stats.estimatedRating, weakTags, strongTags, recommendedProblems, stats.totalSolved, tagImpact
       );
       setAiPlan(plan);
     } catch (err) {
@@ -660,22 +663,28 @@ export default function App() {
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>📉 Weakness Snapshot</div>
                   {mlData && <div style={{ fontSize: 10, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 14 }}>✦ ML peer-benchmarked scores</div>}
                   {(mlData
-                    ? mlTagsSorted.filter(([,v]) => v.strength < 50).slice(0, 6).map(([tag, v]) => ({
-                        tag: tag.replace("tag_","").replace(/_/g," "), solved: v.solved, attempted: v.attempted, accuracy: Math.round(v.strength), isML: true
+                    ? mlTagsSorted.filter(([,v]) => v.strength < 70).slice(0, 6).map(([tag, v]) => ({
+                        tag: tag.replace("tag_","").replace(/_/g," "),
+                        solved: v.solved ?? 0,
+                        failed: (v.attempted ?? 0) - (v.solved ?? 0),
+                        strength: Math.round(v.strength),
+                        isML: true,
                       }))
-                    : tagData.filter(t => t.accuracy < 70).slice(0, 6).map(t => ({ ...t, isML: false }))
+                    : tagData.filter(t => t.accuracy < 70).slice(0, 6).map(t => ({
+                        tag: t.tag, solved: t.solved, failed: t.failed, strength: t.accuracy, isML: false,
+                      }))
                   ).map((t, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
                       <div>
                         <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, textTransform: "capitalize" }}>{t.tag}</span>
-                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 10 }}>{t.solved}✓ {t.attempted - t.solved}✗</span>
+                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 10 }}>{t.solved}✓ {t.failed}✗</span>
                       </div>
                       <div style={{ background: `${C.danger}18`, color: C.danger, padding: "3px 9px", borderRadius: 5, fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
-                        {t.accuracy}{t.isML ? "" : "%"}
+                        {t.strength}%
                       </div>
                     </div>
                   ))}
-                  {(mlData ? mlTagsSorted.filter(([,v]) => v.strength < 50).length === 0 : tagData.filter(t => t.accuracy < 70).length === 0) && (
+                  {(mlData ? mlTagsSorted.filter(([,v]) => v.strength < 70).length === 0 : tagData.filter(t => t.accuracy < 70).length === 0) && (
                     <div style={{ color: C.success, fontSize: 13 }}>🎉 No significant weaknesses detected — great work!</div>
                   )}
                 </div>

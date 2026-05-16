@@ -1,598 +1,598 @@
 {
-  "target_user": "hanaebrahiem",
+  "target_user": "goie",
   "num_neighbors": 50,
   "recommendation": {
-    "target_user": "hanaebrahiem",
+    "target_user": "goie",
     "num_neighbors": 50,
     "neighbors": [
       {
         "rank": 1,
-        "user_handle": "Onion_Xiao",
-        "index": 802,
-        "distance": 3.4109623432159424,
+        "user_handle": "Sugiura_Koharu",
+        "index": 1014,
+        "distance": 2.9201090335845947,
         "similarity": 100.0,
-        "display_similarity": 33.8
+        "display_similarity": 44.1
       },
       {
         "rank": 2,
-        "user_handle": "k1ii",
-        "index": 1904,
-        "distance": 3.435964584350586,
-        "similarity": 91.7,
-        "display_similarity": 33.3
+        "user_handle": "_njwrz_",
+        "index": 1242,
+        "distance": 2.9843764305114746,
+        "similarity": 81.4,
+        "display_similarity": 42.9
       },
       {
         "rank": 3,
-        "user_handle": "_njwrz_",
-        "index": 1242,
-        "distance": 3.4896693229675293,
-        "similarity": 74.0,
-        "display_similarity": 32.2
+        "user_handle": "ptxjoccc",
+        "index": 2322,
+        "distance": 3.0014564990997314,
+        "similarity": 76.5,
+        "display_similarity": 42.6
       },
       {
         "rank": 4,
-        "user_handle": "Sugiura_Koharu",
-        "index": 1014,
-        "distance": 3.494093418121338,
-        "similarity": 72.5,
-        "display_similarity": 32.2
+        "user_handle": "Onion_Xiao",
+        "index": 802,
+        "distance": 3.0290048122406006,
+        "similarity": 68.6,
+        "display_similarity": 42.1
       },
       {
         "rank": 5,
-        "user_handle": "xujiahao",
-        "index": 2771,
-        "distance": 3.519602060317993,
-        "similarity": 64.1,
-        "display_similarity": 31.7
+        "user_handle": "crater20",
+        "index": 1529,
+        "distance": 3.0318446159362793,
+        "similarity": 67.7,
+        "display_similarity": 42.0
       },
       {
         "rank": 6,
-        "user_handle": "crater20",
-        "index": 1529,
-        "distance": 3.5250394344329834,
-        "similarity": 62.3,
-        "display_similarity": 31.6
+        "user_handle": "Soulist_s",
+        "index": 996,
+        "distance": 3.065068483352661,
+        "similarity": 58.1,
+        "display_similarity": 41.4
       },
       {
         "rank": 7,
-        "user_handle": "Soulist_s",
-        "index": 996,
-        "distance": 3.557011842727661,
-        "similarity": 51.7,
-        "display_similarity": 30.9
+        "user_handle": "AngelicLayer",
+        "index": 133,
+        "distance": 3.089172124862671,
+        "similarity": 51.2,
+        "display_similarity": 40.9
       },
       {
         "rank": 8,
-        "user_handle": "pkwv1994",
-        "index": 2287,
-        "distance": 3.5685949325561523,
-        "similarity": 47.9,
-        "display_similarity": 30.7
+        "user_handle": "k1ii",
+        "index": 1903,
+        "distance": 3.1000430583953857,
+        "similarity": 48.0,
+        "display_similarity": 40.7
       },
       {
         "rank": 9,
-        "user_handle": "St4ck0verfl0w",
-        "index": 1004,
-        "distance": 3.582732915878296,
-        "similarity": 43.2,
-        "display_similarity": 30.4
+        "user_handle": "In_Max",
+        "index": 531,
+        "distance": 3.1016175746917725,
+        "similarity": 47.6,
+        "display_similarity": 40.7
       },
       {
         "rank": 10,
-        "user_handle": "HinaAmano",
-        "index": 485,
-        "distance": 3.5938940048217773,
-        "similarity": 39.5,
-        "display_similarity": 30.2
+        "user_handle": "coriander",
+        "index": 1525,
+        "distance": 3.1246957778930664,
+        "similarity": 40.9,
+        "display_similarity": 40.2
       },
       {
         "rank": 11,
-        "user_handle": "lgzhy12138",
-        "index": 1999,
-        "distance": 3.599180221557617,
-        "similarity": 37.8,
-        "display_similarity": 30.1
+        "user_handle": "Scorpioch",
+        "index": 949,
+        "distance": 3.1357431411743164,
+        "similarity": 37.7,
+        "display_similarity": 40.0
       },
       {
         "rank": 12,
-        "user_handle": "liyh98",
-        "index": 2022,
-        "distance": 3.5992908477783203,
-        "similarity": 37.7,
-        "display_similarity": 30.1
+        "user_handle": "w3haa",
+        "index": 2704,
+        "distance": 3.1394011974334717,
+        "similarity": 36.7,
+        "display_similarity": 40.0
       },
       {
         "rank": 13,
-        "user_handle": "ftc",
-        "index": 1692,
-        "distance": 3.6012535095214844,
-        "similarity": 37.1,
-        "display_similarity": 30.1
+        "user_handle": "xujiahao",
+        "index": 2770,
+        "distance": 3.145289182662964,
+        "similarity": 35.0,
+        "display_similarity": 39.8
       },
       {
         "rank": 14,
-        "user_handle": "codelibrary",
-        "index": 1511,
-        "distance": 3.601271390914917,
-        "similarity": 37.1,
-        "display_similarity": 30.1
+        "user_handle": "WRKWRK",
+        "index": 1121,
+        "distance": 3.1577956676483154,
+        "similarity": 31.4,
+        "display_similarity": 39.6
       },
       {
         "rank": 15,
-        "user_handle": "zhuyou_y",
-        "index": 2851,
-        "distance": 3.6037936210632324,
-        "similarity": 36.3,
-        "display_similarity": 30.0
+        "user_handle": "Walid_Amin",
+        "index": 1123,
+        "distance": 3.178581714630127,
+        "similarity": 25.4,
+        "display_similarity": 39.2
       },
       {
         "rank": 16,
-        "user_handle": "xyhxyh",
-        "index": 2780,
-        "distance": 3.6050939559936523,
-        "similarity": 35.8,
-        "display_similarity": 30.0
+        "user_handle": "St4ck0verfl0w",
+        "index": 1004,
+        "distance": 3.1804370880126953,
+        "similarity": 24.8,
+        "display_similarity": 39.2
       },
       {
         "rank": 17,
-        "user_handle": "cylo",
-        "index": 1550,
-        "distance": 3.6085011959075928,
-        "similarity": 34.7,
-        "display_similarity": 29.9
+        "user_handle": "Indonesialbedo",
+        "index": 533,
+        "distance": 3.1880197525024414,
+        "similarity": 22.6,
+        "display_similarity": 39.0
       },
       {
         "rank": 18,
-        "user_handle": "typong",
-        "index": 2651,
-        "distance": 3.6209709644317627,
-        "similarity": 30.6,
-        "display_similarity": 29.7
+        "user_handle": "Littleiwprc",
+        "index": 645,
+        "distance": 3.1889092922210693,
+        "similarity": 22.4,
+        "display_similarity": 39.0
       },
       {
         "rank": 19,
-        "user_handle": "ptxjoccc",
-        "index": 2323,
-        "distance": 3.6286568641662598,
-        "similarity": 28.0,
-        "display_similarity": 29.5
+        "user_handle": "typong",
+        "index": 2650,
+        "distance": 3.1906261444091797,
+        "similarity": 21.9,
+        "display_similarity": 39.0
       },
       {
         "rank": 20,
-        "user_handle": "Kotoblepass",
-        "index": 602,
-        "distance": 3.634875535964966,
-        "similarity": 26.0,
-        "display_similarity": 29.4
+        "user_handle": "Qwertenx",
+        "index": 847,
+        "distance": 3.191868305206299,
+        "similarity": 21.5,
+        "display_similarity": 39.0
       },
       {
         "rank": 21,
-        "user_handle": "w3haa",
-        "index": 2705,
-        "distance": 3.63610577583313,
-        "similarity": 25.6,
-        "display_similarity": 29.4
+        "user_handle": "thx",
+        "index": 2614,
+        "distance": 3.1935536861419678,
+        "similarity": 21.0,
+        "display_similarity": 38.9
       },
       {
         "rank": 22,
-        "user_handle": "Nguyen_Mai_Huong",
-        "index": 765,
-        "distance": 3.6470577716827393,
-        "similarity": 21.9,
-        "display_similarity": 29.2
+        "user_handle": "Expectation",
+        "index": 367,
+        "distance": 3.1936047077178955,
+        "similarity": 21.0,
+        "display_similarity": 38.9
       },
       {
         "rank": 23,
-        "user_handle": "xjd0623",
-        "index": 2760,
-        "distance": 3.658268690109253,
-        "similarity": 18.2,
-        "display_similarity": 29.0
+        "user_handle": "jack-hui6",
+        "index": 1857,
+        "distance": 3.196992874145508,
+        "similarity": 20.1,
+        "display_similarity": 38.9
       },
       {
         "rank": 24,
-        "user_handle": "liaoli",
-        "index": 2002,
-        "distance": 3.6597659587860107,
-        "similarity": 17.7,
-        "display_similarity": 28.9
+        "user_handle": "Link-ljm",
+        "index": 642,
+        "distance": 3.1983025074005127,
+        "similarity": 19.7,
+        "display_similarity": 38.8
       },
       {
         "rank": 25,
-        "user_handle": "goie",
-        "index": 1716,
-        "distance": 3.6632883548736572,
-        "similarity": 16.6,
-        "display_similarity": 28.9
+        "user_handle": "cylo",
+        "index": 1550,
+        "distance": 3.2046916484832764,
+        "similarity": 17.8,
+        "display_similarity": 38.7
       },
       {
         "rank": 26,
-        "user_handle": "AngelicLayer",
-        "index": 133,
-        "distance": 3.670665740966797,
-        "similarity": 14.1,
-        "display_similarity": 28.7
+        "user_handle": "qq_orange",
+        "index": 2332,
+        "distance": 3.216876983642578,
+        "similarity": 14.3,
+        "display_similarity": 38.5
       },
       {
         "rank": 27,
-        "user_handle": "ITE23",
-        "index": 512,
-        "distance": 3.673985719680786,
-        "similarity": 13.0,
-        "display_similarity": 28.7
+        "user_handle": "RandomGinkgo",
+        "index": 875,
+        "distance": 3.2186100482940674,
+        "similarity": 13.8,
+        "display_similarity": 38.4
       },
       {
         "rank": 28,
-        "user_handle": "Dolodu123",
-        "index": 321,
-        "distance": 3.6741936206817627,
+        "user_handle": "zhuyou_y",
+        "index": 2850,
+        "distance": 3.2212507724761963,
         "similarity": 13.0,
-        "display_similarity": 28.7
+        "display_similarity": 38.4
       },
       {
         "rank": 29,
-        "user_handle": "mmejer",
-        "index": 2128,
-        "distance": 3.6759426593780518,
-        "similarity": 12.4,
-        "display_similarity": 28.6
+        "user_handle": "CuriOusQuOkka",
+        "index": 271,
+        "distance": 3.223686695098877,
+        "similarity": 12.3,
+        "display_similarity": 38.3
       },
       {
         "rank": 30,
-        "user_handle": "TokaiHachimi",
-        "index": 1065,
-        "distance": 3.679795742034912,
-        "similarity": 11.1,
-        "display_similarity": 28.6
+        "user_handle": "Vladyslav",
+        "index": 1111,
+        "distance": 3.224294900894165,
+        "similarity": 12.2,
+        "display_similarity": 38.3
       },
       {
         "rank": 31,
-        "user_handle": "tunangoo",
-        "index": 2648,
-        "distance": 3.679851770401001,
-        "similarity": 11.1,
-        "display_similarity": 28.5
+        "user_handle": "Fancy_",
+        "index": 377,
+        "distance": 3.224848985671997,
+        "similarity": 12.0,
+        "display_similarity": 38.3
       },
       {
         "rank": 32,
-        "user_handle": "Giselus",
-        "index": 433,
-        "distance": 3.6799588203430176,
-        "similarity": 11.1,
-        "display_similarity": 28.5
+        "user_handle": "_sablast_",
+        "index": 1246,
+        "distance": 3.2252516746520996,
+        "similarity": 11.9,
+        "display_similarity": 38.3
       },
       {
         "rank": 33,
-        "user_handle": "Qwertenx",
-        "index": 847,
-        "distance": 3.681118965148926,
-        "similarity": 10.7,
-        "display_similarity": 28.5
+        "user_handle": "DQ1275",
+        "index": 281,
+        "distance": 3.2284905910491943,
+        "similarity": 11.0,
+        "display_similarity": 38.3
       },
       {
         "rank": 34,
-        "user_handle": "jack-hui6",
-        "index": 1858,
-        "distance": 3.682738780975342,
-        "similarity": 10.2,
-        "display_similarity": 28.5
+        "user_handle": "fanzhirui",
+        "index": 1659,
+        "distance": 3.22890567779541,
+        "similarity": 10.8,
+        "display_similarity": 38.2
       },
       {
         "rank": 35,
-        "user_handle": "PureVessel",
-        "index": 843,
-        "distance": 3.6855430603027344,
-        "similarity": 9.2,
-        "display_similarity": 28.4
+        "user_handle": "Kotoblepass",
+        "index": 602,
+        "distance": 3.2303686141967773,
+        "similarity": 10.4,
+        "display_similarity": 38.2
       },
       {
         "rank": 36,
-        "user_handle": "Scorpioch",
-        "index": 949,
-        "distance": 3.68693470954895,
-        "similarity": 8.8,
-        "display_similarity": 28.4
+        "user_handle": "chitanda",
+        "index": 1495,
+        "distance": 3.234595775604248,
+        "similarity": 9.2,
+        "display_similarity": 38.1
       },
       {
         "rank": 37,
-        "user_handle": "_sablast_",
-        "index": 1246,
-        "distance": 3.691936731338501,
-        "similarity": 7.1,
-        "display_similarity": 28.3
+        "user_handle": "zhoufangyuanPT",
+        "index": 2846,
+        "distance": 3.2377989292144775,
+        "similarity": 8.3,
+        "display_similarity": 38.1
       },
       {
         "rank": 38,
-        "user_handle": "bolzofstil",
-        "index": 1446,
-        "distance": 3.6953814029693604,
-        "similarity": 6.0,
-        "display_similarity": 28.2
+        "user_handle": "_liujy",
+        "index": 1239,
+        "distance": 3.242497444152832,
+        "similarity": 6.9,
+        "display_similarity": 38.0
       },
       {
         "rank": 39,
-        "user_handle": "wangmaxxiao",
-        "index": 2708,
-        "distance": 3.6958367824554443,
-        "similarity": 5.8,
-        "display_similarity": 28.2
+        "user_handle": "xyhxyh",
+        "index": 2779,
+        "distance": 3.2460882663726807,
+        "similarity": 5.9,
+        "display_similarity": 37.9
       },
       {
         "rank": 40,
-        "user_handle": "xxxxxxxb",
-        "index": 2777,
-        "distance": 3.7003252506256104,
-        "similarity": 4.3,
-        "display_similarity": 28.2
+        "user_handle": "tunangoo",
+        "index": 2647,
+        "distance": 3.2469675540924072,
+        "similarity": 5.6,
+        "display_similarity": 37.9
       },
       {
         "rank": 41,
-        "user_handle": "Walid_Amin",
-        "index": 1123,
-        "distance": 3.700486660003662,
-        "similarity": 4.3,
-        "display_similarity": 28.1
+        "user_handle": "Let__Me__Ac",
+        "index": 633,
+        "distance": 3.250703811645508,
+        "similarity": 4.5,
+        "display_similarity": 37.8
       },
       {
         "rank": 42,
-        "user_handle": "Indonesialbedo",
-        "index": 533,
-        "distance": 3.7047348022460938,
-        "similarity": 2.9,
-        "display_similarity": 28.1
+        "user_handle": "JogoatWouldWin",
+        "index": 560,
+        "distance": 3.252551317214966,
+        "similarity": 4.0,
+        "display_similarity": 37.8
       },
       {
         "rank": 43,
-        "user_handle": "JogoatWouldWin",
-        "index": 560,
-        "distance": 3.705963134765625,
-        "similarity": 2.5,
-        "display_similarity": 28.0
+        "user_handle": "marcospaulo",
+        "index": 2076,
+        "distance": 3.253173351287842,
+        "similarity": 3.8,
+        "display_similarity": 37.8
       },
       {
         "rank": 44,
-        "user_handle": "ExposingFameSeekers",
-        "index": 368,
-        "distance": 3.706181526184082,
-        "similarity": 2.4,
-        "display_similarity": 28.0
+        "user_handle": "TokaiHachimi",
+        "index": 1065,
+        "distance": 3.2563726902008057,
+        "similarity": 2.9,
+        "display_similarity": 37.7
       },
       {
         "rank": 45,
-        "user_handle": "iromanagureev",
-        "index": 1839,
-        "distance": 3.7074360847473145,
-        "similarity": 2.0,
-        "display_similarity": 28.0
+        "user_handle": "ChessCoder",
+        "index": 243,
+        "distance": 3.2566938400268555,
+        "similarity": 2.8,
+        "display_similarity": 37.7
       },
       {
         "rank": 46,
-        "user_handle": "littleyyq",
-        "index": 2016,
-        "distance": 3.708364725112915,
-        "similarity": 1.7,
-        "display_similarity": 28.0
+        "user_handle": "jgs03177",
+        "index": 1867,
+        "distance": 3.257519245147705,
+        "similarity": 2.6,
+        "display_similarity": 37.7
       },
       {
         "rank": 47,
-        "user_handle": "thx",
-        "index": 2615,
-        "distance": 3.7105698585510254,
-        "similarity": 1.0,
-        "display_similarity": 28.0
+        "user_handle": "mono_1729",
+        "index": 2138,
+        "distance": 3.261411666870117,
+        "similarity": 1.5,
+        "display_similarity": 37.6
       },
       {
         "rank": 48,
-        "user_handle": "CuriOusQuOkka",
-        "index": 271,
-        "distance": 3.710780382156372,
-        "similarity": 0.9,
-        "display_similarity": 27.9
+        "user_handle": "gls1196",
+        "index": 1715,
+        "distance": 3.261870861053467,
+        "similarity": 1.3,
+        "display_similarity": 37.6
       },
       {
         "rank": 49,
-        "user_handle": "coriander",
-        "index": 1525,
-        "distance": 3.7126567363739014,
-        "similarity": 0.3,
-        "display_similarity": 27.9
+        "user_handle": "Vincella",
+        "index": 1104,
+        "distance": 3.2640380859375,
+        "similarity": 0.7,
+        "display_similarity": 37.6
       },
       {
         "rank": 50,
-        "user_handle": "chitanda",
-        "index": 1495,
-        "distance": 3.7134463787078857,
+        "user_handle": "wassim.omais",
+        "index": 2716,
+        "distance": 3.2664341926574707,
         "similarity": 0.0,
-        "display_similarity": 27.9
+        "display_similarity": 37.5
       }
     ],
     "metadata": {
       "distance_metric": "euclidean",
-      "dataset_size": 2877
+      "dataset_size": 2876
     }
   },
   "format": "json",
   "saved_to": "/Users/omarkhalifa/cf-analyzer/src/pipeline/logs/recommendations.json",
   "tag_strengths": {
     "tag_dp": {
-      "strength": 69.4,
-      "solved": 14,
-      "attempted": 16,
-      "acceptance_rate": 0.875,
-      "specialization_score": 0.066,
-      "avg_difficulty": 1128.6,
-      "peer_median_solved": 12.0,
+      "strength": 90.3,
+      "solved": 18,
+      "attempted": 20,
+      "acceptance_rate": 0.9,
+      "specialization_score": 0.281,
+      "avg_difficulty": 1905.6,
+      "peer_median_solved": 17.5,
       "peer_median_acceptance": 0.938,
-      "peer_median_difficulty": 1955.4,
-      "peer_median_specialization": 0.242
+      "peer_median_difficulty": 1973.0,
+      "peer_median_specialization": 0.229
     },
     "tag_greedy": {
-      "strength": 87.5,
-      "solved": 77,
-      "attempted": 81,
-      "acceptance_rate": 0.951,
-      "specialization_score": 0.362,
-      "avg_difficulty": 1028.6,
-      "peer_median_solved": 21.0,
+      "strength": 91.1,
+      "solved": 27,
+      "attempted": 28,
+      "acceptance_rate": 0.964,
+      "specialization_score": 0.422,
+      "avg_difficulty": 1551.9,
+      "peer_median_solved": 31.0,
       "peer_median_acceptance": 0.946,
-      "peer_median_difficulty": 1474.5,
-      "peer_median_specialization": 0.42
+      "peer_median_difficulty": 1486.6,
+      "peer_median_specialization": 0.445
     },
     "tag_graphs": {
-      "strength": 0.0,
-      "solved": 0,
-      "attempted": 0,
-      "acceptance_rate": 0.0,
-      "specialization_score": 0.0,
-      "avg_difficulty": 0.0,
-      "peer_median_solved": 5.0,
-      "peer_median_acceptance": 0.857,
-      "peer_median_difficulty": 1987.5,
-      "peer_median_specialization": 0.094
+      "strength": 90.2,
+      "solved": 10,
+      "attempted": 13,
+      "acceptance_rate": 0.769,
+      "specialization_score": 0.156,
+      "avg_difficulty": 1940.0,
+      "peer_median_solved": 6.5,
+      "peer_median_acceptance": 0.882,
+      "peer_median_difficulty": 2000.0,
+      "peer_median_specialization": 0.086
     },
     "tag_math": {
-      "strength": 85.8,
-      "solved": 76,
-      "attempted": 80,
-      "acceptance_rate": 0.95,
-      "specialization_score": 0.357,
-      "avg_difficulty": 902.6,
-      "peer_median_solved": 21.0,
-      "peer_median_acceptance": 0.948,
-      "peer_median_difficulty": 1439.0,
-      "peer_median_specialization": 0.38
+      "strength": 93.4,
+      "solved": 31,
+      "attempted": 32,
+      "acceptance_rate": 0.969,
+      "specialization_score": 0.484,
+      "avg_difficulty": 1619.4,
+      "peer_median_solved": 28.0,
+      "peer_median_acceptance": 0.954,
+      "peer_median_difficulty": 1531.9,
+      "peer_median_specialization": 0.398
     },
     "tag_strings": {
-      "strength": 82.7,
-      "solved": 25,
-      "attempted": 28,
-      "acceptance_rate": 0.893,
-      "specialization_score": 0.117,
-      "avg_difficulty": 896.0,
+      "strength": 91.1,
+      "solved": 5,
+      "attempted": 5,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.078,
+      "avg_difficulty": 1360.0,
       "peer_median_solved": 5.0,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1451.5,
-      "peer_median_specialization": 0.083
+      "peer_median_difficulty": 1423.3,
+      "peer_median_specialization": 0.077
     },
     "tag_impl": {
-      "strength": 89.1,
-      "solved": 92,
-      "attempted": 97,
-      "acceptance_rate": 0.948,
-      "specialization_score": 0.432,
-      "avg_difficulty": 939.1,
-      "peer_median_solved": 12.5,
-      "peer_median_acceptance": 0.943,
-      "peer_median_difficulty": 1362.6,
-      "peer_median_specialization": 0.262
+      "strength": 81.0,
+      "solved": 9,
+      "attempted": 10,
+      "acceptance_rate": 0.9,
+      "specialization_score": 0.141,
+      "avg_difficulty": 1522.2,
+      "peer_median_solved": 18.0,
+      "peer_median_acceptance": 0.958,
+      "peer_median_difficulty": 1444.0,
+      "peer_median_specialization": 0.269
     },
     "tag_binary_search": {
-      "strength": 88.8,
-      "solved": 22,
-      "attempted": 23,
-      "acceptance_rate": 0.957,
-      "specialization_score": 0.103,
-      "avg_difficulty": 1286.4,
-      "peer_median_solved": 6.0,
-      "peer_median_acceptance": 0.902,
-      "peer_median_difficulty": 1800.0,
-      "peer_median_specialization": 0.111
+      "strength": 88.6,
+      "solved": 6,
+      "attempted": 6,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.094,
+      "avg_difficulty": 2016.7,
+      "peer_median_solved": 9.0,
+      "peer_median_acceptance": 0.889,
+      "peer_median_difficulty": 1796.7,
+      "peer_median_specialization": 0.106
     },
     "tag_data_structures": {
-      "strength": 75.1,
-      "solved": 15,
-      "attempted": 19,
-      "acceptance_rate": 0.789,
-      "specialization_score": 0.07,
-      "avg_difficulty": 1326.7,
-      "peer_median_solved": 9.0,
-      "peer_median_acceptance": 0.903,
-      "peer_median_difficulty": 1944.4,
-      "peer_median_specialization": 0.159
+      "strength": 84.4,
+      "solved": 9,
+      "attempted": 11,
+      "acceptance_rate": 0.818,
+      "specialization_score": 0.141,
+      "avg_difficulty": 1944.4,
+      "peer_median_solved": 13.0,
+      "peer_median_acceptance": 0.92,
+      "peer_median_difficulty": 1947.2,
+      "peer_median_specialization": 0.169
     },
     "tag_number_theory": {
-      "strength": 74.4,
-      "solved": 10,
-      "attempted": 11,
-      "acceptance_rate": 0.909,
-      "specialization_score": 0.047,
-      "avg_difficulty": 900.0,
-      "peer_median_solved": 5.0,
+      "strength": 93.5,
+      "solved": 9,
+      "attempted": 9,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.141,
+      "avg_difficulty": 1677.8,
+      "peer_median_solved": 8.0,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1552.8,
-      "peer_median_specialization": 0.094
+      "peer_median_difficulty": 1581.7,
+      "peer_median_specialization": 0.106
     },
     "tag_combinatorics": {
-      "strength": 63.8,
+      "strength": 96.2,
+      "solved": 10,
+      "attempted": 10,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.156,
+      "avg_difficulty": 2050.0,
+      "peer_median_solved": 6.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 2000.0,
+      "peer_median_specialization": 0.073
+    },
+    "tag_geometry": {
+      "strength": 90.3,
       "solved": 4,
       "attempted": 5,
       "acceptance_rate": 0.8,
-      "specialization_score": 0.019,
-      "avg_difficulty": 1100.0,
-      "peer_median_solved": 3.5,
+      "specialization_score": 0.062,
+      "avg_difficulty": 1925.0,
+      "peer_median_solved": 2.0,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 2000.0,
-      "peer_median_specialization": 0.063
-    },
-    "tag_geometry": {
-      "strength": 78.4,
-      "solved": 3,
-      "attempted": 3,
-      "acceptance_rate": 1.0,
-      "specialization_score": 0.014,
-      "avg_difficulty": 800.0,
-      "peer_median_solved": 1.0,
-      "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1545.8,
-      "peer_median_specialization": 0.022
+      "peer_median_difficulty": 1512.5,
+      "peer_median_specialization": 0.024
     },
     "tag_trees": {
-      "strength": 0.0,
-      "solved": 0,
-      "attempted": 0,
-      "acceptance_rate": 0.0,
-      "specialization_score": 0.0,
-      "avg_difficulty": 0.0,
-      "peer_median_solved": 4.0,
+      "strength": 69.6,
+      "solved": 1,
+      "attempted": 1,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.016,
+      "avg_difficulty": 1700.0,
+      "peer_median_solved": 5.0,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 2125.0,
-      "peer_median_specialization": 0.056
+      "peer_median_difficulty": 2100.0,
+      "peer_median_specialization": 0.059
     },
     "tag_sortings": {
-      "strength": 87.0,
-      "solved": 34,
-      "attempted": 36,
-      "acceptance_rate": 0.944,
-      "specialization_score": 0.16,
-      "avg_difficulty": 1052.9,
-      "peer_median_solved": 8.5,
+      "strength": 91.7,
+      "solved": 13,
+      "attempted": 14,
+      "acceptance_rate": 0.929,
+      "specialization_score": 0.203,
+      "avg_difficulty": 1738.5,
+      "peer_median_solved": 10.5,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1518.3,
-      "peer_median_specialization": 0.155
+      "peer_median_difficulty": 1510.5,
+      "peer_median_specialization": 0.144
     },
     "tag_two_pointers": {
-      "strength": 87.6,
-      "solved": 14,
-      "attempted": 15,
-      "acceptance_rate": 0.933,
-      "specialization_score": 0.066,
-      "avg_difficulty": 1264.3,
-      "peer_median_solved": 3.0,
+      "strength": 90.9,
+      "solved": 5,
+      "attempted": 5,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.078,
+      "avg_difficulty": 1660.0,
+      "peer_median_solved": 5.0,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1762.5,
-      "peer_median_specialization": 0.062
+      "peer_median_difficulty": 1746.7,
+      "peer_median_specialization": 0.07
     },
     "tag_bitmasks": {
-      "strength": 78.4,
-      "solved": 10,
-      "attempted": 11,
-      "acceptance_rate": 0.909,
-      "specialization_score": 0.047,
-      "avg_difficulty": 1110.0,
-      "peer_median_solved": 4.0,
-      "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1857.1,
-      "peer_median_specialization": 0.065
+      "strength": 89.7,
+      "solved": 6,
+      "attempted": 7,
+      "acceptance_rate": 0.857,
+      "specialization_score": 0.094,
+      "avg_difficulty": 1900.0,
+      "peer_median_solved": 5.0,
+      "peer_median_acceptance": 0.975,
+      "peer_median_difficulty": 1836.1,
+      "peer_median_specialization": 0.072
     },
     "tag_flows": {
       "strength": 0.0,
@@ -604,9 +604,33 @@
       "peer_median_solved": 1.0,
       "peer_median_acceptance": 1.0,
       "peer_median_difficulty": 2000.0,
-      "peer_median_specialization": 0.017
+      "peer_median_specialization": 0.012
     },
     "tag_fft": {
+      "strength": 97.3,
+      "solved": 2,
+      "attempted": 2,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.031,
+      "avg_difficulty": 2800.0,
+      "peer_median_solved": 1.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 2400.0,
+      "peer_median_specialization": 0.017
+    },
+    "tag_games": {
+      "strength": 95.5,
+      "solved": 3,
+      "attempted": 3,
+      "acceptance_rate": 1.0,
+      "specialization_score": 0.047,
+      "avg_difficulty": 2100.0,
+      "peer_median_solved": 2.0,
+      "peer_median_acceptance": 1.0,
+      "peer_median_difficulty": 1550.0,
+      "peer_median_specialization": 0.032
+    },
+    "tag_probabilities": {
       "strength": 0.0,
       "solved": 0,
       "attempted": 0,
@@ -615,401 +639,117 @@
       "avg_difficulty": 0.0,
       "peer_median_solved": 1.0,
       "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 2400.0,
-      "peer_median_specialization": 0.02
-    },
-    "tag_games": {
-      "strength": 83.5,
-      "solved": 4,
-      "attempted": 4,
-      "acceptance_rate": 1.0,
-      "specialization_score": 0.019,
-      "avg_difficulty": 1075.0,
-      "peer_median_solved": 2.0,
-      "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 1525.0,
-      "peer_median_specialization": 0.029
-    },
-    "tag_probabilities": {
-      "strength": 86.2,
-      "solved": 1,
-      "attempted": 1,
-      "acceptance_rate": 1.0,
-      "specialization_score": 0.005,
-      "avg_difficulty": 1300.0,
-      "peer_median_solved": 0.0,
-      "peer_median_acceptance": 1.0,
-      "peer_median_difficulty": 2141.7,
-      "peer_median_specialization": 0.0
+      "peer_median_difficulty": 2112.5,
+      "peer_median_specialization": 0.014
     },
     "tag_constructive": {
-      "strength": 78.9,
-      "solved": 26,
-      "attempted": 30,
-      "acceptance_rate": 0.867,
-      "specialization_score": 0.122,
-      "avg_difficulty": 1061.5,
-      "peer_median_solved": 14.0,
+      "strength": 91.3,
+      "solved": 21,
+      "attempted": 23,
+      "acceptance_rate": 0.913,
+      "specialization_score": 0.328,
+      "avg_difficulty": 1771.4,
+      "peer_median_solved": 20.5,
       "peer_median_acceptance": 0.955,
-      "peer_median_difficulty": 1476.3,
-      "peer_median_specialization": 0.239
+      "peer_median_difficulty": 1529.3,
+      "peer_median_specialization": 0.242
     }
   },
   "weakest_tags": [
-    "tag_combinatorics",
-    "tag_dp",
-    "tag_number_theory",
+    "tag_trees",
+    "tag_impl",
     "tag_data_structures",
-    "tag_geometry"
+    "tag_binary_search",
+    "tag_bitmasks"
   ],
   "strongest_tags": [
-    "tag_sortings",
-    "tag_greedy",
-    "tag_two_pointers",
-    "tag_binary_search",
-    "tag_impl"
+    "tag_math",
+    "tag_number_theory",
+    "tag_games",
+    "tag_combinatorics",
+    "tag_fft"
   ],
   "recommended_problems": [
     {
-      "id": "1437_C",
-      "rating": 1800,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_math",
-        "tag_sortings",
-        "tag_flows"
-      ],
-      "difficulty_match": 0.4974,
-      "solve_score": -0.0051,
-      "weakness_boost": 0.3046,
-      "final_score": 0.4203,
-      "estimated_attempts": 3.15,
-      "difficulty_label": "hard"
-    },
-    {
-      "id": "1401_D",
-      "rating": 1800,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_math",
-        "tag_impl",
-        "tag_number_theory",
-        "tag_trees",
-        "tag_sortings"
-      ],
-      "difficulty_match": 0.4574,
-      "solve_score": -0.0852,
-      "weakness_boost": 0.2843,
-      "final_score": 0.3881,
-      "estimated_attempts": 3.05,
-      "difficulty_label": "hard"
-    },
-    {
-      "id": "1487_E",
+      "id": "1438_C",
       "rating": 2000,
       "tags": [
-        "tag_greedy",
+        "tag_flows",
+        "tag_fft",
+        "tag_constructive"
+      ],
+      "difficulty_match": 0.4659,
+      "solve_score": -0.0681,
+      "weakness_boost": 0.2902,
+      "final_score": 0.3956,
+      "estimated_attempts": 3.06,
+      "difficulty_label": "hard"
+    },
+    {
+      "id": "1770_E",
+      "rating": 2400,
+      "tags": [
+        "tag_dp",
+        "tag_math",
+        "tag_combinatorics",
+        "tag_trees",
+        "tag_probabilities"
+      ],
+      "difficulty_match": 0.4681,
+      "solve_score": -0.0637,
+      "weakness_boost": 0.2455,
+      "final_score": 0.3791,
+      "estimated_attempts": 2.19,
+      "difficulty_label": "moderate"
+    },
+    {
+      "id": "1486_E",
+      "rating": 2200,
+      "tags": [
+        "tag_dp",
+        "tag_graphs",
+        "tag_binary_search",
+        "tag_flows",
+        "tag_constructive"
+      ],
+      "difficulty_match": 0.4608,
+      "solve_score": -0.0783,
+      "weakness_boost": 0.2408,
+      "final_score": 0.3728,
+      "estimated_attempts": 2.88,
+      "difficulty_label": "hard"
+    },
+    {
+      "id": "1770_D",
+      "rating": 2000,
+      "tags": [
         "tag_graphs",
         "tag_impl",
         "tag_data_structures",
-        "tag_sortings",
-        "tag_two_pointers"
+        "tag_flows",
+        "tag_games",
+        "tag_constructive"
       ],
-      "difficulty_match": 0.4346,
-      "solve_score": -0.1308,
-      "weakness_boost": 0.2826,
-      "final_score": 0.3738,
-      "estimated_attempts": 2.72,
+      "difficulty_match": 0.5456,
+      "solve_score": 0.0913,
+      "weakness_boost": 0.2388,
+      "final_score": 0.4229,
+      "estimated_attempts": 2.55,
       "difficulty_label": "hard"
     },
     {
-      "id": "1741_E",
-      "rating": 1600,
+      "id": "1491_H",
+      "rating": 3400,
       "tags": [
-        "tag_dp"
-      ],
-      "difficulty_match": 0.8846,
-      "solve_score": 0.7692,
-      "weakness_boost": 0.2742,
-      "final_score": 0.6404,
-      "estimated_attempts": 1.82,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1132_F",
-      "rating": 2000,
-      "tags": [
-        "tag_dp"
-      ],
-      "difficulty_match": 0.8616,
-      "solve_score": 0.7232,
-      "weakness_boost": 0.2742,
-      "final_score": 0.6267,
-      "estimated_attempts": 1.65,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1909_F1",
-      "rating": 2200,
-      "tags": [
-        "tag_dp",
-        "tag_math",
-        "tag_combinatorics"
-      ],
-      "difficulty_match": 0.8771,
-      "solve_score": 0.7542,
-      "weakness_boost": 0.2732,
-      "final_score": 0.6355,
-      "estimated_attempts": 1.1,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1909_F2",
-      "rating": 2500,
-      "tags": [
-        "tag_dp",
-        "tag_math",
-        "tag_combinatorics"
-      ],
-      "difficulty_match": 0.8413,
-      "solve_score": 0.6826,
-      "weakness_boost": 0.2732,
-      "final_score": 0.6141,
-      "estimated_attempts": 1.19,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1916_H1",
-      "rating": 2700,
-      "tags": [
-        "tag_dp",
-        "tag_math",
-        "tag_combinatorics"
-      ],
-      "difficulty_match": 0.8266,
-      "solve_score": 0.6531,
-      "weakness_boost": 0.2732,
-      "final_score": 0.6052,
-      "estimated_attempts": 1.21,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1485_F",
-      "rating": 2400,
-      "tags": [
-        "tag_dp",
         "tag_data_structures",
-        "tag_combinatorics",
-        "tag_sortings"
+        "tag_trees"
       ],
-      "difficulty_match": 0.8623,
-      "solve_score": 0.7245,
-      "weakness_boost": 0.2721,
-      "final_score": 0.6262,
-      "estimated_attempts": 1.12,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1788_E",
-      "rating": 2200,
-      "tags": [
-        "tag_dp",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8921,
-      "solve_score": 0.7841,
-      "weakness_boost": 0.2717,
-      "final_score": 0.6439,
-      "estimated_attempts": 1.64,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1417_C",
-      "rating": 1500,
-      "tags": [
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8963,
-      "solve_score": 0.7925,
-      "weakness_boost": 0.2692,
-      "final_score": 0.6454,
-      "estimated_attempts": 1.71,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1912_G",
-      "rating": 2400,
-      "tags": [
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8244,
-      "solve_score": 0.6487,
-      "weakness_boost": 0.2692,
-      "final_score": 0.6023,
-      "estimated_attempts": 1.63,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "803_G",
-      "rating": 2300,
-      "tags": [
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8244,
-      "solve_score": 0.6487,
-      "weakness_boost": 0.2692,
-      "final_score": 0.6023,
-      "estimated_attempts": 1.62,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "797_D",
-      "rating": 2100,
-      "tags": [
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8223,
-      "solve_score": 0.6446,
-      "weakness_boost": 0.2692,
-      "final_score": 0.601,
-      "estimated_attempts": 1.72,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "187_D",
-      "rating": 2800,
-      "tags": [
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8043,
-      "solve_score": 0.6086,
-      "weakness_boost": 0.2692,
-      "final_score": 0.5902,
-      "estimated_attempts": 1.85,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1436_C",
-      "rating": 1500,
-      "tags": [
-        "tag_binary_search",
-        "tag_combinatorics"
-      ],
-      "difficulty_match": 0.8895,
-      "solve_score": 0.7791,
-      "weakness_boost": 0.269,
-      "final_score": 0.6413,
-      "estimated_attempts": 1.56,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "353_D",
-      "rating": 2000,
-      "tags": [
-        "tag_dp",
-        "tag_constructive"
-      ],
-      "difficulty_match": 0.8552,
-      "solve_score": 0.7103,
-      "weakness_boost": 0.2652,
-      "final_score": 0.6192,
-      "estimated_attempts": 1.72,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1400_D",
-      "rating": 1900,
-      "tags": [
-        "tag_math",
-        "tag_data_structures",
-        "tag_combinatorics",
-        "tag_two_pointers"
-      ],
-      "difficulty_match": 0.8957,
-      "solve_score": 0.7913,
-      "weakness_boost": 0.2645,
-      "final_score": 0.6432,
-      "estimated_attempts": 1.2,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1763_D",
-      "rating": 2200,
-      "tags": [
-        "tag_dp",
-        "tag_math",
-        "tag_impl",
-        "tag_number_theory",
-        "tag_combinatorics"
-      ],
-      "difficulty_match": 0.8283,
-      "solve_score": 0.6567,
-      "weakness_boost": 0.2628,
-      "final_score": 0.6021,
-      "estimated_attempts": 1.45,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1557_D",
-      "rating": 2200,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8841,
-      "solve_score": 0.7682,
-      "weakness_boost": 0.259,
-      "final_score": 0.6341,
-      "estimated_attempts": 1.02,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1400_E",
-      "rating": 2200,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8841,
-      "solve_score": 0.7682,
-      "weakness_boost": 0.259,
-      "final_score": 0.6341,
-      "estimated_attempts": 1.02,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1442_D",
-      "rating": 2800,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8333,
-      "solve_score": 0.6666,
-      "weakness_boost": 0.259,
-      "final_score": 0.6036,
-      "estimated_attempts": 1.18,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1486_D",
-      "rating": 2100,
-      "tags": [
-        "tag_dp",
-        "tag_binary_search",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8953,
-      "solve_score": 0.7905,
-      "weakness_boost": 0.2588,
-      "final_score": 0.6407,
-      "estimated_attempts": 1.49,
-      "difficulty_label": "easy"
+      "difficulty_match": 0.6922,
+      "solve_score": 0.3845,
+      "weakness_boost": 0.2122,
+      "final_score": 0.5002,
+      "estimated_attempts": 3.1,
+      "difficulty_label": "hard"
     },
     {
       "id": "1909_G",
@@ -1017,114 +757,28 @@
       "tags": [
         "tag_strings"
       ],
-      "difficulty_match": 0.84,
-      "solve_score": 0.6801,
-      "weakness_boost": 0.2565,
-      "final_score": 0.6066,
-      "estimated_attempts": 1.83,
+      "difficulty_match": 0.7608,
+      "solve_score": 0.5217,
+      "weakness_boost": 0.2,
+      "final_score": 0.5365,
+      "estimated_attempts": 2.27,
       "difficulty_label": "moderate"
     },
     {
-      "id": "1916_D",
-      "rating": 1700,
+      "id": "1379_E",
+      "rating": 2800,
       "tags": [
+        "tag_dp",
         "tag_math",
-        "tag_geometry",
+        "tag_trees",
         "tag_constructive"
       ],
-      "difficulty_match": 0.8494,
-      "solve_score": 0.6987,
-      "weakness_boost": 0.2562,
-      "final_score": 0.6121,
-      "estimated_attempts": 1.36,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1408_F",
-      "rating": 2300,
-      "tags": [
-        "tag_constructive"
-      ],
-      "difficulty_match": 0.8394,
-      "solve_score": 0.6788,
-      "weakness_boost": 0.2561,
-      "final_score": 0.6061,
-      "estimated_attempts": 1.7,
+      "difficulty_match": 0.8462,
+      "solve_score": 0.6924,
+      "weakness_boost": 0.1779,
+      "final_score": 0.5789,
+      "estimated_attempts": 1.78,
       "difficulty_label": "moderate"
-    },
-    {
-      "id": "1722_E",
-      "rating": 1600,
-      "tags": [
-        "tag_dp",
-        "tag_impl",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8864,
-      "solve_score": 0.7729,
-      "weakness_boost": 0.256,
-      "final_score": 0.6343,
-      "estimated_attempts": 1.39,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1656_D",
-      "rating": 1900,
-      "tags": [
-        "tag_math",
-        "tag_number_theory",
-        "tag_constructive"
-      ],
-      "difficulty_match": 0.8709,
-      "solve_score": 0.7419,
-      "weakness_boost": 0.2555,
-      "final_score": 0.6248,
-      "estimated_attempts": 1.23,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1972_D2",
-      "rating": 2200,
-      "tags": [
-        "tag_math",
-        "tag_number_theory"
-      ],
-      "difficulty_match": 0.8661,
-      "solve_score": 0.7322,
-      "weakness_boost": 0.2552,
-      "final_score": 0.6217,
-      "estimated_attempts": 1.22,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "792_C",
-      "rating": 2000,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_math",
-        "tag_number_theory"
-      ],
-      "difficulty_match": 0.8959,
-      "solve_score": 0.7918,
-      "weakness_boost": 0.2545,
-      "final_score": 0.6393,
-      "estimated_attempts": 1.43,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1392_D",
-      "rating": 1700,
-      "tags": [
-        "tag_dp",
-        "tag_greedy"
-      ],
-      "difficulty_match": 0.8959,
-      "solve_score": 0.7918,
-      "weakness_boost": 0.2539,
-      "final_score": 0.6391,
-      "estimated_attempts": 1.34,
-      "difficulty_label": "easy"
     },
     {
       "id": "1487_F",
@@ -1133,296 +787,12 @@
         "tag_dp",
         "tag_greedy"
       ],
-      "difficulty_match": 0.8174,
-      "solve_score": 0.6348,
-      "weakness_boost": 0.2539,
-      "final_score": 0.592,
-      "estimated_attempts": 1.52,
+      "difficulty_match": 0.8973,
+      "solve_score": 0.7947,
+      "weakness_boost": 0.1638,
+      "final_score": 0.6039,
+      "estimated_attempts": 1.7,
       "difficulty_label": "moderate"
-    },
-    {
-      "id": "1401_E",
-      "rating": 2400,
-      "tags": [
-        "tag_impl",
-        "tag_data_structures",
-        "tag_geometry",
-        "tag_sortings"
-      ],
-      "difficulty_match": 0.804,
-      "solve_score": 0.608,
-      "weakness_boost": 0.2514,
-      "final_score": 0.5829,
-      "estimated_attempts": 1.44,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1491_C",
-      "rating": 1700,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_impl",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8829,
-      "solve_score": 0.7658,
-      "weakness_boost": 0.2504,
-      "final_score": 0.6299,
-      "estimated_attempts": 1.08,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "2025_D",
-      "rating": 1800,
-      "tags": [
-        "tag_dp",
-        "tag_math",
-        "tag_impl",
-        "tag_data_structures",
-        "tag_two_pointers"
-      ],
-      "difficulty_match": 0.8864,
-      "solve_score": 0.7729,
-      "weakness_boost": 0.2503,
-      "final_score": 0.632,
-      "estimated_attempts": 1.42,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1436_E",
-      "rating": 2400,
-      "tags": [
-        "tag_binary_search",
-        "tag_data_structures",
-        "tag_two_pointers"
-      ],
-      "difficulty_match": 0.8683,
-      "solve_score": 0.7367,
-      "weakness_boost": 0.2485,
-      "final_score": 0.6204,
-      "estimated_attempts": 1.45,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1503_D",
-      "rating": 2600,
-      "tags": [
-        "tag_greedy",
-        "tag_data_structures",
-        "tag_sortings",
-        "tag_two_pointers",
-        "tag_constructive"
-      ],
-      "difficulty_match": 0.8279,
-      "solve_score": 0.6559,
-      "weakness_boost": 0.2484,
-      "final_score": 0.5961,
-      "estimated_attempts": 1.03,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1408_D",
-      "rating": 2000,
-      "tags": [
-        "tag_dp",
-        "tag_impl",
-        "tag_binary_search",
-        "tag_data_structures",
-        "tag_sortings",
-        "tag_two_pointers"
-      ],
-      "difficulty_match": 0.8948,
-      "solve_score": 0.7897,
-      "weakness_boost": 0.2473,
-      "final_score": 0.6358,
-      "estimated_attempts": 1.28,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1537_E2",
-      "rating": 2200,
-      "tags": [
-        "tag_greedy",
-        "tag_strings",
-        "tag_binary_search",
-        "tag_data_structures",
-        "tag_two_pointers"
-      ],
-      "difficulty_match": 0.8834,
-      "solve_score": 0.7668,
-      "weakness_boost": 0.2471,
-      "final_score": 0.6289,
-      "estimated_attempts": 1.0,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "808_E",
-      "rating": 2300,
-      "tags": [
-        "tag_dp",
-        "tag_greedy",
-        "tag_binary_search"
-      ],
-      "difficulty_match": 0.8656,
-      "solve_score": 0.7311,
-      "weakness_boost": 0.247,
-      "final_score": 0.6181,
-      "estimated_attempts": 1.51,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1418_D",
-      "rating": 2100,
-      "tags": [
-        "tag_impl",
-        "tag_data_structures"
-      ],
-      "difficulty_match": 0.8015,
-      "solve_score": 0.603,
-      "weakness_boost": 0.2468,
-      "final_score": 0.5797,
-      "estimated_attempts": 1.64,
-      "difficulty_label": "moderate"
-    },
-    {
-      "id": "1912_A",
-      "rating": 1900,
-      "tags": [
-        "tag_impl",
-        "tag_data_structures",
-        "tag_sortings"
-      ],
-      "difficulty_match": 0.8742,
-      "solve_score": 0.7485,
-      "weakness_boost": 0.2445,
-      "final_score": 0.6223,
-      "estimated_attempts": 1.37,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1408_C",
-      "rating": 1500,
-      "tags": [
-        "tag_dp",
-        "tag_math",
-        "tag_impl",
-        "tag_binary_search",
-        "tag_two_pointers"
-      ],
-      "difficulty_match": 0.8845,
-      "solve_score": 0.769,
-      "weakness_boost": 0.2431,
-      "final_score": 0.6279,
-      "estimated_attempts": 1.5,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1729_F",
-      "rating": 1900,
-      "tags": [
-        "tag_math"
-      ],
-      "difficulty_match": 0.8764,
-      "solve_score": 0.7529,
-      "weakness_boost": 0.2403,
-      "final_score": 0.622,
-      "estimated_attempts": 1.18,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1912_D",
-      "rating": 1900,
-      "tags": [
-        "tag_math"
-      ],
-      "difficulty_match": 0.8764,
-      "solve_score": 0.7529,
-      "weakness_boost": 0.2403,
-      "final_score": 0.622,
-      "estimated_attempts": 1.18,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1912_E",
-      "rating": 2200,
-      "tags": [
-        "tag_math",
-        "tag_impl",
-        "tag_constructive"
-      ],
-      "difficulty_match": 0.8591,
-      "solve_score": 0.7181,
-      "weakness_boost": 0.2403,
-      "final_score": 0.6116,
-      "estimated_attempts": 1.35,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1440_C1",
-      "rating": 1500,
-      "tags": [
-        "tag_impl",
-        "tag_constructive"
-      ],
-      "difficulty_match": 0.8395,
-      "solve_score": 0.679,
-      "weakness_boost": 0.2403,
-      "final_score": 0.5998,
-      "estimated_attempts": 1.4,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1400_B",
-      "rating": 1700,
-      "tags": [
-        "tag_greedy",
-        "tag_math"
-      ],
-      "difficulty_match": 0.8996,
-      "solve_score": 0.7991,
-      "weakness_boost": 0.237,
-      "final_score": 0.6345,
-      "estimated_attempts": 1.27,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1500_A",
-      "rating": 1800,
-      "tags": [
-        "tag_math",
-        "tag_impl"
-      ],
-      "difficulty_match": 0.7912,
-      "solve_score": 0.5825,
-      "weakness_boost": 0.2324,
-      "final_score": 0.5677,
-      "estimated_attempts": 1.39,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "792_B",
-      "rating": 1300,
-      "tags": [
-        "tag_impl"
-      ],
-      "difficulty_match": 0.8769,
-      "solve_score": 0.7539,
-      "weakness_boost": 0.2245,
-      "final_score": 0.616,
-      "estimated_attempts": 1.33,
-      "difficulty_label": "easy"
-    },
-    {
-      "id": "1722_F",
-      "rating": 1700,
-      "tags": [
-        "tag_impl"
-      ],
-      "difficulty_match": 0.7678,
-      "solve_score": 0.5356,
-      "weakness_boost": 0.2245,
-      "final_score": 0.5505
     }
   ]
 }

@@ -1,0 +1,1638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CF Analyzer — ML-Powered Competitive Programming Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Type scale (1920x1080) */
+    --type-display: 120px;
+    --type-title: 64px;
+    --type-subtitle: 40px;
+    --type-body: 30px;
+    --type-small: 24px;
+    --type-tiny: 24px;
+
+    /* Spacing */
+    --pad-top: 88px;
+    --pad-bottom: 84px;
+    --pad-x: 96px;
+    --gap-title: 52px;
+    --gap-item: 28px;
+
+    /* Palette */
+    --bg: #0a0e14;
+    --bg-elev: #11161d;
+    --bg-elev-2: #161c25;
+    --border: #1f2630;
+    --border-strong: #2a3340;
+    --text: #e6edf3;
+    --text-muted: #8a95a5;
+    --text-dim: #5a6573;
+
+    --cyan: #58a6ff;
+    --cyan-soft: rgba(88,166,255,0.12);
+    --cyan-line: rgba(88,166,255,0.35);
+    --green: #39d353;
+    --green-soft: rgba(57,211,83,0.14);
+    --yellow: #d4a72c;
+    --yellow-soft: rgba(212,167,44,0.16);
+    --red: #f85149;
+    --red-soft: rgba(248,81,73,0.14);
+    --violet: #a371f7;
+
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  html, body { margin:0; padding:0; background:#000; color:var(--text); font-family:var(--sans); }
+
+  deck-stage { background:#000; }
+
+  section {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: var(--pad-top) var(--pad-x) var(--pad-bottom);
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Subtle grid background */
+  .gridbg::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+    pointer-events:none;
+  }
+
+  /* Top chrome bar — minimal IDE-style header */
+  .chrome {
+    position:absolute; top:32px; left:var(--pad-x); right:var(--pad-x);
+    display:flex; align-items:center; justify-content:space-between;
+    font-family: var(--mono); font-size: var(--type-tiny); color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+  .chrome .dots { display:flex; gap:8px; }
+  .chrome .dots span{ width:12px; height:12px; border-radius:50%; background:#2a3340; }
+  .chrome .path { display:flex; gap:14px; align-items:center; }
+  .chrome .tag { color: var(--cyan); }
+
+  .slide-label{
+    font-family:var(--mono); font-size:var(--type-tiny);
+    color:var(--text-dim); letter-spacing:0.14em; text-transform:uppercase;
+    display:flex; align-items:center; gap:14px;
+  }
+  .slide-label::before{
+    content:""; width:36px; height:1px; background:var(--cyan);
+  }
+
+  h1, h2, h3 { margin:0; font-weight:600; letter-spacing:-0.01em; }
+  h1 { font-size: var(--type-title); line-height:1.05; }
+  h2 { font-size: var(--type-title); line-height:1.05; }
+  h3 { font-size: var(--type-subtitle); line-height:1.15; }
+  p { margin:0; }
+
+  .mono { font-family: var(--mono); }
+  .muted { color: var(--text-muted); }
+  .dim { color: var(--text-dim); }
+  .cyan { color: var(--cyan); }
+  .green { color: var(--green); }
+  .yellow { color: var(--yellow); }
+  .red { color: var(--red); }
+
+  .title-row{ display:flex; flex-direction:column; gap:18px; margin-bottom:var(--gap-title); }
+  .title-row h2{ max-width: 1500px; }
+
+  /* Generic card / panel */
+  .panel{
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+  }
+
+  .kbd, .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size: var(--type-tiny);
+    color: var(--cyan);
+    background: var(--cyan-soft);
+    border:1px solid var(--cyan-line);
+    padding: 6px 12px;
+    border-radius: 8px;
+  }
+
+  /* ============ TITLE SLIDE ============ */
+  .title-slide{
+    display:flex; flex-direction:column; justify-content:center;
+    padding-left:120px; padding-right:120px;
+  }
+  .title-slide .eyebrow{
+    font-family:var(--mono); font-size:var(--type-small); color:var(--cyan);
+    letter-spacing:0.18em; text-transform:uppercase; margin-bottom:36px;
+    display:flex; align-items:center; gap:18px;
+  }
+  .title-slide .eyebrow .pulse{
+    width:10px; height:10px; border-radius:50%; background:var(--green);
+    box-shadow: 0 0 0 4px rgba(57,211,83,0.18);
+  }
+  .title-slide h1{
+    font-size: 132px; font-weight:700; line-height:0.98; letter-spacing:-0.025em;
+    max-width: 1480px;
+  }
+  .title-slide h1 .accent{ color: var(--cyan); }
+  .title-slide .sub{
+    margin-top:36px;
+    font-size: var(--type-subtitle); color: var(--text-muted); font-weight:400;
+    max-width: 1400px; line-height:1.3;
+  }
+  .title-slide .quote{
+    margin-top:64px;
+    font-family:var(--mono); font-size:34px; color:var(--text);
+    padding: 24px 32px;
+    border-left: 3px solid var(--cyan);
+    background: linear-gradient(90deg, var(--cyan-soft), transparent 60%);
+    max-width: 1200px;
+    border-radius: 0 8px 8px 0;
+  }
+  .title-slide .quote .q{ color: var(--text-dim); }
+  .title-slide .footer{
+    position:absolute; bottom:60px; left:120px; right:120px;
+    display:flex; justify-content:space-between; align-items:flex-end;
+    font-family:var(--mono); font-size:var(--type-tiny); color: var(--text-dim);
+  }
+  .title-slide .footer .stack{ display:flex; gap:28px; align-items:center; }
+  .title-slide .footer .stack span{ color: var(--text-muted); }
+
+  /* ============ THE PROBLEM ============ */
+  .problem-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap:28px;
+    margin-top: var(--gap-title);
+  }
+  .problem-card{
+    background: var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding: 36px 40px;
+    display:flex; flex-direction:column; gap:18px;
+    min-height: 280px;
+  }
+  .problem-card .n{
+    font-family:var(--mono); font-size: var(--type-small); color: var(--text-dim);
+  }
+  .problem-card h3{ font-size: 38px; line-height:1.2; }
+  .problem-card p{ font-size: var(--type-body); color: var(--text-muted); line-height:1.4; }
+
+  /* ============ PIPELINE ============ */
+  .pipeline{
+    margin-top: 56px;
+    display:flex; flex-direction:column; gap:24px;
+  }
+  .pipeline-row{
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap:14px;
+    align-items:stretch;
+  }
+  .pipe-step{
+    background: var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 20px;
+    display:flex; flex-direction:column; gap:10px;
+    min-height: 260px;
+    position:relative;
+  }
+  .pipe-step .num{
+    font-family:var(--mono); font-size: 24px; color: var(--cyan);
+    letter-spacing:0.1em;
+  }
+  .pipe-step .name{
+    font-size: 26px; font-weight:600; line-height:1.2; color:var(--text);
+  }
+  .pipe-step .desc{
+    font-family:var(--mono); font-size: 24px; color: var(--text-muted); line-height:1.35;
+    margin-top: auto;
+  }
+  .pipe-arrow{
+    position:absolute; top:50%; right:-15px; transform:translateY(-50%);
+    width:18px; height:18px; z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    color: var(--cyan);
+  }
+  .pipe-step:last-child .pipe-arrow{ display:none; }
+  .pipe-endpoints{
+    display:grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items:center;
+    margin-top: 20px;
+  }
+  .endpoint{
+    font-family:var(--mono); font-size: 24px; color: var(--cyan);
+    padding: 14px 22px; border:1px dashed var(--cyan-line); border-radius:10px;
+    background: var(--cyan-soft);
+    white-space:nowrap;
+  }
+  .endpoint.out{ color: var(--green); border-color: rgba(57,211,83,0.35); background: var(--green-soft); }
+  .endpoint-line{
+    height:1px; background: linear-gradient(90deg, var(--cyan-line), transparent);
+  }
+
+  /* ============ DATASET ============ */
+  .ds-grid{
+    display:grid; grid-template-columns: 1.2fr 1fr; gap:32px;
+    margin-top: var(--gap-title);
+  }
+  .stat-row{
+    display:grid; grid-template-columns: 1fr 1fr; gap:20px;
+  }
+  .stat{
+    background: var(--bg-elev); border:1px solid var(--border);
+    border-radius:14px; padding:28px 32px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .stat .v{ font-family:var(--mono); font-size: 64px; font-weight:600; line-height:1; color: var(--cyan); letter-spacing:-0.02em; }
+  .stat .l{ font-size: var(--type-small); color: var(--text-muted); }
+  .stat.alt .v{ color: var(--green); }
+
+  .tags-cloud{
+    display:flex; flex-wrap:wrap; gap:10px; margin-top:24px;
+  }
+  .tag-pill{
+    font-family:var(--mono); font-size: 24px;
+    padding: 8px 16px; border-radius: 999px;
+    background: var(--bg-elev-2); border:1px solid var(--border-strong);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .tag-pill.hot{ color: var(--cyan); border-color: var(--cyan-line); background: var(--cyan-soft); }
+
+  /* Rating distribution */
+  .rating-dist{ display:flex; flex-direction:column; gap:16px; }
+  .rating-row{ display:grid; grid-template-columns: 200px 1fr 90px; gap:18px; align-items:center; font-family:var(--mono); }
+  .rating-row .lbl{ font-size: 24px; color: var(--text); }
+  .rating-row .num{ font-size: 24px; color: var(--cyan); text-align:right; }
+  .bar{ height:18px; background: var(--bg-elev-2); border-radius:4px; overflow:hidden; border:1px solid var(--border); }
+  .bar > div{ height:100%; background: linear-gradient(90deg, var(--cyan), #2563eb); }
+
+  /* ============ FORMULA ============ */
+  .formula-block{
+    margin-top: var(--gap-title);
+    background: var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px 44px;
+    font-family: var(--mono);
+    font-size: 30px;
+    line-height: 1.5;
+    color: var(--text);
+    overflow:hidden;
+  }
+  .formula-block .var{ color: var(--cyan); }
+  .formula-block .num{ color: var(--green); }
+  .formula-block .op{ color: var(--text-dim); }
+  .formula-block .eq{ color: var(--text-dim); padding: 0 6px; }
+
+  .components{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+    margin-top: 28px;
+  }
+  .comp{
+    background: var(--bg-elev); border:1px solid var(--border);
+    border-radius: 12px; padding: 22px 24px;
+    display:flex; flex-direction:column; gap:8px;
+    position:relative; overflow:hidden;
+  }
+  .comp .pct{ font-family:var(--mono); font-size: 36px; font-weight:600; color: var(--cyan); letter-spacing:-0.02em; }
+  .comp .nm{ font-size: 24px; font-weight:600; }
+  .comp .dx{ font-size: 24px; color: var(--text-muted); line-height:1.4; }
+  .comp .weight-bar{ position:absolute; left:0; bottom:0; height:3px; background: var(--cyan); }
+
+  /* ============ KNN ============ */
+  .knn-grid{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  }
+  .feature-spec{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:14px;
+    padding: 32px 36px;
+    display:flex; flex-direction:column; gap: 20px;
+  }
+  .vec-formula{
+    font-family:var(--mono); font-size: 28px; color:var(--text);
+    background: var(--bg-elev-2); padding: 18px 22px; border-radius: 8px;
+    border:1px solid var(--border);
+  }
+  .bullets{ display:flex; flex-direction:column; gap:14px; }
+  .bullets li{ list-style:none; font-size: var(--type-body); color: var(--text-muted); line-height:1.4; }
+  .bullets li::before{ content:"›  "; color: var(--cyan); font-family:var(--mono); }
+
+  .metrics-card{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:14px;
+    padding: 32px 36px;
+    display:flex; flex-direction:column; gap: 16px;
+  }
+  .metric-row{
+    display:grid; grid-template-columns: 1fr auto auto; gap:18px; align-items:center;
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .metric-row:last-child{ border-bottom:none; }
+  .metric-row .nm{ font-size: 26px; }
+  .metric-row .nm small{ display:block; font-family:var(--mono); font-size: 24px; color:var(--text-dim); margin-top:4px; }
+  .metric-row .val{ font-family:var(--mono); font-size: 32px; font-weight:600; color: var(--cyan); }
+  .metric-row .check{
+    font-family:var(--mono); font-size: 24px; color: var(--green);
+    background: var(--green-soft); border:1px solid rgba(57,211,83,0.3);
+    padding:4px 10px; border-radius:6px;
+  }
+  .metric-row .check.near{ color: var(--yellow); background: var(--yellow-soft); border-color: rgba(212,167,44,0.3); }
+
+  /* ============ THREE MODELS ============ */
+  .models-grid{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  }
+  .model-card{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:14px;
+    padding: 28px 28px 24px;
+    display:flex; flex-direction:column; gap: 14px;
+    position:relative;
+  }
+  .model-card .badge{
+    font-family:var(--mono); font-size: 24px; color: var(--cyan);
+    letter-spacing:0.12em; text-transform:uppercase;
+  }
+  .model-card h3{ font-size: 30px; line-height:1.15; }
+  .model-card .pred{
+    font-family:var(--mono); font-size: 24px; color: var(--text);
+    background: var(--bg-elev-2); border:1px solid var(--border);
+    padding: 12px 14px; border-radius: 8px;
+    line-height: 1.45;
+  }
+  .model-card .desc{ font-size: 24px; color: var(--text-muted); line-height:1.45; }
+  .model-card .results{
+    margin-top: auto;
+    display:flex; flex-wrap:wrap; gap: 8px;
+    padding-top: 16px; border-top:1px dashed var(--border);
+  }
+  .res-chip{
+    font-family:var(--mono); font-size: 24px;
+    padding: 5px 10px; border-radius:6px;
+    background: var(--bg-elev-2); border:1px solid var(--border);
+    color: var(--text);
+  }
+  .res-chip .k{ color: var(--text-dim); margin-right:4px; }
+
+  /* ============ RANKING ============ */
+  .ranking-layout{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: 1.15fr 1fr; gap: 36px;
+  }
+  .steps{
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .step{
+    display:grid; grid-template-columns: 56px 1fr; gap: 18px;
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:12px;
+    padding: 18px 22px;
+    align-items:center;
+  }
+  .step .n{
+    font-family:var(--mono); font-size: 28px; color: var(--cyan); font-weight:600;
+  }
+  .step .body{ font-size: 24px; line-height:1.35; color: var(--text); }
+  .step .body code{ font-family:var(--mono); color: var(--cyan); font-size: 24px; background: var(--cyan-soft); padding: 2px 8px; border-radius:4px; }
+
+  /* Sample problem card */
+  .prob-card{
+    background: var(--bg-elev);
+    border:1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 30px 32px;
+    display:flex; flex-direction:column; gap: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .prob-card .header{
+    display:flex; align-items:baseline; gap:18px;
+  }
+  .prob-card .rating-badge{
+    font-family:var(--mono); font-size: 24px; font-weight:600;
+    color: var(--cyan); background: var(--cyan-soft);
+    border:1px solid var(--cyan-line);
+    padding: 6px 12px; border-radius:8px;
+  }
+  .prob-card .title{
+    font-size: 30px; font-weight:600; color: var(--text);
+  }
+  .prob-card .metrics{
+    display:grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  }
+  .pm{
+    display:flex; align-items:center; gap:12px;
+    padding: 14px 16px;
+    background: var(--bg-elev-2); border:1px solid var(--border);
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .pm .glyph{ font-family:var(--mono); font-size: 24px; color: var(--cyan); width: 26px; text-align:center; }
+  .pm .lbl{ font-family:var(--mono); font-size: 24px; color: var(--text-dim); }
+  .pm .v{ font-family:var(--mono); font-size: 24px; color: var(--text); margin-left:auto; font-weight:600; }
+  .pm .v.green{ color: var(--green); }
+  .prob-card .footer{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding-top: 18px; border-top: 1px dashed var(--border);
+  }
+  .prob-card .tag{
+    font-family:var(--mono); font-size: 24px; color: var(--text);
+    padding: 5px 11px; background: var(--bg-elev-2); border:1px solid var(--border); border-radius:6px;
+  }
+  .difficulty-badge{
+    font-family:var(--mono); font-size: 24px; padding:5px 11px; border-radius:6px; margin-left:auto;
+    white-space: nowrap;
+  }
+  .difficulty-badge.mod{ color: var(--yellow); background: var(--yellow-soft); border:1px solid rgba(212,167,44,0.3); }
+  .ui-label{
+    position:absolute; top:-14px; left:18px;
+    font-family:var(--mono); font-size: 24px; color: var(--text-dim);
+    background: var(--bg); padding: 2px 10px;
+    letter-spacing:0.1em; text-transform:uppercase;
+  }
+
+  /* ============ COUNTERFACTUAL ============ */
+  .cf-layout{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: 1.05fr 1fr; gap:36px;
+  }
+  .algo-list{
+    display:flex; flex-direction:column; gap: 14px;
+  }
+  .algo-step{
+    display:grid; grid-template-columns: auto 1fr; gap:16px;
+    align-items:center;
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:10px;
+    padding: 16px 22px;
+  }
+  .algo-step .icon{
+    font-family:var(--mono); width: 36px; height:36px; border-radius:50%;
+    background: var(--cyan-soft); border:1px solid var(--cyan-line);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--cyan); font-weight:600; font-size: 24px;
+  }
+  .algo-step .txt{ font-size: 24px; line-height:1.35; }
+  .algo-step .txt code{ font-family:var(--mono); color: var(--cyan); font-size: 24px; }
+
+  .cf-output{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:14px;
+    padding: 24px 28px;
+    display:flex; flex-direction:column; gap: 8px;
+  }
+  .cf-output .head{
+    display:grid; grid-template-columns: 28px 1fr auto; gap:16px;
+    font-family:var(--mono); font-size: 24px; color: var(--text-dim);
+    padding: 6px 8px; letter-spacing:0.06em; text-transform:uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .cf-row{
+    display:grid; grid-template-columns: 28px 1fr auto; gap:16px; align-items:center;
+    padding: 12px 8px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .cf-row:last-child{ border-bottom:none; }
+  .cf-row .rank{ font-family:var(--mono); font-size: 24px; color: var(--text-dim); }
+  .cf-row .tag{ font-family:var(--mono); font-size:24px; color: var(--text); }
+  .cf-row .gain{ font-family:var(--mono); font-size:24px; color: var(--green); font-weight:600; }
+  .cf-bar{
+    height: 6px; background: var(--bg-elev-2); border-radius:3px; overflow:hidden;
+    grid-column: 1 / -1; margin-top:-2px; margin-bottom:4px;
+  }
+  .cf-bar > div{ height:100%; background: linear-gradient(90deg, var(--green), var(--cyan)); }
+
+  /* ============ MODEL COMPARISON ============ */
+  .compare-grid{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: 1fr 1fr; gap: 28px;
+  }
+  .cmp-table{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:14px;
+    padding: 24px 28px;
+    display:flex; flex-direction:column; gap: 6px;
+  }
+  .cmp-table .ctitle{ font-size: 28px; font-weight:600; margin-bottom: 10px; }
+  .cmp-head{
+    display:grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.6fr; gap: 14px;
+    font-family:var(--mono); font-size: 24px; color: var(--text-dim);
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    letter-spacing:0.06em; text-transform:uppercase;
+  }
+  .cmp-row{
+    display:grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.6fr; gap: 14px;
+    align-items:center;
+    padding: 16px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 24px;
+  }
+  .cmp-row:last-child{ border-bottom:none; }
+  .cmp-row .mname{ font-family:var(--mono); color: var(--text); }
+  .cmp-row .v{ font-family:var(--mono); color: var(--text-muted); }
+  .cmp-row.winner{ background: linear-gradient(90deg, var(--green-soft), transparent); border-radius: 8px; padding-left:10px; }
+  .cmp-row.winner .mname{ color: var(--text); }
+  .cmp-row.winner .v{ color: var(--green); font-weight:600; }
+  .winner-tag{
+    font-family:var(--mono); font-size: 24px; color: var(--green);
+    background: var(--green-soft); border:1px solid rgba(57,211,83,0.3);
+    padding: 3px 8px; border-radius:5px; justify-self:end;
+  }
+  .neg-tag{
+    font-family:var(--mono); font-size: 24px; color: var(--red);
+    background: var(--red-soft); border:1px solid rgba(248,81,73,0.3);
+    padding: 3px 8px; border-radius:5px; justify-self:end;
+  }
+  .cmp-footnote{
+    grid-column: 1 / -1;
+    font-family:var(--mono); font-size: 24px; color: var(--text-dim);
+    margin-top: 16px; line-height:1.4;
+  }
+
+  /* ============ WEB APP ============ */
+  .arch-layout{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: 1fr; gap: 28px;
+  }
+  .arch-row{
+    display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+  }
+  .arch-block{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:12px;
+    padding: 22px 26px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .arch-block .kind{ font-family:var(--mono); font-size: 24px; color: var(--cyan); letter-spacing:0.08em; text-transform:uppercase; }
+  .arch-block .nm{ font-size: 26px; font-weight:600; }
+  .arch-block .dx{ font-family:var(--mono); font-size: 24px; color: var(--text-muted); line-height:1.4; }
+
+  .tabs-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  .tab-card{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:10px;
+    padding: 18px 22px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .tab-card .tnm{
+    font-family:var(--mono); font-size: 24px; color: var(--cyan); font-weight:600;
+  }
+  .tab-card .tdx{ font-size: 24px; color: var(--text-muted); line-height:1.35; }
+
+  /* ============ TAKEAWAYS ============ */
+  .takeaways{
+    margin-top: var(--gap-title);
+    display:grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  }
+  .take{
+    background: var(--bg-elev); border:1px solid var(--border); border-radius:14px;
+    padding: 26px 32px;
+    display:flex; flex-direction:column; gap: 10px;
+    position:relative;
+  }
+  .take .big{
+    font-family:var(--mono); font-size: 44px; color: var(--cyan); font-weight:600; letter-spacing:-0.02em;
+    line-height:1;
+  }
+  .take .big.green{ color: var(--green); }
+  .take .big.red{ color: var(--red); }
+  .take .lbl{ font-size: 24px; color: var(--text); line-height:1.35; }
+  .take.full{ grid-column: 1 / -1; }
+
+  /* Footer slide number */
+  .slide-num{
+    position:absolute; bottom:32px; right: var(--pad-x);
+    font-family:var(--mono); font-size: var(--type-tiny); color: var(--text-dim);
+  }
+  .slide-foot{
+    position:absolute; bottom:32px; left: var(--pad-x);
+    font-family:var(--mono); font-size: var(--type-tiny); color: var(--text-dim);
+    letter-spacing:0.08em; text-transform:uppercase;
+  }
+
+  /* Inline arrow svg */
+  .arrow-svg{ width:14px; height:14px; }
+
+  /* Two col stacks */
+  .two-col{ display:grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: var(--gap-title); }
+
+  /* ============ ANIMATIONS ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes fadeLeft {
+    from { opacity: 0; transform: translateX(-22px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeRight {
+    from { opacity: 0; transform: translateX(22px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes barGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  @keyframes caret {
+    0%, 49% { opacity: 1; }
+    50%,100% { opacity: 0; }
+  }
+  @keyframes scanline {
+    from { background-position: 0 0; }
+    to   { background-position: 0 60px; }
+  }
+  @keyframes endpointPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(88,166,255,0.0); }
+    50%      { box-shadow: 0 0 0 6px rgba(88,166,255,0.08); }
+  }
+
+  /* Slides are hidden by default; only animate the active one */
+  section[data-deck-active] .slide-label    { animation: fadeLeft 600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 60ms; }
+  section[data-deck-active] .title-row h2,
+  section[data-deck-active] .title-row h1   { animation: fadeUp 700ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 160ms; }
+  section[data-deck-active] .slide-foot,
+  section[data-deck-active] .slide-num      { animation: fadeIn 700ms ease both; animation-delay: 500ms; }
+
+  /* Generic staggered grids */
+  section[data-deck-active] .problem-grid > * { animation: fadeUp 600ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .problem-grid > *:nth-child(1){ animation-delay: 320ms; }
+  section[data-deck-active] .problem-grid > *:nth-child(2){ animation-delay: 420ms; }
+  section[data-deck-active] .problem-grid > *:nth-child(3){ animation-delay: 520ms; }
+  section[data-deck-active] .problem-grid > *:nth-child(4){ animation-delay: 620ms; }
+
+  /* Pipeline */
+  section[data-deck-active] .pipe-endpoints .endpoint  { animation: scaleIn 500ms ease both; animation-delay: 280ms; }
+  section[data-deck-active] .pipe-endpoints .endpoint.out { animation-delay: 1500ms; }
+  section[data-deck-active] .pipe-endpoints .endpoint-line { animation: fadeIn 600ms ease both; animation-delay: 1200ms; }
+  section[data-deck-active] .pipeline .pipe-step { animation: fadeUp 500ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(1){ animation-delay: 380ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(2){ animation-delay: 520ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(3){ animation-delay: 660ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(4){ animation-delay: 800ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(5){ animation-delay: 940ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(6){ animation-delay: 1080ms; }
+  section[data-deck-active] .pipe-arrow {
+    animation: fadeRight 500ms cubic-bezier(.2,.7,.2,1) both;
+  }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(1) .pipe-arrow{ animation-delay: 520ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(2) .pipe-arrow{ animation-delay: 660ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(3) .pipe-arrow{ animation-delay: 800ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(4) .pipe-arrow{ animation-delay: 940ms; }
+  section[data-deck-active] .pipeline .pipe-step:nth-child(5) .pipe-arrow{ animation-delay: 1080ms; }
+
+  /* Stats / dataset */
+  section[data-deck-active] .stat-row .stat,
+  section[data-deck-active] .ds-grid > * { animation: fadeUp 550ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .stat-row .stat:nth-child(1){ animation-delay: 280ms; }
+  section[data-deck-active] .stat-row .stat:nth-child(2){ animation-delay: 360ms; }
+  section[data-deck-active] .stat-row .stat:nth-child(3){ animation-delay: 440ms; }
+  section[data-deck-active] .stat-row .stat:nth-child(4){ animation-delay: 520ms; }
+  section[data-deck-active] .ds-grid > *:nth-child(2){ animation-delay: 540ms; }
+  section[data-deck-active] .tag-pill { animation: fadeUp 380ms ease both; }
+  section[data-deck-active] .tag-pill:nth-child(1) { animation-delay: 700ms; }
+  section[data-deck-active] .tag-pill:nth-child(2) { animation-delay: 740ms; }
+  section[data-deck-active] .tag-pill:nth-child(3) { animation-delay: 780ms; }
+  section[data-deck-active] .tag-pill:nth-child(4) { animation-delay: 820ms; }
+  section[data-deck-active] .tag-pill:nth-child(5) { animation-delay: 860ms; }
+  section[data-deck-active] .tag-pill:nth-child(6) { animation-delay: 900ms; }
+  section[data-deck-active] .tag-pill:nth-child(7) { animation-delay: 940ms; }
+  section[data-deck-active] .tag-pill:nth-child(8) { animation-delay: 980ms; }
+  section[data-deck-active] .tag-pill:nth-child(9) { animation-delay: 1020ms; }
+  section[data-deck-active] .tag-pill:nth-child(10){ animation-delay: 1060ms; }
+  section[data-deck-active] .tag-pill:nth-child(n+11){ animation-delay: 1100ms; }
+  section[data-deck-active] .bar > div {
+    transform-origin: left center;
+    animation: barGrow 900ms cubic-bezier(.2,.7,.2,1) both;
+  }
+  section[data-deck-active] .rating-row:nth-child(1) .bar > div { animation-delay: 700ms; }
+  section[data-deck-active] .rating-row:nth-child(2) .bar > div { animation-delay: 820ms; }
+  section[data-deck-active] .rating-row:nth-child(3) .bar > div { animation-delay: 940ms; }
+  section[data-deck-active] .rating-row:nth-child(4) .bar > div { animation-delay: 1060ms; }
+
+  /* Formula slide */
+  section[data-deck-active] .formula-block { animation: fadeUp 600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 260ms; }
+  section[data-deck-active] .components .comp { animation: fadeUp 500ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .components .comp:nth-child(1){ animation-delay: 520ms; }
+  section[data-deck-active] .components .comp:nth-child(2){ animation-delay: 600ms; }
+  section[data-deck-active] .components .comp:nth-child(3){ animation-delay: 680ms; }
+  section[data-deck-active] .components .comp:nth-child(4){ animation-delay: 760ms; }
+  section[data-deck-active] .components .comp:nth-child(5){ animation-delay: 840ms; }
+  section[data-deck-active] .components .comp:nth-child(6){ animation-delay: 920ms; }
+  section[data-deck-active] .weight-bar {
+    transform-origin: left center;
+    animation: barGrow 800ms cubic-bezier(.2,.7,.2,1) both;
+  }
+  section[data-deck-active] .components .comp:nth-child(1) .weight-bar{ animation-delay: 900ms; }
+  section[data-deck-active] .components .comp:nth-child(2) .weight-bar{ animation-delay: 980ms; }
+  section[data-deck-active] .components .comp:nth-child(3) .weight-bar{ animation-delay: 1060ms; }
+  section[data-deck-active] .components .comp:nth-child(4) .weight-bar{ animation-delay: 1140ms; }
+  section[data-deck-active] .components .comp:nth-child(5) .weight-bar{ animation-delay: 1220ms; }
+  section[data-deck-active] .components .comp:nth-child(6) .weight-bar{ animation-delay: 1300ms; }
+
+  /* KNN */
+  section[data-deck-active] .knn-grid > *:nth-child(1){ animation: fadeRight 600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 280ms; }
+  section[data-deck-active] .knn-grid > *:nth-child(2){ animation: fadeLeft  600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 380ms; }
+  section[data-deck-active] .metric-row { animation: fadeUp 500ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .metric-row:nth-child(2){ animation-delay: 600ms; }
+  section[data-deck-active] .metric-row:nth-child(3){ animation-delay: 720ms; }
+  section[data-deck-active] .metric-row:nth-child(4){ animation-delay: 840ms; }
+  section[data-deck-active] .metric-row:nth-child(5){ animation-delay: 960ms; }
+
+  /* Models */
+  section[data-deck-active] .model-card { animation: fadeUp 600ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .model-card:nth-child(1){ animation-delay: 280ms; }
+  section[data-deck-active] .model-card:nth-child(2){ animation-delay: 440ms; }
+  section[data-deck-active] .model-card:nth-child(3){ animation-delay: 600ms; }
+  section[data-deck-active] .res-chip { animation: fadeIn 400ms ease both; animation-delay: 900ms; }
+
+  /* Ranking */
+  section[data-deck-active] .step { animation: fadeRight 500ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .step:nth-child(1){ animation-delay: 280ms; }
+  section[data-deck-active] .step:nth-child(2){ animation-delay: 380ms; }
+  section[data-deck-active] .step:nth-child(3){ animation-delay: 480ms; }
+  section[data-deck-active] .step:nth-child(4){ animation-delay: 580ms; }
+  section[data-deck-active] .step:nth-child(5){ animation-delay: 680ms; }
+  section[data-deck-active] .prob-card { animation: scaleIn 700ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 600ms; }
+  section[data-deck-active] .ui-label  { animation: fadeIn 400ms ease both; animation-delay: 1000ms; }
+
+  /* Counterfactual */
+  section[data-deck-active] .algo-step { animation: fadeRight 500ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .algo-step:nth-child(1){ animation-delay: 280ms; }
+  section[data-deck-active] .algo-step:nth-child(2){ animation-delay: 380ms; }
+  section[data-deck-active] .algo-step:nth-child(3){ animation-delay: 480ms; }
+  section[data-deck-active] .algo-step:nth-child(4){ animation-delay: 580ms; }
+  section[data-deck-active] .algo-step:nth-child(5){ animation-delay: 680ms; }
+  section[data-deck-active] .cf-output { animation: fadeLeft 600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 360ms; }
+  section[data-deck-active] .cf-row    { animation: fadeUp 380ms ease both; }
+  section[data-deck-active] .cf-row:nth-child(2){ animation-delay: 720ms; }
+  section[data-deck-active] .cf-row:nth-child(4){ animation-delay: 820ms; }
+  section[data-deck-active] .cf-row:nth-child(6){ animation-delay: 920ms; }
+  section[data-deck-active] .cf-row:nth-child(8){ animation-delay: 1020ms; }
+  section[data-deck-active] .cf-row:nth-child(10){ animation-delay: 1120ms; }
+  section[data-deck-active] .cf-row:nth-child(12){ animation-delay: 1220ms; }
+  section[data-deck-active] .cf-bar > div {
+    transform-origin: left center;
+    animation: barGrow 900ms cubic-bezier(.2,.7,.2,1) both;
+  }
+  section[data-deck-active] .cf-bar:nth-of-type(1) > div { animation-delay: 920ms; }
+  section[data-deck-active] .cf-bar:nth-of-type(2) > div { animation-delay: 1020ms; }
+  section[data-deck-active] .cf-bar:nth-of-type(3) > div { animation-delay: 1120ms; }
+  section[data-deck-active] .cf-bar:nth-of-type(4) > div { animation-delay: 1220ms; }
+  section[data-deck-active] .cf-bar:nth-of-type(5) > div { animation-delay: 1320ms; }
+  section[data-deck-active] .cf-bar:nth-of-type(6) > div { animation-delay: 1420ms; }
+
+  /* Model comparison */
+  section[data-deck-active] .compare-grid > *:nth-child(1){ animation: fadeRight 600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 280ms; }
+  section[data-deck-active] .compare-grid > *:nth-child(2){ animation: fadeLeft  600ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 380ms; }
+  section[data-deck-active] .cmp-row { animation: fadeUp 400ms ease both; }
+  section[data-deck-active] .cmp-row:nth-child(3){ animation-delay: 600ms; }
+  section[data-deck-active] .cmp-row:nth-child(4){ animation-delay: 700ms; }
+  section[data-deck-active] .cmp-row:nth-child(5){ animation-delay: 800ms; }
+  section[data-deck-active] .winner-tag { animation: scaleIn 400ms cubic-bezier(.2,.9,.4,1.4) both; animation-delay: 900ms; }
+  section[data-deck-active] .neg-tag    { animation: scaleIn 400ms cubic-bezier(.2,.9,.4,1.4) both; animation-delay: 950ms; }
+
+  /* Web app */
+  section[data-deck-active] .arch-block { animation: fadeUp 500ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .arch-block:nth-child(1){ animation-delay: 260ms; }
+  section[data-deck-active] .arch-block:nth-child(2){ animation-delay: 360ms; }
+  section[data-deck-active] .arch-block:nth-child(3){ animation-delay: 460ms; }
+  section[data-deck-active] .tab-card { animation: fadeUp 450ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .tab-card:nth-child(1){ animation-delay: 600ms; }
+  section[data-deck-active] .tab-card:nth-child(2){ animation-delay: 680ms; }
+  section[data-deck-active] .tab-card:nth-child(3){ animation-delay: 760ms; }
+  section[data-deck-active] .tab-card:nth-child(4){ animation-delay: 840ms; }
+  section[data-deck-active] .tab-card:nth-child(5){ animation-delay: 920ms; }
+  section[data-deck-active] .tab-card:nth-child(6){ animation-delay: 1000ms; }
+
+  /* Takeaways */
+  section[data-deck-active] .take { animation: fadeUp 600ms cubic-bezier(.2,.7,.2,1) both; }
+  section[data-deck-active] .take:nth-child(1){ animation-delay: 280ms; }
+  section[data-deck-active] .take:nth-child(2){ animation-delay: 400ms; }
+  section[data-deck-active] .take:nth-child(3){ animation-delay: 520ms; }
+  section[data-deck-active] .take:nth-child(4){ animation-delay: 640ms; }
+  section[data-deck-active] .take:nth-child(5){ animation-delay: 800ms; }
+
+  /* Title slide special */
+  section[data-deck-active].title-slide .eyebrow  { animation: fadeIn 700ms ease both; animation-delay: 200ms; }
+  section[data-deck-active].title-slide h1        { animation: fadeUp 800ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 380ms; }
+  section[data-deck-active].title-slide .sub      { animation: fadeUp 700ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 720ms; }
+  section[data-deck-active].title-slide .quote    { animation: fadeRight 700ms cubic-bezier(.2,.7,.2,1) both; animation-delay: 980ms; }
+  section[data-deck-active].title-slide .footer   { animation: fadeIn 700ms ease both; animation-delay: 1200ms; }
+  section[data-deck-active].title-slide .chrome   { animation: fadeIn 600ms ease both; animation-delay: 80ms; }
+  .title-slide h1 .accent { animation: caret 900ms steps(1) infinite; display:inline-block; }
+  .title-slide .pulse {
+    animation: endpointPulse 1800ms ease-in-out infinite;
+  }
+
+  /* Slow ambient drift on the grid background */
+  @keyframes gridDrift {
+    from { background-position: 0 0, 0 0; }
+    to   { background-position: 60px 60px, 60px 60px; }
+  }
+  section.gridbg::before {
+    animation: gridDrift 24s linear infinite;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    section[data-deck-active] *,
+    section.gridbg::before,
+    .title-slide h1 .accent,
+    .title-slide .pulse {
+      animation: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<deck-stage width="1920" height="1080">
+
+  <!-- ============ SLIDE 1 — TITLE ============ -->
+  <section data-label="01 Title" class="title-slide gridbg">
+    <div class="chrome">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="path">~/cf-analyzer<span class="tag">main</span></div>
+      <div>build · v1.0 · 2026</div>
+    </div>
+
+    <div class="eyebrow"><span class="pulse"></span>ML SYSTEMS · CAPSTONE</div>
+    <h1>CF Analyzer<span class="cyan">_</span></h1>
+    <div class="sub">ML-powered competitive programming coach. Personalized problem recommendations using KNN&nbsp;+&nbsp;LightGBM, trained on 819K submissions from 2,877 Codeforces users.</div>
+
+    <div class="quote"><span class="q">&gt;</span> "What should I practice next to improve my rating?"</div>
+
+    <div class="footer">
+      <div class="stack">
+        <span>python · numpy · lightgbm</span>
+        <span>react · express · gemini</span>
+      </div>
+      <div>↳ press → to begin</div>
+    </div>
+  </section>
+
+  <!-- ============ SLIDE 2 — THE PROBLEM ============ -->
+  <section data-label="02 The Problem">
+    <div class="title-row">
+      <div class="slide-label">02 · Motivation</div>
+      <h2>Practicing without a plan wastes time.</h2>
+    </div>
+
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="n">// 01</div>
+        <h3>Drowning in problems</h3>
+        <p>Codeforces hosts 9,000+ rated problems across 30+ tags. Without guidance, programmers grind random sets that don't move their rating.</p>
+      </div>
+      <div class="problem-card">
+        <div class="n">// 02</div>
+        <h3>Filters aren't strategy</h3>
+        <p>Difficulty sliders pick problems near your rating, but say nothing about <span class="cyan">which</span> topics are actually holding you back.</p>
+      </div>
+      <div class="problem-card">
+        <div class="n">// 03</div>
+        <h3>Invisible skill gaps</h3>
+        <p>You don't know what similar-rated peers can solve that you can't. Self-assessment is unreliable and rarely tag-specific.</p>
+      </div>
+      <div class="problem-card">
+        <div class="n">// 04</div>
+        <h3>No personalized signal</h3>
+        <p>"Top topics for 1600s" averages over thousands of people. Your weakness profile is yours — recommendations should be too.</p>
+      </div>
+    </div>
+    <div class="slide-foot">cf-analyzer / problem statement</div>
+    <div class="slide-num">02 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 3 — SYSTEM OVERVIEW ============ -->
+  <section data-label="03 System Overview">
+    <div class="title-row">
+      <div class="slide-label">03 · Architecture</div>
+      <h2>Six stages, one handle in, ranked problems out.</h2>
+    </div>
+
+    <div class="pipe-endpoints">
+      <div class="endpoint">user_handle</div>
+      <div class="endpoint-line"></div>
+      <div class="endpoint out">ranked_recommendations</div>
+    </div>
+
+    <div class="pipeline">
+      <div class="pipeline-row">
+        <div class="pipe-step">
+          <div class="num">STEP 01</div>
+          <div class="name">Codeforces API</div>
+          <div class="desc">500 recent submissions</div>
+          <div class="pipe-arrow">
+            <svg class="arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="num">STEP 02</div>
+          <div class="name">Feature Vector</div>
+          <div class="desc">82-dim user vector</div>
+          <div class="pipe-arrow">
+            <svg class="arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="num">STEP 03</div>
+          <div class="name">KNN Lookup</div>
+          <div class="desc">50 nearest neighbors</div>
+          <div class="pipe-arrow">
+            <svg class="arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="num">STEP 04</div>
+          <div class="name">Tag Strengths</div>
+          <div class="desc">Benchmarked vs peers</div>
+          <div class="pipe-arrow">
+            <svg class="arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="num">STEP 05</div>
+          <div class="name">Candidate Pool</div>
+          <div class="desc">Neighbor-solved, user-unsolved</div>
+          <div class="pipe-arrow">
+            <svg class="arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="num">STEP 06</div>
+          <div class="name">Three ML Models</div>
+          <div class="desc">Success · attempts · rating</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / pipeline</div>
+    <div class="slide-num">03 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 4 — DATASET ============ -->
+  <section data-label="04 The Dataset">
+    <div class="title-row">
+      <div class="slide-label">04 · Dataset</div>
+      <h2>2,877 users, 819K submissions, 20 tags.</h2>
+    </div>
+
+    <div class="ds-grid">
+      <div style="display:flex; flex-direction:column; gap:18px;">
+        <div class="stat-row">
+          <div class="stat">
+            <div class="v">2,877</div>
+            <div class="l">unique users (rated 900–2,598)</div>
+          </div>
+          <div class="stat alt">
+            <div class="v">819,242</div>
+            <div class="l">raw submissions analyzed</div>
+          </div>
+          <div class="stat">
+            <div class="v">20</div>
+            <div class="l">algorithmic tags tracked</div>
+          </div>
+          <div class="stat alt">
+            <div class="v">82</div>
+            <div class="l">features per user vector</div>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:24px 28px;">
+          <div class="mono" style="font-size: 24px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:12px;">tags tracked</div>
+          <div class="tags-cloud">
+            <span class="tag-pill hot">dp</span>
+            <span class="tag-pill hot">greedy</span>
+            <span class="tag-pill hot">graphs</span>
+            <span class="tag-pill">math</span>
+            <span class="tag-pill">strings</span>
+            <span class="tag-pill">implementation</span>
+            <span class="tag-pill">binary search</span>
+            <span class="tag-pill">data structures</span>
+            <span class="tag-pill">number theory</span>
+            <span class="tag-pill">combinatorics</span>
+            <span class="tag-pill">geometry</span>
+            <span class="tag-pill">trees</span>
+            <span class="tag-pill">sortings</span>
+            <span class="tag-pill">two pointers</span>
+            <span class="tag-pill">bitmasks</span>
+            <span class="tag-pill">flows</span>
+            <span class="tag-pill">FFT</span>
+            <span class="tag-pill">games</span>
+            <span class="tag-pill">probabilities</span>
+            <span class="tag-pill">constructive</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="display:flex; flex-direction:column; gap:22px;">
+        <div>
+          <div class="mono" style="font-size: 24px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px;">rating distribution</div>
+          <div style="font-size: 24px; color:var(--text-muted);">users binned by current Codeforces rating</div>
+        </div>
+        <div class="rating-dist">
+          <div class="rating-row">
+            <div class="lbl">900 – 1200</div>
+            <div class="bar"><div style="width:41%"></div></div>
+            <div class="num">700</div>
+          </div>
+          <div class="rating-row">
+            <div class="lbl">1200 – 1600</div>
+            <div class="bar"><div style="width:100%"></div></div>
+            <div class="num">1,700</div>
+          </div>
+          <div class="rating-row">
+            <div class="lbl">1600 – 2000</div>
+            <div class="bar"><div style="width:80%"></div></div>
+            <div class="num">1,355</div>
+          </div>
+          <div class="rating-row">
+            <div class="lbl">2000 – 2598</div>
+            <div class="bar"><div style="width:73%"></div></div>
+            <div class="num">1,245</div>
+          </div>
+        </div>
+        <div class="mono" style="font-size: 24px; color:var(--text-dim); padding-top:8px; border-top:1px dashed var(--border); line-height:1.5;">
+          // counts overlap across buckets where users sit on bin edges; covers blue → grandmaster
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / dataset</div>
+    <div class="slide-num">04 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 5 — TAG STRENGTH FORMULA ============ -->
+  <section data-label="05 Tag Strength Formula">
+    <div class="title-row">
+      <div class="slide-label">05 · Feature Engineering</div>
+      <h2>How we measure skill per topic.</h2>
+    </div>
+
+    <div class="formula-block">
+      <span class="var">tag_strength</span> <span class="eq">=</span>
+      <span class="num">0.30</span> <span class="op">×</span> <span class="var">acceptance_rate</span>
+      <span class="op"> + </span>
+      <span class="num">0.30</span> <span class="op">×</span> <span class="var">difficulty_score</span>
+      <span class="op"> + </span>
+      <span class="num">0.20</span> <span class="op">×</span> <span class="var">rating_boost</span>
+      <span class="op"> + </span>
+      <span class="num">0.10</span> <span class="op">×</span> <span class="var">specialization</span>
+      <span class="op"> + </span>
+      <span class="num">0.075</span> <span class="op">×</span> <span class="var">efficiency</span>
+      <span class="op"> + </span>
+      <span class="num">0.075</span> <span class="op">×</span> <span class="var">volume</span>
+    </div>
+
+    <div class="components">
+      <div class="comp">
+        <div class="pct">30%</div>
+        <div class="nm">Acceptance rate</div>
+        <div class="dx">Can you actually solve problems in this tag? Laplace-smoothed.</div>
+        <div class="weight-bar" style="width:100%;"></div>
+      </div>
+      <div class="comp">
+        <div class="pct">30%</div>
+        <div class="nm">Difficulty score</div>
+        <div class="dx">Average rating of solved problems in tag ÷ 3500.</div>
+        <div class="weight-bar" style="width:100%;"></div>
+      </div>
+      <div class="comp">
+        <div class="pct">20%</div>
+        <div class="nm">Rating boost</div>
+        <div class="dx">(current + peak rating) ÷ 7000 — overall standing.</div>
+        <div class="weight-bar" style="width:66%;"></div>
+      </div>
+      <div class="comp">
+        <div class="pct">10%</div>
+        <div class="nm">Specialization</div>
+        <div class="dx">How focused are you on this tag vs. all your solves?</div>
+        <div class="weight-bar" style="width:33%;"></div>
+      </div>
+      <div class="comp">
+        <div class="pct">7.5%</div>
+        <div class="nm">Efficiency</div>
+        <div class="dx">How often do you solve a problem on the first try?</div>
+        <div class="weight-bar" style="width:25%;"></div>
+      </div>
+      <div class="comp">
+        <div class="pct">7.5%</div>
+        <div class="nm">Volume</div>
+        <div class="dx">log(1 + solved) ÷ log(51) — diminishing returns.</div>
+        <div class="weight-bar" style="width:25%;"></div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / tag strength</div>
+    <div class="slide-num">05 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 6 — KNN ============ -->
+  <section data-label="06 KNN Finding Peers">
+    <div class="title-row">
+      <div class="slide-label">06 · Similarity</div>
+      <h2>KNN finds the 50 users most like you.</h2>
+    </div>
+
+    <div class="knn-grid">
+      <div class="feature-spec">
+        <div class="mono" style="font-size: 24px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase;">feature vector</div>
+        <div class="vec-formula">v ∈ ℝ⁸² = <span class="cyan">[ 4 × 20 tags ]</span> ⊕ <span class="green">[ 2 scalars ]</span></div>
+        <ul class="bullets" style="padding:0; margin:0;">
+          <li>Pure NumPy Euclidean distance against 2,877 pre-computed vectors</li>
+          <li>Returns 50 nearest neighbors ranked by similarity</li>
+          <li>Two scores tracked: <span class="cyan mono">internal_weight</span> (analysis) and <span class="cyan mono">display_similarity</span> (UI)</li>
+          <li>Sub-second query latency — no index, no approximation</li>
+        </ul>
+      </div>
+
+      <div class="metrics-card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; padding-bottom:8px; border-bottom:1px solid var(--border);">
+          <div class="mono" style="font-size: 24px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase;">evaluation · leave-one-out · K=50 · N=300</div>
+        </div>
+        <div class="metric-row">
+          <div class="nm">Weakness Jaccard<small>target &gt; 0.5</small></div>
+          <div class="val">0.6434</div>
+          <div class="check">PASS</div>
+        </div>
+        <div class="metric-row">
+          <div class="nm">Weakness Recall<small>86% of your weak tags weak in peers</small></div>
+          <div class="val">0.8578</div>
+          <div class="check">PASS</div>
+        </div>
+        <div class="metric-row">
+          <div class="nm">Tag MSE<small>target &lt; 0.05</small></div>
+          <div class="val">0.0075</div>
+          <div class="check">PASS</div>
+        </div>
+        <div class="metric-row">
+          <div class="nm">Spearman Correlation<small>target ≈ 0.7</small></div>
+          <div class="val">0.6342</div>
+          <div class="check near">NEAR</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / knn</div>
+    <div class="slide-num">06 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 7 — THREE MODELS ============ -->
+  <section data-label="07 Three ML Models">
+    <div class="title-row">
+      <div class="slide-label">07 · Models</div>
+      <h2>Three LightGBM regressors, one ranking signal.</h2>
+    </div>
+
+    <div class="models-grid">
+      <!-- Model 1 -->
+      <div class="model-card">
+        <div class="badge">M1 · Success</div>
+        <h3>Will you solve this problem?</h3>
+        <div class="pred">
+          <span class="cyan">solve_score</span> = ever_AC − wa_count × 0.2<br>
+          <span class="dim">clipped to</span> [<span class="green">−1</span>, <span class="green">1</span>]
+        </div>
+        <div class="desc">
+          Sweet-spot filter: keep predictions in <span class="cyan mono">[−0.2, 0.8]</span>. Challenging but reachable — the design decision that makes the rest work.
+        </div>
+        <div style="font-family:var(--mono); font-size: 24px; color:var(--text-dim); line-height:1.6;">
+          → solved, 0 WA = <span class="green">+1.0</span><br>
+          → solved, 5 WA = <span class="yellow">0.0</span><br>
+          → unsolved, 3 WA = <span class="red">−0.6</span>
+        </div>
+        <div class="results">
+          <span class="res-chip"><span class="k">MAE</span>0.26</span>
+          <span class="res-chip"><span class="k">R²</span>0.27</span>
+          <span class="res-chip"><span class="k">AUC</span>0.81</span>
+          <span class="res-chip"><span class="k">n</span>335K</span>
+        </div>
+      </div>
+
+      <!-- Model 2 -->
+      <div class="model-card">
+        <div class="badge">M2 · Attempts</div>
+        <h3>How many tries before AC?</h3>
+        <div class="pred">
+          <span class="cyan">attempts</span> = wa_count + 1<br>
+          <span class="dim">clipped to</span> [<span class="green">1</span>, <span class="green">10</span>]
+        </div>
+        <div class="desc">
+          Trained on solved problems only (~307K rows). Output bucketed for UI labels.
+        </div>
+        <div style="font-family:var(--mono); font-size: 24px; line-height:1.6;">
+          <span class="dim">→</span> &lt; 1.5 <span class="dim">→</span> <span class="green">easy</span><br>
+          <span class="dim">→</span> 1.5–2.5 <span class="dim">→</span> <span class="yellow">moderate</span><br>
+          <span class="dim">→</span> &gt; 2.5 <span class="dim">→</span> <span class="red">hard</span>
+        </div>
+        <div class="results">
+          <span class="res-chip"><span class="k">MAE</span>0.88</span>
+          <span class="res-chip"><span class="k">target</span>solved-only</span>
+          <span class="res-chip"><span class="k">n</span>307K</span>
+        </div>
+      </div>
+
+      <!-- Model 3 -->
+      <div class="model-card">
+        <div class="badge">M3 · Rating Progression</div>
+        <h3>How much rating left to gain?</h3>
+        <div class="pred">
+          <span class="cyan">untapped</span> = cf_max_rating − cf_rating
+        </div>
+        <div class="desc">
+          38 features: 18 contest-behavior signals + 20 tag strengths. Used for ceiling estimate and weakness-aware ranking.
+        </div>
+        <div style="font-family:var(--mono); font-size: 24px; color:var(--text-dim); line-height:1.6;">
+          → contest variance, streaks, peak-recency<br>
+          → tag-coverage entropy, balance score<br>
+          → output in rating points (Δ ≈ ±54)
+        </div>
+        <div class="results">
+          <span class="res-chip"><span class="k">MAE</span>53.96</span>
+          <span class="res-chip"><span class="k">R²</span>0.43</span>
+          <span class="res-chip"><span class="k">features</span>38</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / models</div>
+    <div class="slide-num">07 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 8 — RANKING ============ -->
+  <section data-label="08 Problem Ranking">
+    <div class="title-row">
+      <div class="slide-label">08 · Recommendation</div>
+      <h2>From candidate pool to ranked list.</h2>
+    </div>
+
+    <div class="ranking-layout">
+      <div class="steps">
+        <div class="step">
+          <div class="n">01</div>
+          <div class="body">Build candidate pool: problems <span class="cyan">solved by neighbors</span>, not by you — weighted by neighbor similarity.</div>
+        </div>
+        <div class="step">
+          <div class="n">02</div>
+          <div class="body">Run success model → keep only <code>solve_score ∈ [−0.2, 0.8]</code> — the sweet spot.</div>
+        </div>
+        <div class="step">
+          <div class="n">03</div>
+          <div class="body">Compute <code>weakness_boost</code> = mean((1 − user_strength[t]) × peer_strength[t]) over tags.</div>
+        </div>
+        <div class="step">
+          <div class="n">04</div>
+          <div class="body"><code>final_score = 0.6 × difficulty_match + 0.4 × weakness_boost</code></div>
+        </div>
+        <div class="step">
+          <div class="n">05</div>
+          <div class="body">Sort by <span class="cyan">weakness_boost</span> first, then <code>final_score</code> — skill gaps lead.</div>
+        </div>
+      </div>
+
+      <div style="position:relative;">
+        <div class="ui-label">sample · recommendation card</div>
+        <div class="prob-card">
+          <div class="header">
+            <div class="rating-badge">1900</div>
+            <div class="title">Two Heaps and a Bridge</div>
+          </div>
+          <div class="metrics">
+            <div class="pm">
+              <div class="glyph">◈</div>
+              <div class="lbl">match</div>
+              <div class="v">72%</div>
+            </div>
+            <div class="pm">
+              <div class="glyph">↑</div>
+              <div class="lbl">growth</div>
+              <div class="v green">+45%</div>
+            </div>
+            <div class="pm">
+              <div class="glyph">⟳</div>
+              <div class="lbl">tries</div>
+              <div class="v">~1.8</div>
+            </div>
+            <div class="pm">
+              <div class="glyph">◐</div>
+              <div class="lbl">score</div>
+              <div class="v">0.34</div>
+            </div>
+          </div>
+          <div class="footer">
+            <span class="tag">dp</span>
+            <span class="tag">greedy</span>
+            <span class="difficulty-badge mod">● moderate</span>
+          </div>
+        </div>
+        <div style="font-family:var(--mono); font-size: 24px; color:var(--text-dim); margin-top: 20px; line-height:1.5;">
+          // sorted to the top because <span class="cyan">dp</span> is the user's weakest tag<br>
+          // and neighbors rank strongly in it
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / ranking</div>
+    <div class="slide-num">08 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 9 — COUNTERFACTUAL ============ -->
+  <section data-label="09 Counterfactual">
+    <div class="title-row">
+      <div class="slide-label">09 · Counterfactual</div>
+      <h2>Which tag would buy the most rating?</h2>
+    </div>
+
+    <div class="cf-layout">
+      <div class="algo-list">
+        <div class="algo-step">
+          <div class="icon">1</div>
+          <div class="txt">For each of 20 tags, simulate <code>+20%</code> strength.</div>
+        </div>
+        <div class="algo-step">
+          <div class="icon">2</div>
+          <div class="txt">Re-run the success model on the candidate pool.</div>
+        </div>
+        <div class="algo-step">
+          <div class="icon">3</div>
+          <div class="txt">Count <code>delta_problems</code> entering the sweet spot.</div>
+        </div>
+        <div class="algo-step">
+          <div class="icon">4</div>
+          <div class="txt"><code>estimated_rating_gain = (delta_problems / 10) × 50</code></div>
+        </div>
+        <div class="algo-step">
+          <div class="icon">5</div>
+          <div class="txt">Rank tags by estimated gain — that's your study order.</div>
+        </div>
+        <div style="font-family:var(--mono); font-size: 24px; color:var(--text-dim); line-height:1.5; margin-top: 6px;">
+          // 20 tags × 200 problems = 4,000 LightGBM predictions<br>
+          // negligible latency on commodity hardware
+        </div>
+      </div>
+
+      <div class="cf-output">
+        <div class="head">
+          <div>#</div>
+          <div>tag</div>
+          <div>est. Δ rating</div>
+        </div>
+
+        <div class="cf-row">
+          <div class="rank">01</div>
+          <div class="tag">dp</div>
+          <div class="gain">+62</div>
+        </div>
+        <div class="cf-bar"><div style="width:100%"></div></div>
+
+        <div class="cf-row">
+          <div class="rank">02</div>
+          <div class="tag">graphs</div>
+          <div class="gain">+48</div>
+        </div>
+        <div class="cf-bar"><div style="width:78%"></div></div>
+
+        <div class="cf-row">
+          <div class="rank">03</div>
+          <div class="tag">data structures</div>
+          <div class="gain">+35</div>
+        </div>
+        <div class="cf-bar"><div style="width:57%"></div></div>
+
+        <div class="cf-row">
+          <div class="rank">04</div>
+          <div class="tag">binary search</div>
+          <div class="gain">+28</div>
+        </div>
+        <div class="cf-bar"><div style="width:45%"></div></div>
+
+        <div class="cf-row">
+          <div class="rank">05</div>
+          <div class="tag">number theory</div>
+          <div class="gain">+19</div>
+        </div>
+        <div class="cf-bar"><div style="width:30%"></div></div>
+
+        <div class="cf-row">
+          <div class="rank">06</div>
+          <div class="tag">geometry</div>
+          <div class="gain">+11</div>
+        </div>
+        <div class="cf-bar"><div style="width:18%"></div></div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / counterfactual</div>
+    <div class="slide-num">09 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 10 — MODEL COMPARISON ============ -->
+  <section data-label="10 Model Comparison">
+    <div class="title-row">
+      <div class="slide-label">10 · Baselines</div>
+      <h2>LightGBM beats linear baselines on both tasks.</h2>
+    </div>
+
+    <div class="compare-grid">
+      <div class="cmp-table">
+        <div class="ctitle">Rating Progression</div>
+        <div class="cmp-head">
+          <div>Model</div>
+          <div>MAE</div>
+          <div>R²</div>
+          <div></div>
+        </div>
+        <div class="cmp-row winner">
+          <div class="mname">LightGBM</div>
+          <div class="v">53.96</div>
+          <div class="v">0.43</div>
+          <div class="winner-tag">WINNER</div>
+        </div>
+        <div class="cmp-row">
+          <div class="mname">Linear Regression</div>
+          <div class="v">58.19</div>
+          <div class="v">0.33</div>
+          <div></div>
+        </div>
+        <div class="cmp-row">
+          <div class="mname">Logistic Regression*</div>
+          <div class="v">75.26</div>
+          <div class="v">0.12</div>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="cmp-table">
+        <div class="ctitle">Attempts Estimator</div>
+        <div class="cmp-head">
+          <div>Model</div>
+          <div>MAE</div>
+          <div>R²</div>
+          <div></div>
+        </div>
+        <div class="cmp-row winner">
+          <div class="mname">LightGBM</div>
+          <div class="v">0.88</div>
+          <div class="v">0.18</div>
+          <div class="winner-tag">WINNER</div>
+        </div>
+        <div class="cmp-row">
+          <div class="mname">Linear Regression</div>
+          <div class="v">0.93</div>
+          <div class="v">0.10</div>
+          <div></div>
+        </div>
+        <div class="cmp-row">
+          <div class="mname">Logistic Regression*</div>
+          <div class="v">1.69</div>
+          <div class="v">−0.62</div>
+          <div class="neg-tag">FAILS</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 28px; font-family:var(--mono); font-size: 24px; color: var(--text-dim); line-height:1.5;">
+      * Logistic used as ordinal-proxy regressor — bins target into 5 classes and predicts via weighted bin midpoints.<br>
+      &nbsp;&nbsp;Negative R² means worse than predicting the mean.
+    </div>
+
+    <div class="slide-foot">cf-analyzer / comparison</div>
+    <div class="slide-num">10 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 11 — WEB APP ============ -->
+  <section data-label="11 Web Application">
+    <div class="title-row">
+      <div class="slide-label">11 · Product</div>
+      <h2>A dashboard the model talks through.</h2>
+    </div>
+
+    <div class="arch-layout">
+      <div class="arch-row">
+        <div class="arch-block">
+          <div class="kind">FRONTEND</div>
+          <div class="nm">React 19</div>
+          <div class="dx">Tabs, charts, recommendation cards. Vite + TypeScript.</div>
+        </div>
+        <div class="arch-block">
+          <div class="kind">BACKEND</div>
+          <div class="nm">Express.js</div>
+          <div class="dx">Proxies CF API, spawns Python subprocess, streams to Gemini.</div>
+        </div>
+        <div class="arch-block">
+          <div class="kind">ML</div>
+          <div class="nm">Python subprocess</div>
+          <div class="dx">NumPy + LightGBM. Cold-load ~1s, full analysis ~5–10s.</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <div class="panel" style="padding: 22px 26px;">
+          <div class="mono" style="font-size: 24px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">api endpoints</div>
+          <div style="display:flex; flex-direction:column; gap:14px; font-family:var(--mono); font-size: 24px; line-height:1.4;">
+            <div><span class="cyan">GET</span> /api/cf/:handle <span class="dim">— Codeforces proxy</span></div>
+            <div><span class="cyan">GET</span> /api/ml/analyze/:handle <span class="dim">— Python pipeline</span></div>
+            <div><span class="cyan">POST</span> /api/coach <span class="dim">— Gemini 2.5 Flash plan</span></div>
+          </div>
+          <div style="font-family:var(--mono); font-size: 24px; color: var(--text-dim); margin-top: 18px; padding-top:16px; border-top: 1px dashed var(--border); line-height:1.5;">
+            // CF data and ML pipeline run in parallel (Promise.allSettled).<br>
+            // UI degrades gracefully if the ML pipeline fails.
+          </div>
+        </div>
+
+        <div class="panel" style="padding: 22px 26px;">
+          <div class="mono" style="font-size: 24px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">six tabs</div>
+          <div class="tabs-grid">
+            <div class="tab-card">
+              <div class="tnm">Overview</div>
+              <div class="tdx">Radar of tag strengths, top weaknesses, rating ceiling.</div>
+            </div>
+            <div class="tab-card">
+              <div class="tnm">Tag Analysis</div>
+              <div class="tdx">Per-tag solved/failed counts and ML strength bars.</div>
+            </div>
+            <div class="tab-card">
+              <div class="tnm">Ratings</div>
+              <div class="tdx">Solved vs. failed stacked bars by rating bucket.</div>
+            </div>
+            <div class="tab-card">
+              <div class="tnm">Recs</div>
+              <div class="tdx">ML-ranked problem cards with all three signals.</div>
+            </div>
+            <div class="tab-card">
+              <div class="tnm">Peers</div>
+              <div class="tdx">50 KNN neighbors with similarity scores.</div>
+            </div>
+            <div class="tab-card">
+              <div class="tnm">AI Coach</div>
+              <div class="tdx">Gemini-generated 7-day personalized study plan.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / web app</div>
+    <div class="slide-num">11 / 12</div>
+  </section>
+
+  <!-- ============ SLIDE 12 — TAKEAWAYS ============ -->
+  <section data-label="12 Results">
+    <div class="title-row">
+      <div class="slide-label">12 · Results &amp; Takeaways</div>
+      <h2>What we shipped, what we learned.</h2>
+    </div>
+
+    <div class="takeaways">
+      <div class="take">
+        <div class="big green">86%</div>
+        <div class="lbl">weakness recall — KNN reliably surfaces peers who struggle with the same tags.</div>
+      </div>
+      <div class="take">
+        <div class="big">[−0.2, 0.8]</div>
+        <div class="lbl">the sweet-spot filter on solve_score is the single most important design choice in the ranker.</div>
+      </div>
+      <div class="take">
+        <div class="big">5–10s</div>
+        <div class="lbl">full pipeline latency from handle → ranked recommendations, on commodity hardware.</div>
+      </div>
+      <div class="take">
+        <div class="big red">R² = −0.62</div>
+        <div class="lbl">logistic regression collapses on skewed continuous targets — worse than predicting the mean.</div>
+      </div>
+      <div class="take full">
+        <div class="big">→ counterfactual analysis turns a model output into an answer.</div>
+        <div class="lbl">Instead of "here are 20 problems," the user gets <span class="cyan">"practice dp — it's worth +62 rating."</span> The whole pipeline exists to make that one sentence trustworthy.</div>
+      </div>
+    </div>
+
+    <div class="slide-foot">cf-analyzer / fin</div>
+    <div class="slide-num">12 / 12</div>
+  </section>
+
+</deck-stage>
+
+<script src="deck-stage.js"></script>
+</body>
+</html>
