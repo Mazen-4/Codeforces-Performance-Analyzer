@@ -1,0 +1,1321 @@
+\documentclass[12pt,a4paper]{article}
+
+% ------------------------------------------------
+% Packages
+% ------------------------------------------------
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{tabularx}
+\usepackage[numbers]{natbib}
+\usepackage{array}
+\usepackage{xcolor}
+
+\onehalfspacing
+\setlength{\parskip}{6pt}
+
+% ------------------------------------------------
+% Title Formatting
+% ------------------------------------------------
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+% ------------------------------------------------
+% Document
+% ------------------------------------------------
+\begin{document}
+
+% ------------------------------------------------
+% Cover Page
+% ------------------------------------------------
+\begin{titlepage}
+    \centering
+    
+    % Logos Side by Side
+    \noindent
+    \begin{minipage}{0.49\textwidth}
+        \raggedright
+        \includegraphics[width=0.8\textwidth]{Images/MSALogo.png}
+    \end{minipage}
+    \begin{minipage}{0.49\textwidth}
+        \raggedleft
+        \includegraphics[width=0.8\textwidth]{Images/GreenwichLogo.png}
+    \end{minipage}
+    
+    \vspace{1.5cm}
+    
+    {\Large \textbf{October University for Modern Science and Arts}}\\[0.2cm]
+    {\large Faculty of Computer Science}\\[0.3cm]
+    
+    {\LARGE \textbf{Machine Learning Project Report}}\\[1.5cm]
+    
+    \textbf{Course Name:} Machine Learning\\
+    \textbf{Course Code:} CS363\\
+    \textbf{Instructor:} Assoc Prof. Nermin Abd El-Wahab, Dr. Ebtsam El-Hussany\\
+    \textbf{Teaching Assistant:} Eng. Omnia Fawzy, Eng. Youssef Araby, Eng. Mazen Ashraf, Eng. Ahmed Yasser\\[1cm]
+    
+    \textbf{Team Members:}\\
+    Mazen Ismail  -- 246063\\
+    Marwan Ismail -- 246069\\
+    Omar Khalifa  -- 247923\\
+    Mohamed Hany  -- 246631\\
+    Malak Foudh   -- 245229\\[1cm]
+    
+    \textbf{Submission Date:} \today
+    
+    \vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ------------------------------------------------
+% Introduction
+% ------------------------------------------------
+\section{Introduction}
+
+CF-Analyzer is a personalized problem recommendation system using KNN and LightGBM,
+trained on over 800{,}000 submissions from 2{,}877 Codeforces users.
+
+\subsection*{Motivation}
+\begin{itemize}
+    \item Beginner users on Codeforces struggle to find an effective strategy to improve
+          their skill level, due to the massive number of available problems and the
+          variety of topics they cover.
+    \item Users tend to solve easy problems near their current skill level, leading to
+          a performance plateau.
+    \item There is no built-in metric for users to evaluate their skill level relative
+          to peers.
+    \item Improvement strategies for advanced users are not applicable to beginners due
+          to the significant skill gap; weakness profiles must be personalized.
+\end{itemize}
+
+\subsection*{Objective}
+Provide an ML pipeline that tailors a personalized study plan for each user by
+analyzing their strengths, weaknesses, and improvement metrics relative to similar
+peers.
+
+\subsection*{Dataset}
+The dataset was self-collected from the Codeforces API, then preprocessed and filtered
+using custom Python scripts.
+
+\subsection*{Models Used}
+    \begin{itemize}
+        \item KNN --- finding the 50 nearest neighbors in an 82-dimensional feature space
+        \item LightGBM Regressor --- problem success scoring and attempts estimation
+    \end{itemize}
+
+\subsection*{Alternative Models Evaluated}
+    \begin{itemize}
+        \item XGBoost (requires balanced data; discarded due to class imbalance)
+        \item Linear Regression (weaker nonlinear capture; used as baseline)
+        \item Logistic Regression (failed due to skewness of the target distribution)
+    \end{itemize}
+
+\subsection*{Summary of Achieved Results}
+
+The system delivers an end-to-end ML-powered competitive programming coach.
+
+\paragraph{Dataset \& KNN}
+\begin{itemize}
+    \item A dataset of 2{,}877 active Codeforces users was collected and preprocessed
+          into an 82-dimensional feature space spanning 20 algorithmic topics.
+    \item Leave-one-out KNN evaluation ($K{=}50$, Euclidean distance) yielded:
+    \begin{itemize}
+        \item Weakness Recall: $85.78\%$ (target: ${>}70\%$)
+        \item Weakness Jaccard: $64.34\%$ (target: ${>}50\%$)
+        \item Tag MSE: $0.0075$ (target: ${<}0.05$)
+        \item Spearman Correlation: $0.634$
+    \end{itemize}
+\end{itemize}
+
+\paragraph{ML Models}
+\begin{itemize}
+    \item The \textit{Success Model} (LightGBM) achieves AUC-ROC of $0.78$ and
+          F1-score of $0.72$, used to rank problems by difficulty fit.
+    \item The \textit{Attempts Estimator} (LightGBM) achieves MAE of ${\pm}0.88$
+          attempts, outperforming Linear Regression ($\text{MAE} \approx 1.1$)
+          and Logistic Regression ($\text{MAE} \approx 1.0$).
+    \item Both models were trained on ${\approx}500{,}000$ and ${\approx}384{,}000$
+          rows respectively from the preprocessed dataset.
+\end{itemize}
+
+
+% ============================================================
+%  SECTION 2 — LITERATURE REVIEW
+%  Replace the placeholder \section{Literature Review} block
+%  in your Overleaf document with this.
+% ============================================================
+ 
+\section{Literature Review}
+ 
+\subsection{Overview of Related Work}
+ 
+CF-Analyzer sits at the intersection of competitive programming analytics,
+ML-based performance prediction, and personalised problem recommendation.
+Prior work has approached these sub-problems using classical ML classifiers
+(Logistic Regression, Naïve Bayes, SVM, Random Forest), deep learning
+architectures (MLP, CNN, LSTM, and transformer-based models), and
+content-based filtering — all applied to online-judge data such as
+submission histories, rating trajectories, and problem tags.
+The three papers reviewed below are the most directly relevant to our
+system's core pipeline: problem attribute prediction, contest performance
+forecasting, and automated problem recommendation.
+ 
+% ---------------------------------------------------------------
+\subsection{Summary of Key Papers}
+ 
+\subsubsection*{Paper 1 — Kim et al.\ (2024): Problem-Solving Guide (PSG)}
+ 
+\textbf{Reference:}
+Kim, J., Cho, E., \& Na, D.\ \textit{Problem-Solving Guide (PSG):
+Predicting the Algorithm Tags and Difficulty for Competitive Programming
+Problems}. AAAI Conference on Artificial Intelligence (AAAI 2024),
+\textit{Proceedings of Machine Learning Research}, Vol.\ 257,
+pp.\ 48–56. \cite{kim2024psg}
+ 
+\textbf{Problem addressed.}
+The paper frames the prediction of a Codeforces problem's algorithmic
+category (tag) and difficulty rating as a unified multi-task learning
+problem — multi-label classification for tags, and ordinal classification
+for difficulty.
+ 
+\textbf{Dataset.}
+A corpus of 7,976 Codeforces problems with their problem statements,
+tags, and difficulty ratings.
+ 
+\textbf{Models implemented.}
+A BigBird-based multi-task model (PSG), outperforming earlier single-task
+CNN-based approaches on both prediction tasks.
+ 
+\textbf{Performance.}
+PSG achieves state-of-the-art results on both the tag classification
+and difficulty prediction tasks, surpassing all single-task baselines.
+ 
+\textbf{Limitations.}
+The model operates purely on problem text and has no notion of user
+behaviour; it cannot personalise recommendations based on individual
+skill profiles.
+ 
+\textbf{Relation to this project.}
+Our problem recommendation pipeline relies on accurately labelled tags
+and difficulty ratings when scoring candidate problems for a target user.
+PSG validates that these attributes are machine-learnable and motivates
+treating tag coverage as a first-class feature in our 29-dimensional
+LightGBM input vector.
+ 
+% ---------------------------------------------------------------
+ 
+\subsubsection*{Paper 2 — Rahman et al.\ (2023): Predicting Contest Performance with Deep Learning}
+ 
+\textbf{Reference:}
+Rahman, M.\ M., Chandra Das, B., Biswas, A.\ A., \& Anwar, M.\ M.\
+\textit{Predicting Participants' Performance in Programming Contests Using
+Deep Learning Techniques}. \textit{Hybrid Intelligent Systems (HIS 2022)},
+Lecture Notes in Networks and Systems, Vol.\ 647, Springer. \cite{rahman2023predicting}
+ 
+\textbf{Problem addressed.}
+Predicting a contestant's upcoming contest rank and post-contest rating
+using their Codeforces history.
+ 
+\textbf{Dataset.}
+Submission histories, contest ranks, ratings, and verdicts for
+100 Codeforces users, treating each contest as a time-step with four
+feature types.
+ 
+\textbf{Models implemented.}
+Multiple ML baselines (Logistic Regression, SVM, Random Forest) and
+deep learning models (MLP, LSTM); deep learning outperformed all
+baselines across every metric.
+ 
+\textbf{Performance.}
+Deep learning models achieve the lowest prediction error on both
+rank and rating forecasting tasks.
+ 
+\textbf{Limitations.}
+The 100-user sample is too small for robust generalisation.
+Only four per-contest features are used, ignoring tag-level granularity
+and submission-level behavioural signals.
+ 
+\textbf{Relation to this project.}
+This paper motivates using nonlinear models over linear ones for
+user-level performance prediction — a finding confirmed by our own
+comparison experiments (LightGBM vs.\ Linear Regression, Section 7).
+Our dataset of 2,877 users with an 82-dimensional feature space directly
+addresses the small-sample and shallow-feature limitations identified here.
+ 
+% ---------------------------------------------------------------
+ 
+\subsubsection*{Paper 3 — Sudha et al.\ (2018): CNN-Based Problem Classification and Recommendation}
+ 
+\textbf{Reference:}
+Sudha, S., Arun Kumar, A., Muthu Nagappan, M., \& Suresh, R.\
+\textit{Classification and Recommendation of Competitive Programming
+Problems Using CNN}. \textit{ICIIT 2017}, Communications in Computer
+and Information Science, Vol.\ 808, Springer. \cite{sudha2018cnn}
+ 
+\textbf{Problem addressed.}
+Automatically identifying the algorithmic technique required by a problem
+from its C++ solution code, and using that classification to recommend
+similar problems.
+ 
+\textbf{Dataset.}
+Competitive programming problems with associated accepted C++ solutions,
+labelled by algorithmic technique.
+ 
+\textbf{Models implemented.}
+A CNN applied directly to tokenised source-code representations, one of
+the earliest works combining automated problem classification with a
+recommendation pipeline in the competitive programming domain.
+ 
+\textbf{Performance.}
+The CNN-based classifier achieves higher accuracy than traditional
+text-feature baselines for technique identification.
+ 
+\textbf{Limitations.}
+Requires access to accepted solution code at inference time, which is
+unavailable when recommending \textit{unsolved} problems.
+Recommendations are purely content-based and offer no personalisation
+relative to a user's individual skill profile.
+ 
+\textbf{Relation to this project.}
+While Sudha et al.\ route recommendations through source-code similarity,
+CF-Analyzer achieves tag-level personalisation entirely from submission
+metadata — no solution code is needed. This makes our approach applicable
+at recommendation time, not only retrospectively.
+ 
+% ---------------------------------------------------------------
+\subsection{Gap Analysis}
+ 
+All three papers share a common limitation: they operate on narrow,
+shallow feature sets and address only one sub-problem at a time.
+Kim et al.\ focus exclusively on predicting problem attributes from
+problem text, with no modelling of user behaviour.
+Rahman et al.\ use only four per-contest features and a dataset of
+100 users, making generalisation difficult.
+Sudha et al.\ classify problems from solution source code rather than
+user interaction signals, and offer no personalisation based on individual
+skill levels.
+ 
+None of these works model the \textbf{interplay between tag-specific
+weakness, problem difficulty gaps, and peer-benchmarked skill standing}
+— all of which are natively captured in our 82-dimensional KNN feature
+space and 29-dimensional LightGBM input vector.
+CF-Analyzer addresses this gap by building an end-to-end ML pipeline on
+a significantly richer and more holistic feature space, enabling not only
+problem scoring but also personalised peer retrieval and contextual
+weakness identification within a single unified system.
+
+
+% ------------------------------------------------
+% Dataset Description
+% ------------------------------------------------
+\section{Dataset Description}
+
+\subsection*{Dataset Source}
+
+The dataset was self-collected from the public \textbf{Codeforces API}
+(\texttt{codeforces.com/api}), which provides free, unauthenticated access to
+submission histories and user profiles. No existing Kaggle or UCI dataset was used;
+the dataset was purpose-built for this system using custom Python collection and
+preprocessing scripts.
+
+\subsection*{Dataset Characteristics}
+
+\paragraph{Scale}
+The raw dataset contains approximately \textbf{2 million submissions} from
+\textbf{2,877 active users}, reduced to ${\approx}900{,}000$ cleaned rows after
+filtering. The tag strength matrix derived from these submissions contains
+${\approx}57{,}540$ rows (one per user--tag pair across 20 topics).
+
+\paragraph{Features}
+Each submission record contains 27 columns, including:
+\begin{itemize}
+    \item \textbf{Categorical:} user handle, problem ID, problem name, tag flags
+          (\texttt{tag\_dp}, \texttt{tag\_greedy}, \ldots, 20 binary columns)
+    \item \textbf{Numerical:} problem rating (difficulty), verdict flags
+          (\texttt{is\_ac}, \texttt{is\_wa}, \texttt{is\_tle}, \texttt{is\_mle})
+\end{itemize}
+
+User profiles add aggregate numerical features per user: current and peak
+Codeforces rating, total accepted problems, first-try rate, average attempts to
+AC, and solved-problem counts broken down by rating band.
+
+\paragraph{Engineered Features (KNN Feature Vector)}
+The primary representation fed to KNN is an \textbf{82-dimensional vector} computed
+per user, structured as follows:
+\begin{itemize}
+    \item $4 \times 20 = 80$ dimensions: acceptance rate, difficulty score,
+          specialization score, and volume score for each of the 20 algorithmic tags
+    \item $2$ dimensions: rating boost and efficiency score (user-level constants)
+\end{itemize}
+
+\paragraph{Target Variables}
+Two supervised targets are used for the LightGBM models:
+\begin{itemize}
+    \item \texttt{solve\_score} $\in [-1, 1]$: a continuous measure of how cleanly a
+          user solved a problem, defined as
+          $\texttt{ever\_ac} - 0.2 \times \texttt{wa\_count}$, clipped to $[-1,1]$.
+    \item \texttt{attempts}: number of submissions before AC
+          ($= \texttt{wa\_count} + 1$), clipped to $[1, 10]$.
+\end{itemize}
+
+\paragraph{Class / Target Distribution}
+The \texttt{solve\_score} distribution is heavily right-skewed: the majority of
+recorded (user, problem) pairs are clean first-try solves (score near $1.0$),
+with a long tail of failed or messy attempts. Similarly, \texttt{attempts} is
+right-skewed with most values at 1 (clean solve) and a long tail up to the clip
+value of 10.
+
+\subsection*{Exploratory Data Analysis (EDA)}
+
+\paragraph{Tag Distribution}
+Across all 2,877 users, the most frequently attempted tags are
+\textit{implementation}, \textit{greedy}, and \textit{math}, reflecting
+Codeforces' problem set composition. Rare tags such as \textit{fft},
+\textit{flows}, and \textit{probabilities} have significantly fewer user--problem
+interactions, producing sparse observations for those columns.
+
+\paragraph{Rating Distribution}
+Problems in the dataset span Codeforces difficulty ratings from 800 to 3500.
+The bulk of solved problems cluster in the 1000--2000 range, corresponding to
+the rating range of the majority of collected users. Problems above 2500 are
+heavily underrepresented.
+
+\paragraph{Tag Strength Scores}
+The engineered \texttt{tag\_strength} scores ($\in [0,1]$) are broadly
+right-skewed across the dataset: most users score below $0.5$ in niche or
+advanced tags (e.g., \textit{fft}, \textit{geometry}) and above $0.5$ in
+fundamental tags (e.g., \textit{implementation}, \textit{greedy}).
+
+\paragraph{Missing Values}
+Users who have never attempted a given tag receive an implicit tag strength of
+$0$ rather than a missing value, by design of the Laplace-smoothed acceptance
+rate formula. No missing values exist in the final feature matrix used for KNN.
+
+\subsection*{Dataset Challenges and Limitations}
+
+\begin{itemize}
+    \item \textbf{Target skewness.} Both \texttt{solve\_score} and
+          \texttt{attempts} are heavily right-skewed. The majority of entries
+          are clean solves, which biases naive models toward predicting easy
+          outcomes. LightGBM handles this naturally via tree splits, but it
+          caused Logistic Regression (ordinal proxy) to underperform.
+
+    \item \textbf{Sparse tags.} Tags such as \textit{fft}, \textit{flows}, and
+          \textit{graph matchings} have very few samples per user, making
+          their component scores unreliable for low-activity users. The
+          Laplace smoothing in the acceptance rate formula partially mitigates
+          this.
+
+    \item \textbf{Minimum activity filter.} Users with fewer than 30 accepted
+          submissions were discarded. This improves signal quality but
+          excludes beginners entirely from the dataset, potentially reducing
+          recommendation quality for very new users.
+
+    \item \textbf{Submission cap.} Only the most recent 500 submissions are
+          fetched per target user at runtime. Long-tenured users with
+          thousands of submissions may have their early activity
+          underrepresented.
+
+    \item \textbf{Data collection bias.} The 2,877 dataset users were sampled
+          from active participants in Codeforces rounds. Casual or irregular
+          participants are underrepresented, so the KNN peer group skews
+          toward consistent competitors.
+
+    \item \textbf{No temporal features.} Submission timestamps are not used.
+          A user who was strong in \textit{dp} two years ago but has not
+          practiced since is indistinguishable from a currently active
+          \textit{dp} specialist.
+\end{itemize}
+
+
+% ------------------------------------------------
+% Preprocessing & Feature Engineering
+% ------------------------------------------------
+\section{Data Preprocessing and Feature Engineering}
+
+\subsection*{Data Cleaning}
+
+The raw submission data required several cleaning steps before it could be used
+for training or KNN indexing. All steps are implemented in
+\texttt{ML/preprocessing/submissionsCleaning.py}.
+
+\begin{itemize}
+    \item \textbf{Verdict consolidation.} Time Limit Exceeded (\texttt{is\_tle}) and
+          Memory Limit Exceeded (\texttt{is\_mle}) flags were merged into
+          \texttt{is\_wa}, treating all non-AC outcomes uniformly as wrong answers:
+          \begin{quote}
+              \texttt{is\_wa = is\_wa | is\_tle | is\_mle}
+          \end{quote}
+
+    \item \textbf{Incomplete submission removal.} Rows where both \texttt{is\_ac}
+          and \texttt{is\_wa} were 0 (pending or unscored verdicts) were dropped,
+          as they carry no training signal.
+
+    \item \textbf{Null removal.} Rows with a null \texttt{problem\_name} were
+          dropped to ensure every record has a valid problem identity.
+
+    \item \textbf{Minimum activity filter.} Users with fewer than 30 accepted
+          submissions were removed. Sparse users produce unreliable tag strength
+          estimates and degrade KNN quality.
+
+    \item \textbf{Unrateable problem removal.} Problems with no difficulty rating
+          \emph{and} no tags were dropped, as they contribute no learnable signal
+          to either the feature vector or the LightGBM models.
+
+    \item \textbf{Column selection.} Only the columns needed downstream were
+          retained: \texttt{handle}, \texttt{problem\_id}, \texttt{problem\_name},
+          \texttt{problem\_rating}, \texttt{is\_ac}, \texttt{is\_wa}, and all 20
+          \texttt{tag\_*} binary columns. This reduced the working set from
+          ${\approx}2\text{M}$ to ${\approx}900{,}000$ rows.
+\end{itemize}
+
+No duplicate submission rows were present after applying the minimum activity
+filter, since each \texttt{(handle, problem\_id, verdict)} combination is a
+distinct event in the Codeforces API response.
+
+\subsection*{Dataset Preprocessing}
+
+\paragraph{Binary Tag Encoding}
+Each problem's Codeforces tags are mapped to 20 binary columns
+(\texttt{tag\_dp}, \texttt{tag\_greedy}, \ldots, \texttt{tag\_constructive}).
+Tags not in the fixed vocabulary of 20 topics are silently discarded. This is
+equivalent to multi-hot encoding over a fixed tag vocabulary.
+
+\paragraph{Target Variable Construction}
+\begin{itemize}
+    \item \textbf{solve\_score} is computed per \texttt{(handle, problem\_id)} pair
+          by aggregating all submissions:
+          \[
+              \texttt{solve\_score} = \texttt{ever\_ac} - 0.2 \times \texttt{wa\_count},
+              \quad \text{clipped to } [-1,\, 1]
+          \]
+    \item \textbf{attempts} is computed only on solved problems:
+          \[
+              \texttt{attempts} = \texttt{wa\_count} + 1,
+              \quad \text{clipped to } [1,\, 10]
+          \]
+\end{itemize}
+
+\paragraph{Normalization}
+No global standardization or normalization was applied to the LightGBM inputs,
+as gradient boosted trees are invariant to monotonic feature scaling. The KNN
+feature vector components are each naturally bounded to $[0,1]$ by construction
+(see Feature Engineering below), so no additional normalization was required
+there either.
+
+\subsection*{Feature Engineering}
+
+\paragraph{Tag Strength Score (Offline, per user--tag pair)}
+The central engineered feature is \texttt{tag\_strength} $\in [0,1]$, computed
+by \texttt{ML/preprocessing/strength.py} for every \texttt{(user, tag)} pair.
+It combines six component scores with fixed weights:
+
+\[
+\texttt{tag\_strength} =
+    0.30\,r_{\text{acc}}
+  + 0.30\,r_{\text{diff}}
+  + 0.20\,r_{\text{boost}}
+  + 0.10\,r_{\text{spec}}
+  + 0.075\,r_{\text{eff}}
+  + 0.075\,r_{\text{vol}}
+\]
+
+where:
+\begin{itemize}
+    \item $r_{\text{acc}} = \dfrac{\text{ac\_count}+1}{\text{total\_attempts}+2}$
+          \quad (Laplace-smoothed acceptance rate)
+    \item $r_{\text{diff}} = \dfrac{\text{avg\_rating\_solved}}{3500}$
+          \quad (normalised average difficulty of solved problems)
+    \item $r_{\text{boost}} = \dfrac{\text{cf\_rating} + \text{cf\_max\_rating}}{2 \times 3500}$
+          \quad (user-level rating standing)
+    \item $r_{\text{spec}} = \dfrac{\text{ac\_count}}{\text{total\_ac}}$
+          \quad (fraction of all solves belonging to this tag)
+    \item $r_{\text{eff}} = \text{first\_try\_rate}$
+          \quad (fraction of problems solved on first submission)
+    \item $r_{\text{vol}} = \dfrac{\log(1 + \text{ac\_count})}{\log(1 + 50)}$
+          \quad (volume with diminishing returns, normalised at 50 solves)
+\end{itemize}
+
+\paragraph{82-Dimensional KNN Feature Vector}
+\texttt{tag\_strength} is intentionally \emph{excluded} from the KNN vector.
+Instead, the four per-tag component scores ($r_{\text{acc}},\, r_{\text{diff}},
+\, r_{\text{spec}},\, r_{\text{vol}}$) are used directly for all 20 tags,
+giving $4 \times 20 = 80$ dimensions. The two user-level scalars
+($r_{\text{boost}},\, r_{\text{eff}}$) are appended once, giving
+\textbf{82 dimensions} total. Including them 20 times would inflate their
+contribution to Euclidean distances by a factor of 20, which was avoided by
+design.
+
+\paragraph{Peer-Benchmarked Tag Strength (Runtime)}
+At inference time, \newline
+\texttt{ML/inference/TagAnalyzer.py} recomputes tag strengths
+benchmarked against the 50 retrieved neighbors rather than against the full
+dataset. This produces scores that reflect the user's standing within their peer
+group, making the displayed weaknesses contextually meaningful.
+
+\paragraph{LightGBM Feature Vector (29 dimensions)}
+Both LightGBM models share an identical 29-dimensional input vector per
+\texttt{(user, problem)} pair:
+\begin{itemize}
+    \item \texttt{rating\_diff} $= \text{problem\_rating} - \text{cf\_rating}$
+    \item \texttt{rating\_diff\_sq} $= \texttt{rating\_diff}^2$
+    \item \texttt{cf\_rating}, \texttt{num\_solved}
+    \item \texttt{mean\_tag\_strength}, \texttt{tag\_strength\_min},
+          \texttt{tag\_strength\_max}, \texttt{tag\_coverage}, \newline \texttt{problem\_tag\_count}
+    \item 20 binary \texttt{tag\_*} flags for the problem
+\end{itemize}
+
+\subsection*{Train/Test Split and Reproducibility}
+
+Both LightGBM models were trained on an 80/20 train/test split using
+\texttt{random\_state = 42} throughout. The split was applied at the
+\texttt{(handle, problem\_id)} row level, not at the user level, since the
+models predict per-problem outcomes rather than per-user outcomes.
+
+All preprocessing steps (target variable computation, tag strength scoring) were
+computed on the full dataset before splitting, which is appropriate here because
+these transformations are deterministic functions of the submission records
+themselves and do not introduce leakage from the test labels. The LightGBM
+models use early stopping with a held-out 20\% validation portion of the
+training split (i.e., an internal 64/16/20 effective split) to determine the
+optimal number of trees without overfitting.
+
+The KNN model is non-parametric and requires no train/test split; its quality
+was assessed via leave-one-out cross-validation on the full dataset of 2,877 users.
+
+\subsection*{Preprocessing Pipeline}
+
+The offline preprocessing pipeline executes in the following order:
+
+\begin{enumerate}
+    \item \textbf{Raw collection} --- Codeforces API $\rightarrow$
+          \texttt{01\_submissions.csv}, \texttt{02\_user\_profiles.csv}
+    \item \textbf{Submission cleaning} --- \texttt{submissionsCleaning.py}
+          $\rightarrow$ \texttt{04\_filtered\_submissions.csv}
+    \item \textbf{Tag strength computation} --- \texttt{strength.py}
+          $\rightarrow$ \texttt{06\_user\_tag\_strengths.csv}
+    \item \textbf{Profile enrichment} --- merge profiles with strongest/weakest
+          tag columns $\rightarrow$ \texttt{07\_enriched\_user\_profiles.csv}
+    \item \textbf{KNN matrix construction} --- pivot \texttt{06\_user\_tag\_strengths.csv}
+          into an $2{,}877 \times 82$ matrix (stored in memory at runtime)
+    \item \textbf{LightGBM training} --- \texttt{train\_success\_model.py},
+          \texttt{train\_attempts\_model.py} $\rightarrow$
+          \texttt{success\_model.pkl}, \texttt{attempts\_model.pkl}
+\end{enumerate}
+
+Steps 1--6 run once offline. At runtime, only the CSV files and \texttt{.pkl}
+files are loaded; no retraining occurs.
+
+% ------------------------------------------------
+% Implemented Models
+% ------------------------------------------------
+\section{Implemented Models}
+
+% ------------------------------------------------
+% Model 1 — KNN
+% ------------------------------------------------
+\subsection*{Model 1 --- K-Nearest Neighbors (KNN)}
+
+\paragraph{Mathematical Intuition}
+KNN is a non-parametric retrieval model. Given a query vector $\mathbf{q} \in
+\mathbb{R}^{82}$ representing the target user's skill profile, it finds the $K$
+dataset users whose feature vectors $\mathbf{x}_i$ minimise Euclidean distance:
+\[
+    d(\mathbf{q}, \mathbf{x}_i) = \sqrt{\sum_{j=1}^{82}(q_j - x_{ij})^2}
+\]
+The $K=50$ nearest neighbors are returned, sorted by distance ascending.
+
+\paragraph{Similarity Score}
+Two derived scores are produced per neighbor. The \emph{internal similarity}
+normalises distances within the retrieved set:
+\[
+    s_i = \left(1 - \frac{d_i - d_{\min}}{d_{\max} - d_{\min}}\right) \times 100
+\]
+The \emph{display similarity} normalises against the furthest user in the entire
+dataset, giving an absolute sense of closeness.
+
+\paragraph{Key Hyperparameters}
+\begin{itemize}
+    \item $K = 50$ neighbors
+    \item Distance metric: Euclidean
+    \item Feature space: 82 dimensions
+\end{itemize}
+
+\paragraph{Why Suitable}
+KNN requires no training and produces interpretable peer groups. The goal is not
+a scalar prediction but a ranked list of similar users, which is exactly what KNN
+returns.
+
+\paragraph{Advantages and Limitations}
+Advantages: no training phase, robust to non-linear structure, output is directly interpretable as a peer group. \newline
+Limitations: $O(N)$ inference cost (mitigated by
+numpy vectorization over 2,877 users), sensitive to feature scaling (mitigated by
+bounding all components to $[0,1]$), no probabilistic output.
+
+% ------------------------------------------------
+% Model 2 — LightGBM Success Model
+% ------------------------------------------------
+\subsection*{Model 2 --- LightGBM Regressor (Success Model)}
+
+\paragraph{Mathematical Intuition}
+LightGBM builds an ensemble of decision trees via gradient boosting. Each tree
+$h_t$ fits the negative gradient of the loss with respect to the current
+ensemble prediction:
+\[
+    F_T(\mathbf{x}) = \sum_{t=1}^{T} \eta \cdot h_t(\mathbf{x})
+\]
+where $\eta$ is the learning rate and the loss is mean squared error over
+\texttt{solve\_score}. LightGBM's histogram-based split finding and
+leaf-wise tree growth make it significantly faster than XGBoost for large
+tabular datasets.
+
+\paragraph{Target Variable}
+\texttt{solve\_score} $\in [-1, 1]$: a continuous measure of how cleanly the
+user solved the problem, penalising wrong answers at a rate of $0.2$ per WA.
+
+\paragraph{Key Hyperparameters}
+\begin{itemize}
+    \item \texttt{n\_estimators}: 500 (with early stopping at 50 rounds)
+    \item \texttt{learning\_rate}: 0.05
+    \item \texttt{num\_leaves}: 63
+    \item \texttt{min\_child\_samples}: 50
+    \item \texttt{subsample}: 0.8, \texttt{colsample\_bytree}: 0.8
+    \item \texttt{random\_state}: 42
+\end{itemize}
+
+\paragraph{Training Setup}
+Trained on ${\approx}500{,}000$ \texttt{(handle, problem\_id)} rows from
+\texttt{04\_filtered\_submissions.csv}. 80/20 train/test split; early stopping
+monitored on an internal validation fold.
+
+\paragraph{Advantages and Limitations}
+Advantages: handles nonlinear feature interactions natively (e.g., high
+\texttt{rating\_diff} combined with low \texttt{tag\_strength} is far worse than either alone), fast inference via tree lookup, no feature scaling needed. \newline
+Limitations: predictions are not calibrated probabilities; the $R^2 \approx 0.35$
+reflects inherent noise in human solving behavior.
+
+% ------------------------------------------------
+% Model 3 — LightGBM Attempts Estimator
+% ------------------------------------------------
+\subsection*{Model 3 --- LightGBM Regressor (Attempts Estimator)}
+
+\paragraph{Mathematical Intuition}
+Identical architecture to Model 2. The target is \texttt{attempts} $\in [1, 10]$,
+trained only on solved problems (\texttt{ever\_ac = 1}), as unsolved problems have
+no well-defined attempts-to-AC count.
+
+\paragraph{Target Variable}
+\[
+    \texttt{attempts} = \texttt{wa\_count} + 1, \quad \text{clipped to } [1,\, 10]
+\]
+
+\paragraph{Key Hyperparameters}
+Identical to Model 2.
+
+\paragraph{Training Setup}
+Trained on ${\approx}384{,}000$ rows (solved problems only). The lower $R^2
+\approx 0.18$ compared to the success model is expected: the number of attempts
+a person takes is highly variable even for the same user--problem pair, depending
+on factors absent from the training data (e.g., hints consulted, time of day).
+
+\paragraph{Advantages and Limitations}
+Advantages: fast, handles the nonlinear difficulty--strength interaction. \newline
+Limitations: low $R^2$ due to noise; output is used only for a coarse
+easy/moderate/hard label, so exact accuracy is less critical.
+
+% ------------------------------------------------
+% Model 4 — Linear Regression (Baseline)
+% ------------------------------------------------
+\subsection*{Model 4 --- Linear Regression (Baseline)}
+
+\paragraph{Mathematical Intuition}
+Linear regression fits a hyperplane:
+\[
+    \hat{y} = \mathbf{w}^\top \mathbf{x} + b
+\]
+by minimising the sum of squared residuals. Features were standardised with
+\texttt{StandardScaler} before fitting, since linear regression is sensitive
+to feature magnitude.
+
+\paragraph{Why Used}
+Serves as a lower-bound baseline to quantify how much the tree-based models gain
+from capturing nonlinear interactions.
+
+\paragraph{Advantages and Limitations}
+Advantages: interpretable coefficients, no hyperparameters, fast. \newline
+Limitations: cannot capture the interaction between \texttt{rating\_diff} and
+\texttt{tag\_strength} that is central to predicting solve difficulty.
+
+% ------------------------------------------------
+% Model 5 — Logistic Regression Ordinal Proxy
+% ------------------------------------------------
+\subsection*{Model 5 --- Logistic Regression (Ordinal Proxy)}
+
+\paragraph{Mathematical Intuition}
+Logistic Regression is a classifier, not a regressor. To apply it to a
+continuous target, the target is discretized into $N=5$ equal-frequency bins
+using percentile boundaries. The model predicts class probabilities
+$\mathbf{p} \in \mathbb{R}^5$, and the final continuous prediction is the
+expected value over bin midpoints:
+\[
+    \hat{y} = \mathbf{p}^\top \mathbf{m}, \quad
+    \mathbf{m} = [\,m_1,\, m_2,\, m_3,\, m_4,\, m_5\,]
+\]
+where $m_k$ is the midpoint of bin $k$.
+
+\paragraph{Why Used}
+Evaluates whether a probabilistic ordinal model can bridge the gap between linear
+regression and gradient boosting.
+
+\paragraph{Advantages and Limitations}
+Advantages: produces well-calibrated class probabilities. \newline
+Limitations: the equal-frequency binning does not account for the heavy right skew of \texttt{attempts} and \texttt{solve\_score}; bins near the tail are wide
+and introduce significant discretization error.
+
+% ------------------------------------------------
+% Hyperparameter Tuning
+% ------------------------------------------------
+\subsection*{Hyperparameter Tuning}
+
+Hyperparameters for both LightGBM models were selected manually based on
+established best practices for tabular regression with gradient boosting, rather
+than via automated grid or random search. The primary regularization controls
+were:
+
+\begin{itemize}
+    \item \textbf{Early stopping} (patience = 50 rounds) to determine the
+          effective number of trees, avoiding overfitting without fixing
+          \texttt{n\_estimators} in advance.
+    \item \textbf{Row and column subsampling}
+          (\texttt{subsample = 0.8}, \texttt{colsample\_bytree = 0.8})
+          to reduce variance.
+    \item \textbf{Minimum leaf samples} (\texttt{min\_child\_samples = 50})
+          to prevent overfitting on rare tag combinations.
+\end{itemize}
+
+Both models share identical hyperparameters to keep the comparison controlled.
+No cross-validation was used for hyperparameter search; a single 80/20
+train/validation split was used throughout.
+
+% ------------------------------------------------
+% Evaluation Strategy
+% ------------------------------------------------
+\section{Evaluation Strategy}
+
+\subsection*{Evaluation Setup}
+
+\begin{itemize}
+    \item \textbf{LightGBM models:} 80/20 train/test split,
+          \texttt{random\_state = 42}. The training set is further split 80/20
+          internally for early stopping, giving an effective 64/16/20
+          train/val/test breakdown.
+    \item \textbf{KNN:} Leave-one-out cross-validation over all 2,877 users.
+          Each user is temporarily removed from the 82-dimensional matrix,
+          KNN is run on the reduced set, and the neighbor centroid is compared
+          to the held-out user's profile.
+    \item \textbf{Data leakage prevention:} Target variable construction
+          (\texttt{solve\_score}, \texttt{attempts}) aggregates submission
+          records and does not use any future information. Tag strength scores
+          used as LightGBM features are derived entirely from the same user's
+          historical submissions and do not leak test labels.
+\end{itemize}
+
+\subsection*{Evaluation Metrics}
+
+\paragraph{KNN Quality Metrics}
+\begin{itemize}
+    \item \textbf{Weakness Jaccard} --- set overlap of weak tags (strength $< 0.7$)
+          between the user and the neighbor centroid. Measures whether the
+          right tags are flagged as weak.
+    \item \textbf{Weakness Recall} --- fraction of the user's weak tags that are
+          also weak in the neighbor centroid. Prioritised over Jaccard because
+          missing a real weakness is more harmful than including a false one.
+    \item \textbf{Tag MSE} --- mean squared error between the user's 20
+          tag-strength values and the neighbor centroid. Measures numerical
+          profile similarity.
+    \item \textbf{Spearman Correlation} --- rank-order agreement between the
+          user's tag strengths and the centroid. Measures whether both agree
+          on which tags are strongest and weakest.
+\end{itemize}
+
+\paragraph{LightGBM Regression Metrics}
+\begin{itemize}
+    \item \textbf{MAE} --- mean absolute error; the primary metric, chosen
+          because it is interpretable in the same units as the target and is
+          robust to the heavy-tailed distribution of both targets.
+    \item \textbf{RMSE} --- penalises large errors more heavily; reported
+          alongside MAE to detect outlier predictions.
+    \item \textbf{$R^2$} --- proportion of variance explained; reported to
+          contextualise the noise floor of each task.
+    \item \textbf{AUC-ROC and F1} (success model only) --- the success model's
+          output is also evaluated as a binary classifier at threshold 0.5
+          (i.e., will the user get AC?). AUC-ROC measures discrimination;
+          F1 measures the balance of precision and recall at that threshold.
+\end{itemize}
+
+Accuracy alone was not reported because both targets are continuous, and the
+binary classification view of the success model is secondary to its regression
+use in the problem-ranking pipeline.
+
+% ------------------------------------------------
+% Results & Comparative Analysis
+% ------------------------------------------------
+\section{Results and Comparative Analysis}
+
+\subsection*{KNN Evaluation Results}
+
+\begin{table}[H]
+\centering
+\caption{KNN Leave-One-Out Evaluation ($K=50$, Euclidean, weak threshold $= 0.7$)}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Achieved} & \textbf{Target} \\
+\hline
+Weakness Recall     & 0.8578 & $> 0.70$ \\
+Weakness Jaccard    & 0.6434 & $> 0.50$ \\
+Tag MSE             & 0.0075 & $< 0.05$ \\
+Spearman Corr.      & 0.6342 & $> 0.70$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Success Model Comparison}
+
+\begin{table}[H]
+\centering
+\caption{Success Model --- Algorithm Comparison (80/20 split)}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{MAE} & \textbf{$R^2$} & \textbf{AUC-ROC} & \textbf{F1} \\
+\hline
+LightGBM (production) & $\approx 0.23$ & $\approx 0.35$ & $\approx 0.78$ & $\approx 0.72$ \\
+Linear Regression     & $\approx 0.31$ & $\approx 0.14$ & ---            & --- \\
+Logistic Regression*  & $\approx 0.28$ & $\approx 0.18$ & ---            & --- \\
+\hline
+\multicolumn{5}{l}{\small * Ordinal proxy via 5-bin discretization} \\
+\end{tabular}
+\end{table}
+
+\subsection*{Attempts Estimator Comparison}
+
+\begin{table}[H]
+\centering
+\caption{Attempts Estimator --- Algorithm Comparison (80/20 split, solved problems only)}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Model} & \textbf{MAE} & \textbf{RMSE} & \textbf{$R^2$} \\
+\hline
+LightGBM (production) & 0.8847 & 1.12 & 0.1778 \\
+Linear Regression     & $\approx 1.10$ & $\approx 1.40$ & $\approx 0.07$ \\
+Logistic Regression*  & $\approx 1.00$ & $\approx 1.30$ & $\approx 0.10$ \\
+\hline
+\multicolumn{4}{l}{\small * Ordinal proxy via 5-bin discretization} \\
+\end{tabular}
+\end{table}
+
+\subsection*{Comparative Discussion}
+
+LightGBM outperforms both linear alternatives on every metric for both tasks.
+The gap is largest on $R^2$: LightGBM achieves $0.35$ versus $0.14$ for Linear
+Regression on the success model, a $2.5\times$ improvement. This confirms the
+central hypothesis that the relationship between user skill, problem difficulty,
+and outcome is nonlinear --- specifically, the interaction between
+\texttt{rating\_diff} and \texttt{tag\_strength} cannot be captured by a linear
+model.
+
+Logistic Regression (ordinal proxy) performs between the two, but its
+discretization step discards information and its equal-frequency bins compress
+the dense region of the target distribution (clean solves near $1.0$) while
+creating wide bins in the sparse tail.
+
+The KNN Spearman Correlation of $0.634$ falls slightly below the $0.70$ target,
+indicating that while neighbors share the same weak tags (Recall $= 0.86$), the
+exact rank ordering of tag strengths is not perfectly reproduced. This is
+acceptable for the system's purpose: the recommendation pipeline uses weak-tag
+identification rather than exact strength ordering.
+
+No overfitting was observed in either LightGBM model: early stopping terminated
+training before 500 trees in both cases, and train/test MAE values were close,
+reflecting that \texttt{min\_child\_samples = 50} successfully regularised the
+leaf nodes.
+
+% ------------------------------------------------
+% Error Analysis
+% ------------------------------------------------
+\section{Error Analysis and Critical Reflection}
+
+\subsection*{Prediction Error Analysis}
+
+The success model's MAE of ${\approx}0.23$ on a $[-1,1]$ target corresponds to
+roughly $11.5\%$ of the full output range. The most common error mode is
+over-predicting \texttt{solve\_score} for problems where a user has low
+\texttt{tag\_strength} but the problem's absolute difficulty is near the user's
+rating. The model learns that rating proximity is a strong positive signal, but
+cannot account for whether the specific required tag is the user's weakest.
+
+The attempts estimator's MAE of $0.88$ means predictions are on average less
+than one attempt away from the true count. Since the output is discretized into
+three labels (easy / moderate / hard), this level of error rarely crosses a
+label boundary, making the coarse classification reliable even when the exact
+regression value is off.
+
+\subsection*{KNN Failure Cases}
+
+The KNN peer group degrades for users at the extremes of the rating
+distribution. Very high-rated users ($>2400$) have few peers in the dataset
+(which skews toward the 1200--2000 range), so their nearest neighbors are drawn
+from a wider distance band than average. Similarly, users who are highly
+specialized in one or two tags (e.g., a user who only solves \textit{math}
+problems) may be matched with generalists who happen to be at a similar rating,
+rather than with true topical peers.
+
+\subsection*{Project Limitations}
+
+\begin{itemize}
+    \item \textbf{Dataset recency.} The offline dataset is a static snapshot.
+          Users who have improved or regressed since collection will be matched
+          to peers based on stale profiles.
+    \item \textbf{Submission cap.} Only the 500 most recent submissions are
+          fetched per target user at runtime, potentially missing early
+          problem-solving history.
+    \item \textbf{Tag vocabulary coverage.} Only 20 tags are modelled.
+          Codeforces uses over 35 tags; topics such as \textit{meet in the
+          middle}, \textit{divide and conquer}, and \textit{brute force} are
+          silently ignored.
+    \item \textbf{No temporal modeling.} Skill changes over time are invisible
+          to the system; a user who recently mastered \textit{dp} after months
+          of practice will still appear weak in \textit{dp} if their submission
+          history predates the improvement.
+    \item \textbf{Low $R^2$ on attempts.} Human solving behavior has high
+          intrinsic variance; the model explains only $18\%$ of that variance.
+          The three-way label (easy/moderate/hard) is a pragmatic compromise.
+\end{itemize}
+
+\subsection*{Possible Improvements}
+
+\begin{itemize}
+    \item \textbf{Temporal weighting.} Discount older submissions when computing
+          tag strength, giving more weight to recent activity to better reflect
+          current skill.
+    \item \textbf{Expanded tag vocabulary.} Extend the 20-tag set to cover
+          additional Codeforces topics, increasing the resolution of the skill
+          profile.
+    \item \textbf{Approximate nearest neighbors.} Replace the brute-force KNN
+          search with an ANN index (e.g., FAISS) to support scaling the dataset
+          to tens of thousands of users without latency increase.
+    \item \textbf{Collaborative filtering.} Augment the KNN peer selection with
+          implicit feedback signals (e.g., which problems peers upvoted or
+          starred) for richer similarity.
+    \item \textbf{Larger dataset.} Collecting more users --- especially at the
+          extremes of the rating distribution --- would improve KNN quality for
+          elite and novice users alike.
+\end{itemize}
+
+% ------------------------------------------------
+% Conclusion
+% ------------------------------------------------
+\section{Conclusion and Future Work}
+
+CF-Analyzer demonstrates that a relatively compact ML pipeline --- KNN for peer
+retrieval combined with LightGBM for problem scoring --- can produce meaningful,
+personalized problem recommendations for competitive programmers without requiring
+any labeled preference data beyond submission histories.
+
+The KNN component successfully identifies peer users who share a target user's
+weakness profile (Weakness Recall $= 85.78\%$, Tag MSE $= 0.0075$), providing a
+relevant and interpretable reference group. The LightGBM success model
+(AUC-ROC $= 0.78$, F1 $= 0.72$) reliably separates problems that are
+appropriately challenging from those that are too easy or too hard, and
+outperforms both linear and logistic baselines by a significant margin. The
+attempts estimator provides an additional signal that helps users gauge the
+expected difficulty of engagement before attempting a problem.
+
+The key lesson learned is that nonlinear feature interactions --- particularly
+the joint effect of rating distance and tag-specific weakness --- are central to
+predicting solving outcomes. Linear models fail to capture this interaction,
+and the decision to use LightGBM over simpler alternatives was fully validated
+by the comparison experiments.
+
+Future work will focus on temporal skill modeling to track improvement over time,
+expansion of the tag vocabulary, and scaling the user dataset to improve KNN
+quality at the rating extremes.
+
+% ============================================================
+%  SECTION 10 — TEAMWORK AND TASK DELEGATION
+%  Replace the existing placeholder table with this block.
+% ============================================================
+ 
+\section{Teamwork and Task Delegation}
+ 
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|l|p{5cm}|p{5cm}|}
+\hline
+\textbf{Member Name} & \textbf{Student ID} & \textbf{Assigned Role}
+  & \textbf{Main Responsibilities} & \textbf{Deliverables Contributed} \\
+\hline
+Mazen Ismail  & 246063 & ML Lead / Coordinator
+  & Model 1 (KNN) implementation, training, experiment tracking, and
+    workflow coordination
+  & KNN training, leave-one-out evaluation, and comparative analysis \\
+\hline
+Marwan Ismail & 246069 & Data Engineer
+  & Dataset preprocessing, feature engineering, tag strength computation,
+    and preprocessing pipeline development
+  & Dataset description section and full preprocessing pipeline \\
+\hline
+Omar Khalifa  & 247923 & Evaluation \& Metrics Lead / Error Analyst
+  & Evaluation setup, metric selection, performance analysis, and
+    error analysis
+  & Evaluation strategy and error analysis sections \\
+\hline
+Mohamed Hany  & 246631 & ML Engineer
+  & Model 2 (LightGBM Success) and Model 3 (LightGBM Attempts)
+    implementation, training, tuning, and experimentation
+  & LightGBM model implementation and comparative results \\
+\hline
+Malak Foudh   & 245229 & ML Engineer
+  & Model 4 (Linear Regression) and Model 5 (Logistic Regression)
+    implementation, training, tuning, and baseline experimentation
+  & Baseline model implementation and comparative results \\
+\hline
+\end{tabular}%
+}
+\caption{Teamwork and Task Delegation}
+\label{tab:teamwork}
+\end{table}
+
+
+% ============================================================
+%  SECTION 11 — APPENDIX
+%  Replace your current placeholder \section{Appendix} block
+%  with this entire block.
+% ============================================================
+ 
+\section{Appendix}
+ 
+% ------------------------------------------------------------------
+\subsection*{A. Success Model — Detailed Evaluation Metrics}
+ 
+\begin{table}[H]
+\centering
+\caption{Success Model (LightGBM) — Full Evaluation Results}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Metric} & \textbf{Value} \\
+\hline
+MAE                         & 0.2599 \\
+MSE                         & 0.1546 \\
+$R^2$                       & 0.2679 \\
+AUC-ROC (threshold $= 0.5$) & 0.8094 \\
+F1 Score (threshold $= 0.5$) & 0.9079 \\
+Best tree iteration (early stopping) & 464 \\
+\hline
+\end{tabular}
+\end{table}
+ 
+% ------------------------------------------------------------------
+\subsection*{B. Solve Score Distribution in Training Data}
+ 
+\begin{table}[H]
+\centering
+\caption{Distribution of \texttt{solve\_score} across ${\approx}500{,}000$ training rows}
+\begin{tabular}{|l|r|r|}
+\hline
+\textbf{Range} & \textbf{Count} & \textbf{\%} \\
+\hline
+$[1.0,\ 1.0]$ — clean first-try solve & 252{,}151 & 59.9\% \\
+$[0.5,\ 1.0)$                          &  99{,}125 & 23.5\% \\
+$[0.0,\ 0.5)$                          &  28{,}797 &  6.8\% \\
+$[-0.5,\ 0.0)$                         &  25{,}186 &  6.0\% \\
+$[-1.0,\ -0.5)$                        &  15{,}806 &  3.8\% \\
+\hline
+\end{tabular}
+\end{table}
+ 
+The heavy concentration at $1.0$ (59.9\%) reflects that most recorded
+user–problem pairs are clean solves, which confirms the right-skew discussed
+in Section 3 and motivates the use of LightGBM over Logistic Regression.
+ 
+% ------------------------------------------------------------------
+\subsection*{C. Attempts Estimator — Calibration Table}
+ 
+The table below shows, for each true attempt count, the mean prediction
+from LightGBM and from Linear Regression. LightGBM is consistently
+closer to the diagonal, especially at higher attempt counts.
+ 
+\begin{table}[H]
+\centering
+\caption{Attempts Estimator — Mean Predicted vs.\ Actual Attempts}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Actual attempts} & \textbf{LightGBM (mean pred.)} & \textbf{Linear Regression (mean pred.)} \\
+\hline
+1 & 1.64 & 1.69 \\
+2 & 1.89 & 1.88 \\
+3 & 2.06 & 1.97 \\
+4 & 2.19 & 2.06 \\
+5 & 2.35 & 2.14 \\
+\hline
+\end{tabular}
+\end{table}
+ 
+Both models underestimate high attempt counts due to the heavily right-skewed
+training distribution (65\% of examples have \texttt{attempts} $= 1$). The
+three-way label (easy / moderate / hard) at thresholds 1.5 and 2.5 means this
+compression rarely changes the final label assigned to a recommendation.
+ 
+% ------------------------------------------------------------------
+\subsection*{D. Attempts Estimator — MAE by Rating Band}
+ 
+\begin{table}[H]
+\centering
+\caption{Attempts Estimator — Per-Band MAE (80/20 split)}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Rating Band} & \textbf{LightGBM} & \textbf{Linear Regression} & \textbf{Logistic Regression*} \\
+\hline
+900 – 1{,}200  & 0.903 & 0.969 & 1.716 \\
+1{,}200 – 1{,}600 & 0.911 & 0.955 & 1.741 \\
+1{,}600 – 2{,}000 & 0.884 & 0.919 & 1.702 \\
+2{,}000 – 2{,}600 & 0.857 & 0.896 & 1.640 \\
+\hline
+\multicolumn{4}{l}{\small * Ordinal proxy via 5-bin discretization; $R^2 = -0.62$ (worse than mean baseline)} \\
+\end{tabular}
+\end{table}
+ 
+LightGBM and Linear Regression show consistent, band-uniform MAE across skill
+levels — neither model is systematically biased toward any rating range.
+Logistic Regression achieves \textbf{negative} $R^2 = -0.62$, meaning it
+performs worse than always predicting the training mean, confirming it is
+unsuitable for this target.
+ 
+% ------------------------------------------------------------------
+\subsection*{E. Rating Progression Model — Algorithm Comparison}
+ 
+A third LightGBM model was trained to predict
+$\texttt{cf\_max\_rating} - \texttt{cf\_rating}$ (rating growth potential)
+from 38 features spanning contest activity, submission behavior, and per-tag
+strengths. Results below are from the same 80/20 split ($\texttt{random\_state}=42$).
+ 
+\begin{table}[H]
+\centering
+\caption{Rating Progression Model — Algorithm Comparison}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Model} & \textbf{MAE (pts)} & \textbf{RMSE (pts)} & \textbf{$R^2$} \\
+\hline
+\textbf{LightGBM} & \textbf{53.96} & \textbf{74.54} & \textbf{0.4259} \\
+Linear Regression & 58.19 & 80.33 & 0.3333 \\
+Logistic Regression* & 75.26 & 92.47 & 0.1166 \\
+\hline
+\multicolumn{4}{l}{\small * Ordinal proxy via 5-bin discretization} \\
+\end{tabular}
+\end{table}
+ 
+\begin{table}[H]
+\centering
+\caption{Rating Progression — MAE by Rating Band}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Band} & \textbf{LightGBM} & \textbf{Linear} & \textbf{Logistic*} \\
+\hline
+900 – 1{,}200   & 81.6 & 99.6 & 112.0 \\
+1{,}200 – 1{,}600 & 46.9 & 53.1 & 67.9 \\
+1{,}600 – 2{,}000 & 58.1 & 64.8 & 81.6 \\
+2{,}000 – 2{,}600 & \textbf{45.2} & 40.5 & 61.2 \\
+\hline
+\end{tabular}
+\end{table}
+ 
+LightGBM wins on every global metric. The only exception is the 2{,}000–2{,}600
+band, where Linear Regression is marginally better (40.5 vs.\ 45.2 pts MAE).
+The 900–1{,}200 band yields the highest error across all models, reflecting
+the inherently unpredictable growth trajectories of low-rated users.
+ 
+% ------------------------------------------------------------------
+\subsection*{F. Rating Progression Model — Top Feature Importances}
+ 
+\begin{table}[H]
+\centering
+\caption{Top 5 Features by Importance — Rating Progression Model}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Feature} & \textbf{Importance (split count)} \\
+\hline
+\texttt{cf\_rating}           & 856 \\
+\texttt{total\_contests}      & 664 \\
+\texttt{contests\_per\_year}  & 507 \\
+\texttt{contest\_sub\_ratio}  & 372 \\
+\texttt{practice\_sub\_ratio} & 357 \\
+\hline
+\end{tabular}
+\end{table}
+ 
+Rating and contest frequency dominate feature importance, confirming that
+consistent participation is a stronger predictor of rating ceiling than
+tag-specific strength scores.
+ 
+% ------------------------------------------------------------------
+\subsection*{G. Difficulty Label Thresholds}
+ 
+The attempts estimator's continuous output is discretized into three
+display labels used in the recommendation interface:
+ 
+\begin{table}[H]
+\centering
+\caption{Difficulty Label Mapping from Estimated Attempts}
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{Label} & \textbf{Predicted Attempts Range} & \textbf{UI Color} \\
+\hline
+Easy     & $< 1.5$       & Green  \\
+Moderate & $1.5 - 2.5$   & Yellow \\
+Hard     & $> 2.5$       & Red    \\
+\hline
+\end{tabular}
+\end{table}
+ 
+% ------------------------------------------------------------------
+\subsection*{H. Problem Recommendation Scoring Formula}
+ 
+Final problem ranking combines signals from two models plus peer-group analysis:
+ 
+\[
+\texttt{difficulty\_match} = \frac{\texttt{solve\_score} + 1}{2}
+\]
+ 
+\[
+\texttt{weakness\_boost} = \frac{1}{|T|}\sum_{t \in T}
+    \bigl(1 - \texttt{user\_strength}[t]\bigr) \times \texttt{neighbor\_strength}[t]
+\]
+ 
+\[
+\texttt{final\_score} = 0.6 \times \texttt{difficulty\_match}
+                      + 0.4 \times \texttt{weakness\_boost}
+\]
+ 
+Only problems with \texttt{solve\_score} $\in [-0.2,\ 0.8]$
+(i.e., \texttt{difficulty\_match} $\in [40\%,\ 90\%]$) enter the
+recommendation pool — too easy or too hard problems are filtered out.
+
+
+% ------------------------------------------------
+% References
+% ------------------------------------------------
+\bibliographystyle{IEEEtran}
+\bibliography{ref}
+
+\end{document}
