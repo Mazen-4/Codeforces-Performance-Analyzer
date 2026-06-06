@@ -15,18 +15,18 @@ const TAG_COLORS = ["#7c6dfa","#ff4560","#00e396","#feb019","#00b4d8","#f72585",
 const accColor = a => a >= 70 ? C.success : a >= 45 ? C.warn : C.danger;
 
 async function fetchCFData(handle) {
-  const res = await fetch(`http://localhost:3000/api/cf/${handle}`);
+  const res = await fetch(`/api/cf/${handle}`);
   return res.json();
 }
 
 async function fetchMLAnalysis(handle) {
-  const res = await fetch(`http://localhost:3000/api/ml/analyze/${handle}`);
+  const res = await fetch(`/api/ml/analyze/${handle}`);
   if (!res.ok) throw new Error("ML pipeline failed");
   return res.json();
 }
 
 async function fetchCoachPlan(handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact) {
-  const res = await fetch("http://localhost:3000/api/coach", {
+  const res = await fetch("/api/coach", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact }),
