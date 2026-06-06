@@ -1,0 +1,142 @@
+name: Weekly Crawl & Retrain
+
+on:
+  schedule:
+    - cron: "0 2 * * 0"   # Every Sunday at 02:00 UTC
+  workflow_dispatch:        # Allow manual trigger from GitHub UI
+    inputs:
+      crawl_users:
+        description: "Number of CF users to crawl"
+        required: false
+        default: "5000"
+
+jobs:
+  retrain:
+    name: Crawl → Preprocess → Retrain → Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6-hour hard cap
+
+    permissions:
+      contents: write      # needed to create GitHub Releases
+
+    env:
+      DATA_DIR: ${{ github.workspace }}/data
+      CF_CRAWL_USERS: ${{ github.event.inputs.crawl_users || '5000' }}
+      CF_MIN_RATING: "900"
+      CF_MAX_RATING: "3500"
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+      # ── 1. Checkout source ───────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ──────────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt lightgbm scikit-learn
+
+      # ── 3. Download previous dataset from latest release ────────────────────
+      # This lets each run build on top of the previous dataset rather than
+      # starting from scratch (incremental crawl friendly).
+      - name: Download previous dataset from latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p $DATA_DIR/dataset $DATA_DIR/models
+
+          # Check if a release with dataset assets exists
+          LATEST=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "")
+
+          if [ -n "$LATEST" ]; then
+            echo "Downloading assets from release $LATEST …"
+            gh release download "$LATEST" \
+              --repo ${{ github.repository }} \
+              --pattern "dataset-*.tar.gz" \
+              --pattern "models-*.tar.gz" \
+              --dir /tmp/release-assets \
+              --clobber || echo "No matching assets found, starting fresh."
+
+            # Extract if downloaded
+            for f in /tmp/release-assets/dataset-*.tar.gz; do
+              [ -f "$f" ] && tar -xzf "$f" -C $DATA_DIR/dataset/ && echo "Extracted $f"
+            done
+            for f in /tmp/release-assets/models-*.tar.gz; do
+              [ -f "$f" ] && tar -xzf "$f" -C $DATA_DIR/models/ && echo "Extracted $f"
+            done
+          else
+            echo "No previous release found — starting from scratch."
+            echo "NOTE: On first run, seed the dataset manually (see DEPLOY.md)."
+          fi
+
+          echo "Dataset files present:"
+          ls -lh $DATA_DIR/dataset/ 2>/dev/null || echo "(empty)"
+          echo "Model files present:"
+          ls -lh $DATA_DIR/models/ 2>/dev/null || echo "(empty)"
+
+      # ── 4. Symlink data dir so main.py finds ML/dataset and ML/models ────────
+      - name: Link data dir into expected paths
+        run: |
+          mkdir -p ML
+          # Only symlink if destination doesn't already exist
+          [ -d ML/dataset ] || ln -s $DATA_DIR/dataset ML/dataset
+          [ -d ML/models  ] || ln -s $DATA_DIR/models  ML/models
+
+      # ── 5. Run the crawl + preprocess + retrain pipeline ────────────────────
+      - name: Run crawl and retrain
+        run: python scripts/crawl_and_retrain.py
+
+      # ── 6. Package outputs ───────────────────────────────────────────────────
+      - name: Package dataset and models
+        run: |
+          DATE=$(date -u +%Y%m%d)
+          cd $DATA_DIR
+          tar -czf /tmp/dataset-${DATE}.tar.gz -C dataset .
+          tar -czf /tmp/models-${DATE}.tar.gz  -C models  .
+          echo "DATE=${DATE}" >> $GITHUB_ENV
+          echo "Packaged:"
+          ls -lh /tmp/*.tar.gz
+
+      # ── 7. Create GitHub Release with assets ─────────────────────────────────
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="data-$(date -u +%Y-%m-%d)"
+          TITLE="Weekly dataset & models — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          NOTES="Automated weekly crawl and retrain.
+          - Users crawled: $CF_CRAWL_USERS (rating $CF_MIN_RATING–$CF_MAX_RATING)
+          - Run: ${{ github.run_id }}
+          - Commit: ${{ github.sha }}"
+
+          # Delete existing release with same tag if present (idempotent re-runs)
+          gh release delete "$TAG" --repo ${{ github.repository }} --yes 2>/dev/null || true
+
+          gh release create "$TAG" \
+            --repo ${{ github.repository }} \
+            --title "$TITLE" \
+            --notes "$NOTES" \
+            --prerelease \
+            /tmp/dataset-${DATE}.tar.gz \
+            /tmp/models-${DATE}.tar.gz
+
+          echo "Release created: $TAG"
+
+      # ── 8. Upload logs as workflow artifact (always, even on failure) ─────────
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retrain-logs-${{ github.run_id }}
+          path: |
+            src/pipeline/logs/
+            logs/
+          retention-days: 30
