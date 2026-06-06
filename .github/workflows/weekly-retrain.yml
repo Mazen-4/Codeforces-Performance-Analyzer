@@ -43,9 +43,9 @@ jobs:
       matrix: ${{ steps.split.outputs.matrix }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -89,7 +89,7 @@ jobs:
           echo "Matrix: $MATRIX"
 
       - name: Upload chunks
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: chunks
           path: chunks/
@@ -106,9 +106,9 @@ jobs:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -117,7 +117,7 @@ jobs:
         run: pip install --upgrade pip requests pandas
 
       - name: Download chunks artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: chunks
           path: chunks/
@@ -130,7 +130,7 @@ jobs:
           python scripts/crawl_chunk.py
 
       - name: Upload submissions for this chunk
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: submissions-${{ matrix.chunk }}
           path: chunks/submissions_${{ matrix.chunk }}.csv
@@ -146,9 +146,9 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -182,7 +182,7 @@ jobs:
           echo "--- Models ---";  ls -lh ML/models/  2>/dev/null || echo "(empty)"
 
       - name: Download all chunk submissions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: submissions-*
           path: chunks/
@@ -231,7 +231,7 @@ jobs:
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: retrain-logs-${{ github.run_id }}
           path: |
