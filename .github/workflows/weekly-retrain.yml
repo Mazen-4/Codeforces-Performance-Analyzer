@@ -114,12 +114,22 @@ jobs:
       - name: Package dataset and models
         run: |
           DATE=$(date -u +%Y%m%d)
-          tar -czf /tmp/dataset-${DATE}.tar.gz -C ML/dataset \
-            02_user_profiles.csv \
-            04_filtered_submissions.csv \
-            06_user_tag_strengths.csv \
-            07_enriched_user_profiles.csv
-          tar -czf /tmp/models-${DATE}.tar.gz -C ML/models .
+
+          echo "--- Files in ML/dataset/ ---"
+          ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
+          echo "--- Files in ML/models/ ---"
+          ls -lh ML/models/ 2>/dev/null || echo "(empty)"
+
+          # Fail early with a clear message if outputs are missing
+          [ -d ML/dataset ] && [ "$(ls ML/dataset/*.csv 2>/dev/null | wc -l)" -gt 0 ] \
+            || { echo "ERROR: No CSV files found in ML/dataset/ — crawl or preprocessing failed"; exit 1; }
+          [ -d ML/models ] && [ "$(ls ML/models/*.pkl 2>/dev/null | wc -l)" -gt 0 ] \
+            || { echo "ERROR: No .pkl files found in ML/models/ — training failed"; exit 1; }
+
+          # Pack all CSVs and models that exist (no hardcoded filenames)
+          tar -czf /tmp/dataset-${DATE}.tar.gz -C ML/dataset .
+          tar -czf /tmp/models-${DATE}.tar.gz  -C ML/models  .
+
           echo "DATE=${DATE}" >> $GITHUB_ENV
           echo "--- Packaged ---"
           ls -lh /tmp/dataset-${DATE}.tar.gz /tmp/models-${DATE}.tar.gz

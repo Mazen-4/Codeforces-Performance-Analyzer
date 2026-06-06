@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cf-analyzer
+    runtime: node
+    repo: https://github.com/Mazen-4/Codeforces-Performance-Analyzer
+    branch: main
+    rootDir: .
+    buildCommand: bash scripts/setup_render.sh
+    startCommand: node website/server/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # fill this in manually on the Render dashboard
+      - key: GH_REPO
+        value: Mazen-4/Codeforces-Performance-Analyzer
+      - key: PROJECT_ROOT
+        value: /opt/render/project/src
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true         # redeploys automatically on every push to main

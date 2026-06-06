@@ -6,14 +6,31 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import { existsSync } from "fs";
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Project root: use env var on Render, otherwise resolve from server.js location
+const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(__dirname, "../../");
+
+// Pick Python interpreter: prefer .venv (local dev), fall back to system python3 (Render)
+const VENV_PYTHON = path.join(PROJECT_ROOT, ".venv", "bin", "python");
+const PYTHON = existsSync(VENV_PYTHON) ? VENV_PYTHON : "python3";
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ── Serve React frontend (production build) ───────────────────────────────────
+const STATIC_DIR = path.join(PROJECT_ROOT, "website", "dist");
+if (existsSync(STATIC_DIR)) {
+  app.use(express.static(STATIC_DIR));
+}
+
+// Health check for Render
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 /* ───────────── Codeforces Fetch ───────────── */
 
@@ -142,15 +159,13 @@ Format each day exactly like this — nothing else:
 
 app.get("/api/ml/analyze/:handle", async (req, res) => {
   const { handle } = req.params;
-  const projectRoot = path.resolve(__dirname, "../../");
-  const venvPython = path.join(projectRoot, ".venv", "bin", "python");
 
   const script = `
 import sys, os, json
-sys.path.insert(0, os.path.join('${projectRoot}', 'src'))
-sys.path.insert(0, '${projectRoot}')
+sys.path.insert(0, os.path.join(${JSON.stringify(PROJECT_ROOT)}, 'src'))
+sys.path.insert(0, ${JSON.stringify(PROJECT_ROOT)})
 from main import main
-result = main('${handle}', verbose=False)
+result = main(${JSON.stringify(handle)}, verbose=False)
 import numpy as np
 def convert(o):
     if isinstance(o, (np.integer,)): return int(o)
@@ -163,8 +178,8 @@ print(json.dumps(result, default=convert))
 
   try {
     const output = await new Promise((resolve, reject) => {
-      const proc = spawn(venvPython, ["-c", script], {
-        cwd: projectRoot,
+      const proc = spawn(PYTHON, ["-c", script], {
+        cwd: PROJECT_ROOT,
         env: { ...process.env, PYTHONUNBUFFERED: "1" },
       });
       let stdout = "", stderr = "";
@@ -184,4 +199,12 @@ print(json.dumps(result, default=convert))
   }
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+// Catch-all: serve React app for any non-API route
+if (existsSync(STATIC_DIR)) {
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(STATIC_DIR, "index.html"));
+  });
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -274,8 +274,10 @@ def run_preprocessing():
     for script in ["submissionsCleaning.py", "strength.py", "userProfiles.py", "userTagStrengths.py"]:
         log.info("Preprocessing: %s", script)
         r = subprocess.run(
-            [sys.executable, str(scripts_dir / script)],
+            [sys.executable, script],
             capture_output=True, text=True,
+            # Run from the preprocessing dir so '../dataset/' relative paths resolve correctly
+            cwd=str(scripts_dir),
             env={**os.environ, "DATA_DIR": DATA_DIR},
         )
         if r.returncode != 0:
@@ -293,8 +295,10 @@ def run_training():
     for script in ["train_success_model.py", "train_attempts_model.py", "train_rating_progression_model.py"]:
         log.info("Training: %s", script)
         r = subprocess.run(
-            [sys.executable, str(training_dir / script)],
+            [sys.executable, script],
             capture_output=True, text=True,
+            # Run from the training dir so '../dataset/' and '../models/' paths resolve correctly
+            cwd=str(training_dir),
             env={**os.environ, "DATA_DIR": DATA_DIR},
         )
         if r.returncode != 0:
