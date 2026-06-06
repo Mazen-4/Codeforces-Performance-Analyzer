@@ -3,20 +3,20 @@ name: Weekly Crawl & Retrain
 on:
   schedule:
     - cron: "0 2 * * 0"   # Every Sunday at 02:00 UTC
-  workflow_dispatch:        # Allow manual trigger from GitHub UI
+  workflow_dispatch:
     inputs:
       since_days:
         description: "Crawl submissions from the last N days"
         required: false
         default: "7"
         type: choice
-        options:
-          - "1"
-          - "3"
-          - "7"
-          - "14"
-          - "30"
-          - "90"
+        options: ["1", "3", "7", "14", "30", "90"]
+      num_chunks:
+        description: "Number of parallel crawl jobs"
+        required: false
+        default: "10"
+        type: choice
+        options: ["5", "10", "15", "20"]
       min_rating:
         description: "Minimum CF rating to include"
         required: false
@@ -26,140 +26,209 @@ on:
         required: false
         default: "3500"
 
+env:
+  SINCE_DAYS:    ${{ github.event.inputs.since_days  || '7' }}
+  NUM_CHUNKS:    ${{ github.event.inputs.num_chunks  || '10' }}
+  CF_MIN_RATING: ${{ github.event.inputs.min_rating  || '900' }}
+  CF_MAX_RATING: ${{ github.event.inputs.max_rating  || '3500' }}
+  PYTHONUNBUFFERED: "1"
+
+# ── Job 1: Fetch handles, split into chunks ───────────────────────────────────
 jobs:
-  retrain:
-    name: Crawl → Preprocess → Retrain → Release
+  setup:
+    name: Fetch handles & split into chunks
     runs-on: ubuntu-latest
-    timeout-minutes: 360   # 6-hour hard cap
-
-    permissions:
-      contents: write      # needed to create GitHub Releases
-
-    env:
-      DATA_DIR: ${{ github.workspace }}
-      SINCE_DAYS: ${{ github.event.inputs.since_days || '7' }}
-      CF_MIN_RATING: ${{ github.event.inputs.min_rating || '900' }}
-      CF_MAX_RATING: ${{ github.event.inputs.max_rating || '3500' }}
-      PYTHONUNBUFFERED: "1"
-      PYTHONPATH: ${{ github.workspace }}
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.split.outputs.matrix }}
 
     steps:
-      # ── 1. Checkout source ───────────────────────────────────────────────────
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ── 2. Python setup ──────────────────────────────────────────────────────
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt lightgbm scikit-learn
+      - name: Install dependencies
+        run: pip install --upgrade pip requests pandas
 
-      # ── 3. Download previous dataset + models from latest release ────────────
-      # The crawler merges new submissions into 04_filtered_submissions.csv,
-      # so we need the previous version to build on top of.
-      - name: Download previous dataset from latest release
+      - name: Download previous dataset (for new/known split)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ML/dataset ML/models
-
           LATEST=$(gh release list \
-            --repo ${{ github.repository }} \
-            --limit 10 \
-            --json tagName,isDraft,isPrerelease \
-            -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' \
-            2>/dev/null || echo "")
-
+            --repo ${{ github.repository }} --limit 10 \
+            --json tagName,isDraft \
+            -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' 2>/dev/null || echo "")
           if [ -n "$LATEST" ]; then
-            echo "Downloading assets from release: $LATEST"
+            gh release download "$LATEST" \
+              --repo ${{ github.repository }} \
+              --pattern "dataset-*.tar.gz" \
+              --dir /tmp/release-assets --clobber 2>/dev/null || true
+            for f in /tmp/release-assets/dataset-*.tar.gz; do
+              [ -f "$f" ] && tar -xzf "$f" -C ML/dataset/
+            done
+          fi
+          ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
+
+      - name: Split handles into chunks
+        id: split
+        run: |
+          DATA_DIR=${{ github.workspace }} \
+          SINCE_DAYS=${{ env.SINCE_DAYS }} \
+          NUM_CHUNKS=${{ env.NUM_CHUNKS }} \
+          CF_MIN_RATING=${{ env.CF_MIN_RATING }} \
+          CF_MAX_RATING=${{ env.CF_MAX_RATING }} \
+          python scripts/prepare_chunks.py | tee /tmp/prepare_output.txt
+
+          # Extract the MATRIX= line printed by prepare_chunks.py
+          MATRIX=$(grep '^MATRIX=' /tmp/prepare_output.txt | cut -d'=' -f2-)
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Matrix: $MATRIX"
+
+      - name: Upload chunks
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks
+          path: chunks/
+          retention-days: 1
+
+# ── Job 2: Parallel crawl matrix ─────────────────────────────────────────────
+  crawl:
+    name: Crawl chunk ${{ matrix.chunk }}
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false   # let other chunks finish even if one fails
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install --upgrade pip requests pandas
+
+      - name: Download chunks artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chunks
+          path: chunks/
+
+      - name: Crawl chunk ${{ matrix.chunk }}
+        run: |
+          DATA_DIR=${{ github.workspace }} \
+          SINCE_DAYS=${{ env.SINCE_DAYS }} \
+          CHUNK_INDEX=${{ matrix.chunk }} \
+          python scripts/crawl_chunk.py
+
+      - name: Upload submissions for this chunk
+        uses: actions/upload-artifact@v4
+        with:
+          name: submissions-${{ matrix.chunk }}
+          path: chunks/submissions_${{ matrix.chunk }}.csv
+          retention-days: 1
+
+# ── Job 3: Merge all chunks, preprocess, retrain, release ────────────────────
+  merge-and-retrain:
+    name: Merge → Preprocess → Retrain → Release
+    needs: crawl
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install --upgrade pip -r requirements.txt lightgbm scikit-learn
+
+      - name: Download previous dataset + models
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ML/dataset ML/models
+          LATEST=$(gh release list \
+            --repo ${{ github.repository }} --limit 10 \
+            --json tagName,isDraft \
+            -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' 2>/dev/null || echo "")
+          if [ -n "$LATEST" ]; then
             gh release download "$LATEST" \
               --repo ${{ github.repository }} \
               --pattern "dataset-*.tar.gz" \
               --pattern "models-*.tar.gz" \
-              --dir /tmp/release-assets \
-              --clobber || echo "No matching assets — starting fresh."
-
+              --dir /tmp/release-assets --clobber 2>/dev/null || true
             for f in /tmp/release-assets/dataset-*.tar.gz; do
-              [ -f "$f" ] && tar -xzf "$f" -C ML/dataset/ && echo "Extracted $f"
+              [ -f "$f" ] && tar -xzf "$f" -C ML/dataset/
             done
             for f in /tmp/release-assets/models-*.tar.gz; do
-              [ -f "$f" ] && tar -xzf "$f" -C ML/models/ && echo "Extracted $f"
+              [ -f "$f" ] && tar -xzf "$f" -C ML/models/
             done
-          else
-            echo "No published release found — starting fresh."
           fi
+          echo "--- Dataset ---"; ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
+          echo "--- Models ---";  ls -lh ML/models/  2>/dev/null || echo "(empty)"
 
-          echo "--- Dataset files ---"
-          ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
-          echo "--- Model files ---"
-          ls -lh ML/models/ 2>/dev/null || echo "(empty)"
+      - name: Download all chunk submissions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: submissions-*
+          path: chunks/
+          merge-multiple: true
 
-      # ── 4. Print job parameters ──────────────────────────────────────────────
-      - name: Print parameters
+      - name: List downloaded chunks
+        run: ls -lh chunks/
+
+      - name: Merge chunks + preprocess + retrain
         run: |
-          echo "Since days:   $SINCE_DAYS"
-          echo "Rating range: $CF_MIN_RATING – $CF_MAX_RATING"
+          DATA_DIR=${{ github.workspace }} \
+          NUM_CHUNKS=${{ env.NUM_CHUNKS }} \
+          python scripts/merge_and_retrain.py
 
-      # ── 5. Run incremental crawl + preprocess + retrain ──────────────────────
-      - name: Run crawl and retrain
-        run: python scripts/crawl_and_retrain.py
-
-      # ── 6. Package outputs ───────────────────────────────────────────────────
-      - name: Package dataset and models
+      - name: Package outputs
         run: |
           DATE=$(date -u +%Y%m%d)
 
-          echo "--- Files in ML/dataset/ ---"
-          ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
-          echo "--- Files in ML/models/ ---"
-          ls -lh ML/models/ 2>/dev/null || echo "(empty)"
+          echo "--- Dataset files ---"; ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
+          echo "--- Model files ---";  ls -lh ML/models/  2>/dev/null || echo "(empty)"
 
-          # Fail early with a clear message if outputs are missing
-          [ -d ML/dataset ] && [ "$(ls ML/dataset/*.csv 2>/dev/null | wc -l)" -gt 0 ] \
-            || { echo "ERROR: No CSV files found in ML/dataset/ — crawl or preprocessing failed"; exit 1; }
-          [ -d ML/models ] && [ "$(ls ML/models/*.pkl 2>/dev/null | wc -l)" -gt 0 ] \
-            || { echo "ERROR: No .pkl files found in ML/models/ — training failed"; exit 1; }
+          [ "$(ls ML/dataset/*.csv 2>/dev/null | wc -l)" -gt 0 ] \
+            || { echo "ERROR: No CSVs in ML/dataset/"; exit 1; }
+          [ "$(ls ML/models/*.pkl 2>/dev/null | wc -l)" -gt 0 ] \
+            || { echo "ERROR: No .pkl in ML/models/"; exit 1; }
 
-          # Pack all CSVs and models that exist (no hardcoded filenames)
           tar -czf /tmp/dataset-${DATE}.tar.gz -C ML/dataset .
           tar -czf /tmp/models-${DATE}.tar.gz  -C ML/models  .
-
           echo "DATE=${DATE}" >> $GITHUB_ENV
-          echo "--- Packaged ---"
           ls -lh /tmp/dataset-${DATE}.tar.gz /tmp/models-${DATE}.tar.gz
 
-      # ── 7. Create GitHub Release ─────────────────────────────────────────────
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="data-$(date -u +%Y-%m-%d)"
-          TITLE="Dataset & models — $(date -u '+%Y-%m-%d %H:%M UTC')"
-          NOTES="Incremental crawl and retrain.
-          - Submissions window: last $SINCE_DAYS days
-          - Users crawled: up to $CF_CRAWL_USERS (rating $CF_MIN_RATING–$CF_MAX_RATING)
-          - Triggered by: ${{ github.event_name }}
-          - Run: ${{ github.run_id }}"
-
           gh release delete "$TAG" --repo ${{ github.repository }} --yes 2>/dev/null || true
-
           gh release create "$TAG" \
             --repo ${{ github.repository }} \
-            --title "$TITLE" \
-            --notes "$NOTES" \
+            --title "Dataset & models — $(date -u '+%Y-%m-%d %H:%M UTC')" \
+            --notes "Parallel crawl: ${{ env.NUM_CHUNKS }} jobs, last ${{ env.SINCE_DAYS }} days, rating ${{ env.CF_MIN_RATING }}–${{ env.CF_MAX_RATING }}" \
             --prerelease \
             /tmp/dataset-${DATE}.tar.gz \
             /tmp/models-${DATE}.tar.gz
-
           echo "Release published: $TAG"
 
-      # ── 8. Upload logs (always, even on failure) ──────────────────────────────
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
