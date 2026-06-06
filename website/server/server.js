@@ -201,7 +201,7 @@ print(json.dumps(result, default=convert))
 
 // Catch-all: serve React app for any non-API route
 if (existsSync(STATIC_DIR)) {
-  app.get("*", (_req, res) => {
+  app.get("/{*path}", (_req, res) => {
     res.sendFile(path.join(STATIC_DIR, "index.html"));
   });
 }
