@@ -21,7 +21,11 @@ pip3 install --quiet --no-cache-dir --break-system-packages \
 
 # ── 2. Node dependencies + React build ───────────────────────────────────────
 echo ""
-echo "--- Installing Node dependencies ---"
+echo "--- Installing server Node dependencies ---"
+cd "$PROJECT_ROOT/website/server"
+npm install
+
+echo "--- Installing frontend Node dependencies ---"
 cd "$PROJECT_ROOT/website"
 npm ci
 

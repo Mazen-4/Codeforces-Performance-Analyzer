@@ -5,7 +5,7 @@ nixPkgs = ["python311", "python311Packages.pip", "nodejs_20", "nodePackages.npm"
 cmds = ["bash scripts/setup_render.sh"]
 
 [start]
-cmd = "node website/server/server.js"
+cmd = "cd website/server && node server.js"
 
 [variables]
 NIXPACKS_NODE_VERSION = "20"
