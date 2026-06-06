@@ -3,7 +3,6 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
-import reactSvg from "./assets/react.svg";
 
 const C = {
   bg: "#07070f", surface: "#0f0f1a", card: "#13131f", border: "#1e1e30",

@@ -145,9 +145,7 @@ Format each day exactly like this — nothing else:
 
         const plan = result.response.text(); // ✅ THIS IS YOUR FINAL STRING
 
-        console.log("Plan:", plan);
-
-        res.json({ plan }); // ✅ send to frontend
+        res.json({ plan });
 
     } catch (err) {
         console.error(err);
@@ -189,6 +187,12 @@ print(json.dumps(result, default=convert))
         if (code !== 0) return reject(new Error(stderr.slice(-1000)));
         resolve(stdout.trim());
       });
+
+      // Kill the process if it takes more than 60 seconds
+      setTimeout(() => {
+        proc.kill();
+        reject(new Error("ML pipeline timed out after 60s"));
+      }, 60_000);
     });
 
     const result = JSON.parse(output);
