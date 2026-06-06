@@ -6,3 +6,6 @@ cmds = ["bash scripts/setup_render.sh"]
 
 [start]
 cmd = "node website/server/server.js"
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"
