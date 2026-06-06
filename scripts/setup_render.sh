@@ -15,7 +15,7 @@ echo "Project root: $PROJECT_ROOT"
 # ── 1. Python dependencies ────────────────────────────────────────────────────
 echo ""
 echo "--- Installing Python dependencies ---"
-pip3 install --quiet --no-cache-dir \
+pip3 install --quiet --no-cache-dir --break-system-packages \
     numpy pandas requests psutil \
     lightgbm scikit-learn
 
