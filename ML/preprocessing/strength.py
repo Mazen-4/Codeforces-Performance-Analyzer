@@ -35,27 +35,30 @@ MAX_RATING = 3500
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 1 — Build per-(user, tag) aggregates FROM SUBMISSIONS
+# Process one tag at a time to avoid the huge intermediate DataFrame that
+# melt() produces (N_rows × N_tags), which OOMs on GitHub Actions runners.
 # ─────────────────────────────────────────────────────────────────────────────
-melted = df_submissions.melt(
-    id_vars=['handle', 'problem_id', 'problem_rating', 'is_ac', 'is_wa'],
-    value_vars=TAG_COLS,
-    var_name='tag',
-    value_name='has_tag'
-)
-melted = melted[melted['has_tag'] == 1].drop(columns='has_tag')
-
-user_tag_df = (
-    melted.groupby(['handle', 'tag'])
-    .agg(
+base_cols = ['handle', 'problem_id', 'problem_rating', 'is_ac', 'is_wa']
+parts = []
+for tag_col in TAG_COLS:
+    tag_subs = df_submissions.loc[df_submissions[tag_col] == 1, base_cols].copy()
+    if tag_subs.empty:
+        continue
+    ac_mask = tag_subs['is_ac'] == 1
+    grp = tag_subs.groupby('handle')
+    agg = grp.agg(
         total_attempts       = ('problem_id',     'count'),
         ac_count             = ('is_ac',          'sum'),
         wa_count             = ('is_wa',          'sum'),
-        max_rating_solved    = ('problem_rating', lambda x: x[melted.loc[x.index, 'is_ac'] == 1].max() if (melted.loc[x.index, 'is_ac'] == 1).any() else 0),
         avg_rating_attempted = ('problem_rating', 'mean'),
-        avg_rating_solved    = ('problem_rating', lambda x: x[melted.loc[x.index, 'is_ac'] == 1].mean() if (melted.loc[x.index, 'is_ac'] == 1).any() else 0),
     )
-    .reset_index()
-)
+    ac_grp = tag_subs[ac_mask].groupby('handle')['problem_rating']
+    agg['max_rating_solved'] = ac_grp.max().reindex(agg.index, fill_value=0)
+    agg['avg_rating_solved'] = ac_grp.mean().reindex(agg.index, fill_value=0)
+    agg['tag'] = tag_col
+    parts.append(agg.reset_index())
+
+user_tag_df = pd.concat(parts, ignore_index=True)
 user_tag_df[['max_rating_solved', 'avg_rating_solved']] = (
     user_tag_df[['max_rating_solved', 'avg_rating_solved']].fillna(0)
 )
