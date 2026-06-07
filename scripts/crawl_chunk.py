@@ -145,8 +145,12 @@ def main():
         pd.DataFrame(all_rows).to_csv(out_path, index=False)
         log.info("Chunk %d done: %d submissions → %s", CHUNK_INDEX, len(all_rows), out_path)
     else:
-        # Write empty file so the merge job doesn't fail
-        pd.DataFrame().to_csv(out_path, index=False)
+        # Write a header-only CSV so the artifact upload doesn't fail,
+        # but include column names so pandas can read it without error
+        pd.DataFrame(columns=[
+            "handle", "problem_id", "problem_name", "problem_rating",
+            "is_ac", "is_wa", "is_tle", "is_mle", "submitted_at",
+        ] + [f"tag_{t}" for t in TAGS]).to_csv(out_path, index=False)
         log.info("Chunk %d: no submissions collected", CHUNK_INDEX)
 
 

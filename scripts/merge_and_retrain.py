@@ -39,10 +39,16 @@ def merge_chunks():
         if not os.path.exists(path):
             log.warning("Chunk %d missing: %s", i, path)
             continue
-        df = pd.read_csv(path)
+        try:
+            df = pd.read_csv(path)
+        except Exception as e:
+            log.warning("Chunk %d unreadable (%s): %s", i, path, e)
+            continue
         if not df.empty:
             chunk_dfs.append(df)
             log.info("Chunk %d: %d rows", i, len(df))
+        else:
+            log.warning("Chunk %d: empty file, skipping", i)
 
     if not chunk_dfs:
         log.warning("No chunk data found — nothing to merge")
@@ -87,12 +93,11 @@ def _run_script(script_path: Path, cwd: Path, label: str):
 
 
 def run_preprocessing():
-    # Only strength.py does real work: generates 06_user_tag_strengths.csv and
-    # 07_enriched_user_profiles.csv from 04_filtered_submissions.csv.
-    # The other scripts in ML/preprocessing/ are exploratory/analysis only.
     scripts_dir = Path(DATA_DIR) / "ML" / "preprocessing"
     log.info("Preprocessing dir: %s", scripts_dir)
-    _run_script(scripts_dir / "strength.py", scripts_dir, "strength.py")
+    for script in ["submissionsCleaning.py", "strength.py", "userProfiles.py", "userTagStrengths.py"]:
+        log.info("Preprocessing: %s", script)
+        _run_script(scripts_dir / script, scripts_dir, script)
 
 
 def run_training():
