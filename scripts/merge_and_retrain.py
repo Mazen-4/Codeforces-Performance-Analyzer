@@ -93,11 +93,11 @@ def _run_script(script_path: Path, cwd: Path, label: str):
 
 
 def run_preprocessing():
+    # Only strength.py produces real output (06_user_tag_strengths.csv,
+    # 07_enriched_user_profiles.csv). The other scripts are exploratory only.
     scripts_dir = Path(DATA_DIR) / "ML" / "preprocessing"
     log.info("Preprocessing dir: %s", scripts_dir)
-    for script in ["submissionsCleaning.py", "strength.py", "userProfiles.py", "userTagStrengths.py"]:
-        log.info("Preprocessing: %s", script)
-        _run_script(scripts_dir / script, scripts_dir, script)
+    _run_script(scripts_dir / "strength.py", scripts_dir, "strength.py")
 
 
 def run_training():
