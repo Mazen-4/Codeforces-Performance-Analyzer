@@ -7,8 +7,8 @@ import csv
 # ─────────────────────────────────────────────────────────────────────────────
 df_profiles    = pd.read_csv('../dataset/02_user_profiles.csv', dtype={'handle': str})
 
-# Read only the columns needed — skipping problem_name etc. cuts RAM usage
-# by ~40% on an 8M-row dataset, keeping us within GitHub Actions' 7 GB limit.
+# Read only the columns needed — skipping problem_name etc. cuts RAM usage on an
+# 8M-row dataset, keeping us within GitHub Actions' 7 GB limit.
 _sub_header = pd.read_csv('../dataset/04_filtered_submissions.csv', nrows=0)
 _tag_cols_present = [c for c in _sub_header.columns if c.startswith('tag_')]
 _needed_cols = ['handle', 'problem_id', 'problem_rating', 'is_ac', 'is_wa'] + _tag_cols_present
@@ -18,23 +18,34 @@ _dtypes = {'handle': str, 'problem_id': str,
 df_submissions = pd.read_csv('../dataset/04_filtered_submissions.csv',
                              usecols=_needed_cols, dtype=_dtypes)
 
-def clean_handles(df: pd.DataFrame, col: str = 'handle') -> pd.DataFrame:
-    # Drop rows Excel already corrupted (handle lost forever)
-    before = len(df)
-    df = df[df[col] != '#NAME?'].copy()
-    dropped = before - len(df)
+
+def clean_handles_inplace(df: pd.DataFrame, col: str = 'handle') -> pd.DataFrame:
+    """Clean the handle column with minimal extra allocations.
+
+    Avoids the full-frame .copy() and .astype(str) that previously held 2–3
+    duplicates of an 8M-row frame in memory at once (the main OOM source).
+    Operates on a boolean mask + in-place column assignment instead.
+    """
+    s = df[col]
+    # Strip Excel formula-trigger chars; values are already str from the read.
+    cleaned = s.str.strip().str.lstrip('=+-@')
+    keep = (s != '#NAME?') & (cleaned.str.len() > 0)
+    dropped = len(df) - int(keep.sum())
     if dropped:
         print(f"⚠ Dropped {dropped} corrupted '{col}' rows (#NAME?)")
-
-    # Strip leading formula-trigger characters Excel would corrupt on next save
-    df[col] = df[col].astype(str).str.strip().str.lstrip('=+-@')
-
-    # Drop any empty handles left after stripping
-    df = df[df[col].str.len() > 0].reset_index(drop=True)
+    df = df.loc[keep].copy()
+    df[col] = cleaned.loc[keep].values
     return df
 
-df_profiles    = clean_handles(df_profiles)
-df_submissions = clean_handles(df_submissions)
+df_profiles    = clean_handles_inplace(df_profiles)
+df_submissions = clean_handles_inplace(df_submissions)
+
+# Handles and problem_ids repeat across millions of rows but have only a few
+# thousand unique values each. Categorical encoding collapses the per-row
+# Python-string overhead (the single largest memory cost) to small int codes,
+# and makes every downstream .copy()/groupby far cheaper.
+df_submissions['handle']     = df_submissions['handle'].astype('category')
+df_submissions['problem_id'] = df_submissions['problem_id'].astype('category')
 
 # Damage report
 print(f"✓ Profiles    — {len(df_profiles)} users remaining")
@@ -51,24 +62,34 @@ MAX_RATING = 3500
 base_cols = ['handle', 'problem_id', 'problem_rating', 'is_ac', 'is_wa']
 parts = []
 for tag_col in TAG_COLS:
-    tag_subs = df_submissions.loc[df_submissions[tag_col] == 1, base_cols].copy()
+    tag_subs = df_submissions.loc[df_submissions[tag_col] == 1, base_cols]
     if tag_subs.empty:
         continue
-    ac_mask = tag_subs['is_ac'] == 1
-    grp = tag_subs.groupby('handle')
+    # observed=True is essential: a categorical 'handle' otherwise emits a row
+    # per *unseen* category, exploding the result to N_handles × everything.
+    grp = tag_subs.groupby('handle', observed=True)
     agg = grp.agg(
         total_attempts       = ('problem_id',     'count'),
         ac_count             = ('is_ac',          'sum'),
         wa_count             = ('is_wa',          'sum'),
         avg_rating_attempted = ('problem_rating', 'mean'),
     )
-    ac_grp = tag_subs[ac_mask].groupby('handle')['problem_rating']
+    ac_grp = (tag_subs[tag_subs['is_ac'] == 1]
+              .groupby('handle', observed=True)['problem_rating'])
     agg['max_rating_solved'] = ac_grp.max().reindex(agg.index, fill_value=0)
     agg['avg_rating_solved'] = ac_grp.mean().reindex(agg.index, fill_value=0)
     agg['tag'] = tag_col
     parts.append(agg.reset_index())
+    del tag_subs, grp, ac_grp, agg
+
+# df_submissions is no longer needed; free ~1 GB before the heavier merge/pivot.
+del df_submissions
 
 user_tag_df = pd.concat(parts, ignore_index=True)
+del parts
+# 'handle' came out of the groupby as a categorical; downstream merges/pivots on
+# it are fine, but make it a plain string to avoid category-alignment surprises.
+user_tag_df['handle'] = user_tag_df['handle'].astype(str)
 user_tag_df[['max_rating_solved', 'avg_rating_solved']] = (
     user_tag_df[['max_rating_solved', 'avg_rating_solved']].fillna(0)
 )

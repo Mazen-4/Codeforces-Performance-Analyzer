@@ -63,6 +63,10 @@ def build_training_data():
                     **dict.fromkeys(TAG_COLS, 'int8')}
     subs      = pd.read_csv(os.path.join(DATASET_DIR, "04_filtered_submissions.csv"),
                             usecols=list(_subs_dtypes), dtype=_subs_dtypes)
+    # Categorical encoding collapses the per-row handle/problem_id string
+    # overhead (the dominant memory cost at 8M rows) to small int codes.
+    subs["handle"]     = subs["handle"].astype("category")
+    subs["problem_id"] = subs["problem_id"].astype("category")
     strengths = pd.read_csv(os.path.join(DATASET_DIR, "06_user_tag_strengths.csv"))
     profiles  = pd.read_csv(os.path.join(DATASET_DIR, "02_user_profiles.csv"))
 
@@ -73,8 +77,10 @@ def build_training_data():
     user_rating = profiles.set_index("handle")["cf_rating"].to_dict()
 
     print("Aggregating submissions to one row per (handle, problem)...")
+    # observed=True is essential with categorical keys — the default would emit
+    # a row per (handle × problem_id) combination, exploding to tens of millions.
     per_prob = (
-        subs.groupby(["handle", "problem_id"], sort=False)
+        subs.groupby(["handle", "problem_id"], sort=False, observed=True)
             .agg(
                 ever_ac        = ("is_ac", "max"),
                 wa_count       = ("is_wa", "sum"),
@@ -83,6 +89,11 @@ def build_training_data():
             )
             .reset_index()
     )
+    del subs  # large frame no longer needed
+    # per_prob is now one row per (handle, problem) — small enough to drop the
+    # categorical dtype, avoiding observed=False surprises in later groupbys.
+    per_prob["handle"]     = per_prob["handle"].astype(str)
+    per_prob["problem_id"] = per_prob["problem_id"].astype(str)
     per_prob = per_prob[per_prob["problem_rating"] > 0].copy()
     per_prob = per_prob[per_prob["handle"].isin(strength_pivot.index)]
 
