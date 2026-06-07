@@ -1,0 +1,120 @@
+name: Retrain Only (no crawl)
+
+# Re-runs preprocessing + training on the most recent already-released dataset,
+# WITHOUT re-crawling Codeforces. Use this to iterate on the retrain/release
+# step (e.g. after fixing a preprocessing or training bug) without paying the
+# ~1.5h parallel crawl again.
+#
+# It downloads 04_filtered_submissions.csv from the latest release, runs
+# scripts/merge_and_retrain.py with no new chunks (the merge step becomes a
+# no-op and it goes straight to preprocess → train), then publishes a new
+# prerelease with the regenerated models.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Release tag to pull the dataset from (blank = latest non-draft)"
+        required: false
+        default: ""
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  retrain:
+    name: Preprocess → Retrain → Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Download dataset + models from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_TAG: ${{ github.event.inputs.source_tag }}
+        run: |
+          mkdir -p ML/dataset ML/models
+          if [ -n "$SOURCE_TAG" ]; then
+            TAG="$SOURCE_TAG"
+          else
+            TAG=$(gh release list \
+              --repo ${{ github.repository }} --limit 10 \
+              --json tagName,isDraft \
+              -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' 2>/dev/null || echo "")
+          fi
+          [ -n "$TAG" ] || { echo "ERROR: no release tag found to pull dataset from"; exit 1; }
+          echo "Pulling dataset from release: $TAG"
+          gh release download "$TAG" \
+            --repo ${{ github.repository }} \
+            --pattern "dataset-*.tar.gz" \
+            --pattern "models-*.tar.gz" \
+            --dir /tmp/release-assets --clobber
+          for f in /tmp/release-assets/dataset-*.tar.gz; do
+            [ -f "$f" ] && tar -xzf "$f" -C ML/dataset/
+          done
+          for f in /tmp/release-assets/models-*.tar.gz; do
+            [ -f "$f" ] && tar -xzf "$f" -C ML/models/
+          done
+          echo "--- Dataset ---"; ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
+          echo "--- Models ---";  ls -lh ML/models/  2>/dev/null || echo "(empty)"
+          [ -f ML/dataset/04_filtered_submissions.csv ] \
+            || { echo "ERROR: 04_filtered_submissions.csv not found in release $TAG"; exit 1; }
+
+      - name: Preprocess + retrain (no new chunks)
+        run: |
+          # No chunks/ dir → merge_chunks() is a no-op and we go straight to
+          # preprocessing + training on the released 04_filtered_submissions.csv.
+          DATA_DIR=${{ github.workspace }} \
+          NUM_CHUNKS=0 \
+          python scripts/merge_and_retrain.py
+
+      - name: Package outputs
+        run: |
+          DATE=$(date -u +%Y%m%d)
+          echo "--- Dataset files ---"; ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
+          echo "--- Model files ---";  ls -lh ML/models/  2>/dev/null || echo "(empty)"
+          [ "$(ls ML/dataset/*.csv 2>/dev/null | wc -l)" -gt 0 ] \
+            || { echo "ERROR: No CSVs in ML/dataset/"; exit 1; }
+          [ "$(ls ML/models/*.pkl 2>/dev/null | wc -l)" -gt 0 ] \
+            || { echo "ERROR: No .pkl in ML/models/"; exit 1; }
+          tar -czf /tmp/dataset-${DATE}.tar.gz -C ML/dataset .
+          tar -czf /tmp/models-${DATE}.tar.gz  -C ML/models  .
+          echo "DATE=${DATE}" >> $GITHUB_ENV
+          ls -lh /tmp/dataset-${DATE}.tar.gz /tmp/models-${DATE}.tar.gz
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="data-$(date -u +%Y-%m-%d)"
+          gh release delete "$TAG" --repo ${{ github.repository }} --yes 2>/dev/null || true
+          gh release create "$TAG" \
+            --repo ${{ github.repository }} \
+            --title "Dataset & models (retrain-only) — $(date -u '+%Y-%m-%d %H:%M UTC')" \
+            --notes "Retrain-only: preprocessing + training re-run on existing dataset, no new crawl." \
+            --prerelease \
+            /tmp/dataset-${DATE}.tar.gz \
+            /tmp/models-${DATE}.tar.gz
+          echo "Release published: $TAG"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: retrain-only-logs-${{ github.run_id }}
+          path: |
+            src/pipeline/logs/
+            logs/
+          retention-days: 30
