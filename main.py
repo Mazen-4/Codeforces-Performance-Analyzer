@@ -36,8 +36,25 @@ PROFILES_CSV    = os.path.join(os.path.dirname(__file__), "ML", "dataset", "02_u
 DATASET_CSV     = os.path.join(os.path.dirname(__file__), "ML", "dataset", "06_user_tag_strengths.csv")
 
 
-def _load_submissions_csv() -> pd.DataFrame:
-    return pd.read_csv(SUBMISSIONS_CSV)
+def _load_submissions_csv(handles: set | None = None) -> pd.DataFrame:
+    """Load 04_filtered_submissions.csv.
+
+    When `handles` is given, filter to those handles *during* the read in chunks so
+    peak memory stays at one chunk (~a few MB) instead of the full ~100 MB file.
+    This keeps the web pipeline under tight container memory limits (e.g. Railway).
+    """
+    if handles is None:
+        return pd.read_csv(SUBMISSIONS_CSV)
+
+    parts = []
+    for chunk in pd.read_csv(SUBMISSIONS_CSV, chunksize=100_000):
+        keep = chunk[chunk["handle"].isin(handles)]
+        if not keep.empty:
+            parts.append(keep)
+    if parts:
+        return pd.concat(parts, ignore_index=True)
+    # Preserve column schema even when no rows match
+    return pd.read_csv(SUBMISSIONS_CSV, nrows=0)
 
 
 def _compute_tag_strength_for_model(submission_rows: list, cf_rating: int, cf_max_rating: int) -> dict:
@@ -222,14 +239,12 @@ def main(user_handle: str, verbose: bool = True) -> dict:
         neighbor_handles = {n["user_handle"] for n in inference_result["neighbors"]}
         tag_strengths    = {}
 
-        all_subs_df = _load_submissions_csv()
+        # Filter to neighbor rows during the CSV read — never hold the full file in memory.
+        neighbor_subs_df = _load_submissions_csv(neighbor_handles)
 
         if target_submission_rows:
             # convert user submissions from API response to DataFrame
             target_df           = pd.DataFrame(target_submission_rows)
-            
-            # only the 50 neighbors
-            neighbor_subs_df    = all_subs_df[all_subs_df["handle"].isin(neighbor_handles)]
 
             # combine target user submissions with neighbor submissions
             combined_neighbor_df = pd.concat([target_df, neighbor_subs_df], ignore_index=True)
@@ -238,7 +253,6 @@ def main(user_handle: str, verbose: bool = True) -> dict:
             if verbose:
                 print_report(user_handle, tag_strengths)
         else:
-            neighbor_subs_df = all_subs_df[all_subs_df["handle"].isin(neighbor_handles)]
             if verbose:
                 print("[WARNING] No submissions — tag strengths will be zero")
 
@@ -249,7 +263,9 @@ def main(user_handle: str, verbose: bool = True) -> dict:
             print("[5/6] Problem Finder - Loading neighbor submissions from CSV...")
 
         with profiler.profile_preprocessing(metadata={"source": "04_filtered_submissions.csv"}):
-            neighbor_subs_df = all_subs_df[all_subs_df["handle"].isin(neighbor_handles)]
+            # neighbor_subs_df was already filtered to neighbor_handles during the chunked
+            # read above; no full-file DataFrame exists to re-filter here.
+            pass
 
         # Build set of problem IDs solved by target user for quick lookup
         target_solved_ids = {
