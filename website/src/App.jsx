@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
@@ -134,6 +134,24 @@ export default function App() {
   const [coachUnlocked, setCoachUnlocked] = useState(false);
   const [coachPwInput, setCoachPwInput]   = useState("");
   const [coachPwError, setCoachPwError]   = useState(false);
+  const [mlVersion, setMlVersion]         = useState(null);
+
+  // Fetch model metadata once on mount: how many users the KNN model was
+  // trained on (dynamic) and when the model was last updated.
+  useEffect(() => {
+    fetch("/api/ml/version")
+      .then(r => (r.ok ? r.json() : null))
+      .then(v => v && setMlVersion(v))
+      .catch(() => {});
+  }, []);
+
+  // KNN training-set size, formatted with thousands separators. Falls back to a
+  // neutral label if the version endpoint hasn't responded yet.
+  const trainingUsers = mlVersion?.training_users ?? null;
+  const trainingUsersLabel = trainingUsers != null ? trainingUsers.toLocaleString() : "…";
+  const modelUpdatedLabel = mlVersion?.last_updated
+    ? new Date(mlVersion.last_updated).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : null;
 
   // Derived ML values (safe defaults when ML hasn't loaded yet)
   const mlTagStrengths   = mlData?.tag_strengths || {};
@@ -305,7 +323,12 @@ export default function App() {
             Diagnose Your <span style={{ color: C.accent }}>CP Weaknesses</span>
           </div>
           <div style={{ color: C.muted, fontSize: 13, marginBottom: 26 }}>
-            Combines Codeforces data with a KNN model trained on 2,877 users
+            Combines Codeforces data with a KNN model trained on {trainingUsersLabel} users
+            {modelUpdatedLabel && (
+              <span style={{ display: "block", fontSize: 11, color: C.muted, marginTop: 4, opacity: 0.75 }}>
+                Model last updated {modelUpdatedLabel}
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 10, maxWidth: 440, margin: "0 auto" }}>
             <input value={input} onChange={e => setInput(e.target.value)}
@@ -626,7 +649,7 @@ export default function App() {
                 ) : (
                   <>
                     <div style={{ background: `${C.accent}0f`, border: `1px solid ${C.accent}30`, borderRadius: 9, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: C.muted }}>
-                      👥 50 most similar users from a dataset of 2,877 · ranked by Euclidean distance in 82-dimensional tag-strength space
+                      👥 50 most similar users from a dataset of {trainingUsersLabel} · ranked by Euclidean distance in 82-dimensional tag-strength space
                     </div>
                     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
                       {/* Header */}

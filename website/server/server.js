@@ -33,10 +33,43 @@ if (existsSync(STATIC_DIR)) {
 // Health check for Render
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+// Count the distinct users the KNN model is trained on = unique handles in the
+// tag-strengths CSV (one row per handle×tag). Streamed so a large file never
+// loads fully into memory. Cached on (path, mtime) so we don't rescan per call.
+const TAG_STRENGTHS_CSV = path.join(PROJECT_ROOT, "ML", "dataset", "06_user_tag_strengths.csv");
+let _trainingUsersCache = null; // { mtimeMs, count }
+
+async function countTrainingUsers() {
+  if (!existsSync(TAG_STRENGTHS_CSV)) return null;
+  const mtimeMs = statSync(TAG_STRENGTHS_CSV).mtimeMs;
+  if (_trainingUsersCache && _trainingUsersCache.mtimeMs === mtimeMs) {
+    return _trainingUsersCache.count;
+  }
+  const { createReadStream } = await import("node:fs");
+  const { createInterface } = await import("node:readline");
+  const handles = new Set();
+  let isHeader = true;
+  const rl = createInterface({
+    input: createReadStream(TAG_STRENGTHS_CSV, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+  for await (const line of rl) {
+    if (isHeader) { isHeader = false; continue; }
+    if (!line) continue;
+    // handle is the first column; it may be quoted and contain escaped commas.
+    const m = line.match(/^"((?:[^"]|"")*)"|^([^,]*)/);
+    const handle = m ? (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2]) : "";
+    if (handle) handles.add(handle);
+  }
+  _trainingUsersCache = { mtimeMs, count: handles.size };
+  return handles.size;
+}
+
 // Model fingerprint — verify which model build is live (new vs. old/committed).
 // Reports each .pkl's SHA-256 and modified time so you can match it against the
-// GitHub Release the weekly retrain published.
-app.get("/api/ml/version", (_req, res) => {
+// GitHub Release the weekly retrain published. Also reports training_users (the
+// dynamic count the KNN model was trained on) and last_updated (newest model).
+app.get("/api/ml/version", async (_req, res) => {
   const modelsDir = path.join(PROJECT_ROOT, "ML", "models");
   const files = ["success_model.pkl", "attempts_model.pkl", "rating_progression_model.pkl"];
   const models = files.map(name => {
@@ -51,7 +84,18 @@ app.get("/api/ml/version", (_req, res) => {
       modified: statSync(p).mtime.toISOString(),
     };
   });
-  res.json({ models });
+
+  const modifiedTimes = models.filter(m => m.present).map(m => m.modified).sort();
+  const last_updated = modifiedTimes.length ? modifiedTimes[modifiedTimes.length - 1] : null;
+
+  let training_users = null;
+  try {
+    training_users = await countTrainingUsers();
+  } catch (err) {
+    console.error("training_users count failed:", err.message);
+  }
+
+  res.json({ models, training_users, last_updated });
 });
 
 /* ───────────── Codeforces Fetch ───────────── */
