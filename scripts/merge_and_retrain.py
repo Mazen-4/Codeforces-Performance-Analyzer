@@ -32,6 +32,25 @@ os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 
+def drop_unrated(df):
+    """Drop unrated problems (problem_rating missing or <= 0).
+
+    The crawler skips them at the source, but a previously-released dataset may
+    still carry them, and they break preprocessing (idxmax over all-NA) and
+    training (rating > 0 filter). Enforce it here so the dataset is always clean.
+    """
+    if "problem_rating" not in df.columns:
+        return df
+    before = len(df)
+    df = df.copy()
+    df["problem_rating"] = pd.to_numeric(df["problem_rating"], errors="coerce")
+    df = df[df["problem_rating"] > 0]
+    dropped = before - len(df)
+    if dropped:
+        log.info("Dropped %d unrated rows (problem_rating missing or <= 0)", dropped)
+    return df
+
+
 def merge_chunks():
     chunk_dfs = []
     for i in range(NUM_CHUNKS):
@@ -69,6 +88,8 @@ def merge_chunks():
     else:
         log.info("No existing dataset — creating fresh.")
         combined = new_df
+
+    combined = drop_unrated(combined)
 
     combined.to_csv(FILTERED_CSV, index=False)
     log.info("Saved → %s (%.1f MB)", FILTERED_CSV, os.path.getsize(FILTERED_CSV) / 1e6)

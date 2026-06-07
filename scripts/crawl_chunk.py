@@ -69,11 +69,18 @@ def parse_submission(sub, since_ts):
     if not handle:
         return None
 
+    # Skip unrated problems (gym/recent/unjudged) — CF returns no "rating".
+    # These have no problem_rating and are dropped downstream anyway, so keep
+    # them out of the dataset at the source.
+    rating = problem.get("rating")
+    if rating is None:
+        return None
+
     row = {
         "handle":         handle,
         "problem_id":     f"{problem.get('contestId', '')}_{problem.get('index', '')}",
         "problem_name":   problem.get("name", ""),
-        "problem_rating": problem.get("rating"),
+        "problem_rating": rating,
         "is_ac":          int(verdict == "OK"),
         "is_wa":          int(verdict in ("WRONG_ANSWER", "TIME_LIMIT_EXCEEDED", "MEMORY_LIMIT_EXCEEDED")),
         "is_tle":         int(verdict == "TIME_LIMIT_EXCEEDED"),
