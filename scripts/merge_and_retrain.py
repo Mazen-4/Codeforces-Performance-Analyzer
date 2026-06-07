@@ -68,38 +68,38 @@ def merge_chunks():
     log.info("Saved → %s (%.1f MB)", FILTERED_CSV, os.path.getsize(FILTERED_CSV) / 1e6)
 
 
-def run_preprocessing():
+def _run_script(script_path: Path, cwd: Path, label: str):
     import subprocess
+    if not cwd.is_dir():
+        raise RuntimeError(f"Directory not found: {cwd}")
+    if not script_path.is_file():
+        raise RuntimeError(f"Script not found: {script_path}")
+    r = subprocess.run(
+        [sys.executable, str(script_path)],
+        capture_output=True, text=True,
+        cwd=str(cwd),
+    )
+    if r.returncode != 0:
+        log.error("Failed %s:\n%s", label, r.stderr[-2000:])
+        raise RuntimeError(f"Step failed: {label}")
+    if r.stdout.strip():
+        log.info(r.stdout.strip())
+
+
+def run_preprocessing():
     scripts_dir = Path(DATA_DIR) / "ML" / "preprocessing"
+    log.info("Preprocessing dir: %s", scripts_dir)
     for script in ["submissionsCleaning.py", "strength.py", "userProfiles.py", "userTagStrengths.py"]:
         log.info("Preprocessing: %s", script)
-        r = subprocess.run(
-            [sys.executable, script],
-            capture_output=True, text=True,
-            cwd=str(scripts_dir),
-        )
-        if r.returncode != 0:
-            log.error("Failed:\n%s", r.stderr[-2000:])
-            raise RuntimeError(f"Preprocessing failed: {script}")
-        if r.stdout.strip():
-            log.info(r.stdout.strip())
+        _run_script(scripts_dir / script, scripts_dir, script)
 
 
 def run_training():
-    import subprocess
     training_dir = Path(DATA_DIR) / "ML" / "training"
+    log.info("Training dir: %s", training_dir)
     for script in ["train_success_model.py", "train_attempts_model.py", "train_rating_progression_model.py"]:
         log.info("Training: %s", script)
-        r = subprocess.run(
-            [sys.executable, script],
-            capture_output=True, text=True,
-            cwd=str(training_dir),
-        )
-        if r.returncode != 0:
-            log.error("Failed:\n%s", r.stderr[-2000:])
-            raise RuntimeError(f"Training failed: {script}")
-        if r.stdout.strip():
-            log.info(r.stdout.strip())
+        _run_script(training_dir / script, training_dir, script)
 
 
 def main():

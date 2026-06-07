@@ -38,23 +38,32 @@ app.get("/api/cf/:handle", async (req, res) => {
   const { handle } = req.params;
 
   try {
-    const statusRes = await fetch(
-      `https://codeforces.com/api/user.status?handle=${handle}&from=1&count=500`
-    );
-    const problemsRes = await fetch(
-      `https://codeforces.com/api/problemset.problems`
-    );
+    // Paginate through all submissions (CF returns max 10000 per call)
+    const allSubmissions = [];
+    const batchSize = 10000;
+    let from = 1;
+    while (true) {
+      const statusRes = await fetch(
+        `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=${from}&count=${batchSize}`
+      );
+      const statusData = await statusRes.json();
+      if (statusData.status !== "OK") {
+        if (from === 1) return res.json({ status: "FAILED", submissions: [], problems: [] });
+        break;
+      }
+      const batch = statusData.result;
+      allSubmissions.push(...batch);
+      if (batch.length < batchSize) break;
+      from += batchSize;
+    }
 
-    const statusData = await statusRes.json();
+    const problemsRes = await fetch(`https://codeforces.com/api/problemset.problems`);
     const problemsData = await problemsRes.json();
-
-    if (statusData.status !== "OK")
-      return res.json({ status: "FAILED", submissions: [], problems: [] });
 
     res.json({
       status: "OK",
-      submissions: statusData.result,
-      problems: problemsData.result.problems,
+      submissions: allSubmissions,
+      problems: problemsData.result?.problems || [],
     });
   } catch (err) {
     res.status(500).json({ error: "Codeforces fetch failed" });

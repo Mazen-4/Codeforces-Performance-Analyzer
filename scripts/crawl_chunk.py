@@ -45,7 +45,7 @@ def cf_get(endpoint, params, retries=4):
     url = f"{CF_API_BASE}/{endpoint}"
     for attempt in range(retries):
         try:
-            r = requests.get(url, params=params, timeout=30)
+            r = requests.get(url, params=params, timeout=60)
             data = r.json()
             if data.get("status") == "OK":
                 return data["result"]

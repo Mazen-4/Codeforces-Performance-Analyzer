@@ -131,6 +131,9 @@ export default function App() {
   const [aiLoading, setAiLoading]       = useState(false);
   const [mlData, setMlData]             = useState(null);
   const [mlLoading, setMlLoading]       = useState(false);
+  const [coachUnlocked, setCoachUnlocked] = useState(false);
+  const [coachPwInput, setCoachPwInput]   = useState("");
+  const [coachPwError, setCoachPwError]   = useState(false);
 
   // Derived ML values (safe defaults when ML hasn't loaded yet)
   const mlTagStrengths   = mlData?.tag_strengths || {};
@@ -277,7 +280,7 @@ export default function App() {
       {/* Nav */}
       <div style={{ borderBottom: `1px solid ${C.border}`, background: `${C.surface}ee`, backdropFilter: "blur(14px)", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src={reactSvg} alt="" style={{ width: 28, height: 28, borderRadius: 7 }} />
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: `linear-gradient(135deg,${C.accent},#a855f7)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>⚡</div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>CF Performance Analyzer</div>
             <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>
@@ -333,15 +336,15 @@ export default function App() {
           <div className="up">
             {/* Stat cards — weak topics count from ML when available */}
             <div style={{ display: "flex", gap: 14, marginBottom: 22, flexWrap: "wrap" }}>
-              <StatCard label="Problems Solved" value={stats.totalSolved} sub="unique problems" color={C.success} />
-              <StatCard label="Max Rating Hit"  value={stats.maxRating || "—"} sub="hardest solved" color={C.accent} />
-              <StatCard label="Weak Topics"     value={mlData ? weakTagCount : tagData.filter(t => t.accuracy < 70).length} sub={mlData ? "ML tag strength < 70" : "< 70% accuracy"} color={C.danger} />
-              <StatCard label="Submissions"     value={stats.totalSubmissions} sub="last 500" />
+              <StatCard label="Problems Solved" value={stats.totalSolved} sub="unique AC problems" color={C.success} />
+              <StatCard label="Hardest Solved"  value={stats.maxRating || "—"} sub="highest-rated AC" color={C.accent} />
+              <StatCard label="Weak Topics"     value={mlData ? weakTagCount : tagData.filter(t => t.accuracy < 70).length} sub={mlData ? "tags behind your peers" : "topics below 70% accuracy"} color={C.danger} />
+              <StatCard label="Total Submissions" value={stats.totalSubmissions} sub="all attempts ever" />
               {tagImpact.length > 0 && (
                 <StatCard
-                  label="Top Tag Gain"
-                  value={`+${tagImpact[0].estimated_rating_gain}`}
-                  sub={`improve ${tagImpact[0].label}`}
+                  label="Biggest Lever"
+                  value={`+${tagImpact[0].estimated_rating_gain} pts`}
+                  sub={`improve ${tagImpact[0].label} → most rating gain`}
                   color={C.warn}
                 />
               )}
@@ -361,13 +364,23 @@ export default function App() {
             {/* ── OVERVIEW ── */}
             {tab === "overview" && (
               <div className="up" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+
                 {/* Radar — ML strengths when available */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
                   <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>
                     {mlData ? "ML TAG STRENGTH (PEER-BENCHMARKED)" : "TAG ACCURACY RADAR"}
                   </div>
-                  {mlData && <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 10 }}>✦ powered by KNN model · 0–100 scale</div>}
-                  <ResponsiveContainer width="100%" height={250}>
+                  {mlData
+                    ? <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 6 }}>✦ powered by KNN model · 0–100 scale</div>
+                    : <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 6 }}>✦ based on your solve rate per topic</div>
+                  }
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>
+                    {mlData
+                      ? <>Each axis is a topic. Your score is <span style={{ color: C.text }}>compared against ~50 similar-rated users</span> — so 60 means you're weaker here than your peers, not just that you solve 60% of attempts.</>
+                      : <>Each axis shows how often you successfully solve problems tagged with that topic. A fuller shape means more balanced coverage.</>
+                    }
+                  </div>
+                  <ResponsiveContainer width="100%" height={230}>
                     <RadarChart data={radarData}>
                       <PolarGrid stroke={C.border} />
                       <PolarAngleAxis dataKey="tag" tick={{ fill: C.muted, fontSize: 9, fontFamily: "Space Mono" }} />
@@ -382,7 +395,16 @@ export default function App() {
                   <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>
                     WEAKEST TAGS (TOP 7)
                   </div>
-                  {mlData && <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 10 }}>✦ ML peer-benchmarked strength</div>}
+                  {mlData
+                    ? <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 6 }}>✦ ML peer-benchmarked strength</div>
+                    : <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 6 }}>✦ sorted by solve accuracy</div>
+                  }
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
+                    {mlData
+                      ? <>These are the topics where you fall <span style={{ color: C.danger }}>behind others at your rating</span>. A low score means peers solve these more reliably — prioritize them for the biggest gains.</>
+                      : <>Topics where your solve rate is lowest. Under <span style={{ color: C.warn }}>70%</span> is a meaningful weakness worth targeting.</>
+                    }
+                  </div>
                   {(mlData ? mlTagsSorted.slice(0, 7) : tagData.slice(0, 7).map(t => [t.tag, { strength: t.accuracy, solved: t.solved, attempted: t.solved + t.failed }])).map(([tag, info], i) => {
                     const label = mlData ? tag.replace("tag_","").replace(/_/g," ") : tag;
                     const pct   = mlData ? Math.min(info.strength, 100) : info.strength;
@@ -404,38 +426,52 @@ export default function App() {
                 {/* Counterfactual Tag Impact card */}
                 {tagImpact.length > 0 && (
                   <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, gridColumn: "1/-1" }}>
-                    <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>TAG IMPACT ON RATING</div>
-                    <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 16 }}>✦ simulated: boosting each tag by +20% · how many more problems become solvable</div>
+                    <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>WHERE TO FOCUS FOR MAXIMUM RATING GAIN</div>
+                    <div style={{ fontSize: 9, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 8 }}>✦ ML counterfactual simulation — each tag boosted by +20% strength in isolation</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 16, lineHeight: 1.6, maxWidth: 720 }}>
+                      The model asks: <span style={{ color: C.text }}>"If this user improved at tag X by 20%, how many more problems from their peer group would they be able to solve?"</span> The bar shows extra solvable problems; the number on the right estimates the rating points that unlocks. <span style={{ color: C.warn }}>Top-ranked tags are your highest-leverage training targets.</span>
+                    </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {tagImpact.map((t, i) => {
                         const barPct = Math.min(100, (t.delta_problems / Math.max(...tagImpact.map(x => x.delta_problems))) * 100);
                         const color  = i === 0 ? C.warn : i < 3 ? C.accent : C.muted;
                         return (
                           <div key={t.tag} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <div style={{ width: 130, fontSize: 11, fontFamily: "'Space Mono',monospace", color: C.text, textTransform: "capitalize", flexShrink: 0 }}>{t.label}</div>
-                            <div style={{ fontSize: 10, fontFamily: "'Space Mono',monospace", color: C.muted, width: 42, flexShrink: 0 }}>{Math.round(t.strength * 100)}%</div>
+                            <div style={{ width: 130, fontSize: 11, fontFamily: "'Space Mono',monospace", color: C.text, textTransform: "capitalize", flexShrink: 0 }}>
+                              {i === 0 && <span style={{ color: C.warn, marginRight: 4 }}>★</span>}{t.label}
+                            </div>
+                            <div style={{ fontSize: 10, fontFamily: "'Space Mono',monospace", color: C.muted, width: 42, flexShrink: 0 }} title="Current peer-benchmarked strength">{Math.round(t.strength * 100)}%</div>
                             <div style={{ flex: 1, height: 6, background: C.border, borderRadius: 3, overflow: "hidden" }}>
                               <div style={{ width: `${barPct}%`, height: "100%", background: color, borderRadius: 3, transition: "width .4s" }} />
                             </div>
-                            <div style={{ width: 80, textAlign: "right", fontFamily: "'Space Mono',monospace", fontSize: 11, color, flexShrink: 0 }}>
-                              +{t.delta_problems} probs
+                            <div style={{ width: 90, textAlign: "right", fontFamily: "'Space Mono',monospace", fontSize: 11, color, flexShrink: 0 }}>
+                              +{t.delta_problems} problems
                             </div>
-                            <div style={{ width: 70, textAlign: "right", fontFamily: "'Space Mono',monospace", fontSize: 11, color: C.warn, flexShrink: 0 }}>
-                              ~+{t.estimated_rating_gain}
+                            <div style={{ width: 80, textAlign: "right", fontFamily: "'Space Mono',monospace", fontSize: 11, color: C.warn, flexShrink: 0 }}>
+                              ~+{t.estimated_rating_gain} pts
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                    <div style={{ marginTop: 14, fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>
-                      current strength · extra solvable problems · estimated rating gain
+                    <div style={{ marginTop: 14, display: "flex", gap: 20, fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace" }}>
+                      <span>current strength %</span>
+                      <span>→ extra solvable problems if improved</span>
+                      <span>→ estimated rating gain</span>
                     </div>
                   </div>
                 )}
 
                 {/* Solved by rating bucket */}
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, gridColumn: "1/-1" }}>
-                  <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 12, letterSpacing: 1 }}>SOLVED COUNT BY RATING BUCKET</div>
+                  <div style={{ fontSize: 10, color: C.muted, fontFamily: "'Space Mono',monospace", marginBottom: 4, letterSpacing: 1 }}>SOLVED COUNT BY RATING BUCKET</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
+                    How many problems you've solved at each difficulty level. Bar color reflects your accuracy at that rating —{" "}
+                    <span style={{ color: C.success }}>green</span> means high success rate,{" "}
+                    <span style={{ color: C.warn }}>yellow</span> means mixed,{" "}
+                    <span style={{ color: C.danger }}>red</span> means you often attempt but don't solve.{" "}
+                    <span style={{ color: C.text }}>Your comfort zone is where the green bars are tallest.</span>
+                  </div>
                   <ResponsiveContainer width="100%" height={160}>
                     <BarChart data={ratingData}>
                       <XAxis dataKey="rating" tick={{ fill: C.muted, fontSize: 9, fontFamily: "Space Mono" }} />
@@ -630,63 +666,113 @@ export default function App() {
             {/* ── AI COACH ── */}
             {tab === "ai" && (
               <div className="up">
-                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24, marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>AI Coaching Plan</div>
-                      <div style={{ fontSize: 12, color: C.muted }}>
-                        7-day study plan · {mlData ? "based on ML tag strengths" : "based on CF accuracy"}
-                      </div>
+
+                {/* Password gate */}
+                {!coachUnlocked && (
+                  <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 36, marginBottom: 16, textAlign: "center" }}>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>AI Coach is Access-Restricted</div>
+                    <div style={{ fontSize: 12, color: C.muted, marginBottom: 24 }}>Enter the access code to generate your personalized coaching plan</div>
+                    <div style={{ display: "flex", gap: 10, maxWidth: 340, margin: "0 auto" }}>
+                      <input
+                        type="password"
+                        value={coachPwInput}
+                        onChange={e => { setCoachPwInput(e.target.value); setCoachPwError(false); }}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            if (coachPwInput === "free12345") { setCoachUnlocked(true); setCoachPwInput(""); }
+                            else setCoachPwError(true);
+                          }
+                        }}
+                        placeholder="Access code"
+                        style={{ flex: 1, background: C.surface, border: `1px solid ${coachPwError ? C.danger : C.border}`, borderRadius: 9, padding: "11px 14px", color: C.text, fontSize: 13, fontFamily: "'Space Mono',monospace", outline: "none", transition: "border-color .2s" }}
+                        onFocus={e => e.target.style.borderColor = coachPwError ? C.danger : C.accent}
+                        onBlur={e => e.target.style.borderColor = coachPwError ? C.danger : C.border}
+                      />
+                      <button
+                        onClick={() => {
+                          if (coachPwInput === "free12345") { setCoachUnlocked(true); setCoachPwInput(""); }
+                          else setCoachPwError(true);
+                        }}
+                        style={{ background: `linear-gradient(135deg,${C.accent},#a855f7)`, color: "#fff", border: "none", borderRadius: 9, padding: "11px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Space Mono',monospace" }}>
+                        Unlock
+                      </button>
                     </div>
-                    <button onClick={genPlan} disabled={aiLoading}
-                      style={{ background: `linear-gradient(135deg,${C.accent},#a855f7)`, color: "#fff", border: "none", borderRadius: 9, padding: "11px 18px", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "'Space Mono',monospace", opacity: aiLoading ? 0.5 : 1 }}>
-                      {aiLoading ? "Thinking…" : "🤖 Generate Plan"}
-                    </button>
+                    {coachPwError && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: C.danger, fontFamily: "'Space Mono',monospace" }}>
+                        ✗ Incorrect access code
+                      </div>
+                    )}
                   </div>
-                  {aiLoading && <Spinner label="Gemini is building your plan…" />}
-                  {!aiPlan && !aiLoading && <div style={{ textAlign: "center", padding: "32px 0", color: C.muted, fontSize: 12 }}>Click "Generate Plan" to get your coaching analysis</div>}
-                  {aiPlan && (
-                    <div style={{ background: C.surface, borderRadius: 10, padding: "18px 22px", borderLeft: `3px solid ${C.accent}`, fontSize: 13, lineHeight: 1.85 }}>
-                      <style>{`
-                        .day{padding:10px 0;border-bottom:1px solid ${C.border}}.day:last-child{border-bottom:none}
-                        .day-label{color:${C.accent};font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px}
-                        .day strong{color:${C.text};font-size:13px}
-                        .day ul{margin:6px 0 0 16px}.day ul li{color:${C.muted};font-size:12px;font-family:'Space Mono',monospace;margin-bottom:2px}
-                      `}</style>
-                      <div dangerouslySetInnerHTML={{ __html: aiPlan }} />
-                    </div>
-                  )}
-                </div>
-                {/* Weakness snapshot — ML strengths when available */}
-                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>📉 Weakness Snapshot</div>
-                  {mlData && <div style={{ fontSize: 10, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 14 }}>✦ ML peer-benchmarked scores</div>}
-                  {(mlData
-                    ? mlTagsSorted.filter(([,v]) => v.strength < 70).slice(0, 6).map(([tag, v]) => ({
-                        tag: tag.replace("tag_","").replace(/_/g," "),
-                        solved: v.solved ?? 0,
-                        failed: (v.attempted ?? 0) - (v.solved ?? 0),
-                        strength: Math.round(v.strength),
-                        isML: true,
-                      }))
-                    : tagData.filter(t => t.accuracy < 70).slice(0, 6).map(t => ({
-                        tag: t.tag, solved: t.solved, failed: t.failed, strength: t.accuracy, isML: false,
-                      }))
-                  ).map((t, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
-                      <div>
-                        <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, textTransform: "capitalize" }}>{t.tag}</span>
-                        <span style={{ fontSize: 10, color: C.muted, marginLeft: 10 }}>{t.solved}✓ {t.failed}✗</span>
+                )}
+
+                {/* Unlocked: plan generator + weakness snapshot */}
+                {coachUnlocked && (
+                  <>
+                    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24, marginBottom: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>AI Coaching Plan</div>
+                          <div style={{ fontSize: 12, color: C.muted }}>
+                            7-day study plan · {mlData ? "based on ML tag strengths" : "based on CF accuracy"}
+                          </div>
+                        </div>
+                        <button onClick={genPlan} disabled={aiLoading}
+                          style={{ background: `linear-gradient(135deg,${C.accent},#a855f7)`, color: "#fff", border: "none", borderRadius: 9, padding: "11px 18px", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "'Space Mono',monospace", opacity: aiLoading ? 0.5 : 1 }}>
+                          {aiLoading ? "Thinking…" : "🤖 Generate Plan"}
+                        </button>
                       </div>
-                      <div style={{ background: `${C.danger}18`, color: C.danger, padding: "3px 9px", borderRadius: 5, fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
-                        {t.strength}%
-                      </div>
+                      {aiLoading && <Spinner label="Gemini is building your plan…" />}
+                      {!aiPlan && !aiLoading && (
+                        <div style={{ textAlign: "center", padding: "32px 0", color: C.muted, fontSize: 12 }}>
+                          Click "Generate Plan" to get your coaching analysis
+                        </div>
+                      )}
+                      {aiPlan && (
+                        <div style={{ background: C.surface, borderRadius: 10, padding: "18px 22px", borderLeft: `3px solid ${C.accent}`, fontSize: 13, lineHeight: 1.85 }}>
+                          <style>{`
+                            .day{padding:10px 0;border-bottom:1px solid ${C.border}}.day:last-child{border-bottom:none}
+                            .day-label{color:${C.accent};font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px}
+                            .day strong{color:${C.text};font-size:13px}
+                            .day ul{margin:6px 0 0 16px}.day ul li{color:${C.muted};font-size:12px;font-family:'Space Mono',monospace;margin-bottom:2px}
+                          `}</style>
+                          <div dangerouslySetInnerHTML={{ __html: aiPlan }} />
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {(mlData ? mlTagsSorted.filter(([,v]) => v.strength < 70).length === 0 : tagData.filter(t => t.accuracy < 70).length === 0) && (
-                    <div style={{ color: C.success, fontSize: 13 }}>🎉 No significant weaknesses detected — great work!</div>
-                  )}
-                </div>
+
+                    {/* Weakness snapshot */}
+                    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>📉 Weakness Snapshot</div>
+                      {mlData && <div style={{ fontSize: 10, color: C.accent, fontFamily: "'Space Mono',monospace", marginBottom: 14 }}>✦ ML peer-benchmarked scores</div>}
+                      {(mlData
+                        ? mlTagsSorted.filter(([, v]) => v.strength < 70).slice(0, 6).map(([tag, v]) => ({
+                            tag: tag.replace("tag_", "").replace(/_/g, " "),
+                            solved: v.solved ?? 0,
+                            failed: (v.attempted ?? 0) - (v.solved ?? 0),
+                            strength: Math.round(v.strength),
+                          }))
+                        : tagData.filter(t => t.accuracy < 70).slice(0, 6).map(t => ({
+                            tag: t.tag, solved: t.solved, failed: t.failed, strength: t.accuracy,
+                          }))
+                      ).map((t, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: `1px solid ${C.border}` }}>
+                          <div>
+                            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, textTransform: "capitalize" }}>{t.tag}</span>
+                            <span style={{ fontSize: 10, color: C.muted, marginLeft: 10 }}>{t.solved}✓ {t.failed}✗</span>
+                          </div>
+                          <div style={{ background: `${C.danger}18`, color: C.danger, padding: "3px 9px", borderRadius: 5, fontSize: 10, fontFamily: "'Space Mono',monospace" }}>
+                            {t.strength}%
+                          </div>
+                        </div>
+                      ))}
+                      {(mlData ? mlTagsSorted.filter(([, v]) => v.strength < 70).length === 0 : tagData.filter(t => t.accuracy < 70).length === 0) && (
+                        <div style={{ color: C.success, fontSize: 13 }}>🎉 No significant weaknesses detected — great work!</div>
+                      )}
+                    </div>
+                  </>
+                )}
+
               </div>
             )}
           </div>
