@@ -1,4 +1,6 @@
 *.csv
+*.pkl
+*.tar.gz
 __pycache__
 .vscode/
-.DS_Store/
+.DS_Store

@@ -54,14 +54,21 @@ fi
 
 echo "Latest release with data: $LATEST_TAG"
 
+# MODELS_ONLY=1 fetches just the (small) model archive, skipping the large
+# dataset. Used at server start to refresh models quickly without re-downloading
+# the ~100 MB dataset that the build step already placed in the image.
+MODELS_ONLY="${MODELS_ONLY:-0}"
+
 # Get asset download URLs
 ASSETS=$(curl -sf \
   ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
-  "$API_URL/tags/$LATEST_TAG" | python3 -c "
-import sys, json
+  "$API_URL/tags/$LATEST_TAG" | MODELS_ONLY="$MODELS_ONLY" python3 -c "
+import sys, json, os
 data = json.load(sys.stdin)
+models_only = os.environ.get('MODELS_ONLY') == '1'
 for a in data.get('assets', []):
-    if 'dataset' in a['name'] or 'models' in a['name']:
+    want = 'models' in a['name'] or (not models_only and 'dataset' in a['name'])
+    if want:
         print(a['browser_download_url'], a['name'])
 ")
 
