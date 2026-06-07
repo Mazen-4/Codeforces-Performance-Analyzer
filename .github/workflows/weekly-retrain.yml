@@ -50,7 +50,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install --upgrade pip requests pandas
+        run: pip install --upgrade pip "requests~=2.32" "pandas~=2.3"
 
       - name: Download previous dataset (for new/known split)
         env:
@@ -113,7 +113,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install --upgrade pip requests pandas
+        run: pip install --upgrade pip "requests~=2.32" "pandas~=2.3"
 
       - name: Download chunks artifact
         uses: actions/download-artifact@v5
@@ -153,7 +153,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install --upgrade pip -r requirements.txt lightgbm scikit-learn
+        run: pip install --upgrade pip && pip install -r requirements.txt
 
       - name: Download previous dataset + models
         env:

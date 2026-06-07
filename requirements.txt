@@ -1,4 +1,13 @@
-numpy
-requests
-psutil
-pandas
+# Pinned to compatible-release ranges so patch updates are allowed but a
+# major/minor bump can't silently change behavior (e.g. pandas 2.1's idxmax
+# all-NA change that broke strength.py). Bump deliberately, not by surprise.
+numpy~=2.1
+pandas~=2.3
+requests~=2.32
+psutil~=7.2
+
+# ML training deps — required by scripts/merge_and_retrain.py -> ML/training/*.
+# Previously pip-installed inline in the workflow only; listing them here keeps
+# the retrain reproducible and runnable outside CI.
+lightgbm~=4.6
+scikit-learn~=1.8
