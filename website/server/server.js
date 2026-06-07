@@ -193,7 +193,7 @@ print(json.dumps(result, default=convert))
       proc.stdout.on("data", d => { stdout += d.toString(); });
       proc.stderr.on("data", d => { stderr += d.toString(); });
       proc.on("close", code => {
-        if (code !== 0) return reject(new Error(stderr.slice(-1000)));
+        if (code !== 0) return reject(new Error(stderr));
         resolve(stdout.trim());
       });
 
