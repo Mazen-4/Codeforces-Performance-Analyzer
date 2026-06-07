@@ -82,7 +82,16 @@ def merge_chunks():
         combined = pd.concat([existing, new_df], ignore_index=True)
         if "submitted_at" in combined.columns:
             combined = combined.sort_values("submitted_at", ascending=False)
-        combined = combined.drop_duplicates(subset=["handle", "problem_id"], keep="first")
+        # Dedup on the unique SUBMISSION, not the problem. Keying on
+        # (handle, problem_id) alone collapses every attempt of a problem into a
+        # single row, zeroing the per-problem WA counts that the attempts and
+        # strength models depend on (they aggregate is_wa with .sum()). Including
+        # submitted_at keeps each distinct attempt while still removing genuine
+        # duplicates re-crawled across weekly runs.
+        dedup_keys = ["handle", "problem_id"]
+        if "submitted_at" in combined.columns:
+            dedup_keys.append("submitted_at")
+        combined = combined.drop_duplicates(subset=dedup_keys, keep="first")
         log.info("Merged: %d existing + %d new = %d unique rows",
                  len(existing), len(new_df), len(combined))
     else:
