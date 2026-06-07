@@ -16,8 +16,8 @@ echo "Project root: $PROJECT_ROOT"
 echo ""
 echo "--- Installing Python dependencies ---"
 pip3 install --quiet --no-cache-dir --break-system-packages \
-    numpy pandas requests psutil \
-    lightgbm scikit-learn
+    "numpy~=2.1" "pandas~=2.3" "requests~=2.32" "psutil~=7.2" \
+    "lightgbm~=4.6" "scikit-learn~=1.8"
 
 # ── 2. Node dependencies + React build ───────────────────────────────────────
 echo ""
