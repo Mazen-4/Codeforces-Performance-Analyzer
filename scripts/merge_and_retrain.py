@@ -110,16 +110,14 @@ def _run_script(script_path: Path, cwd: Path, label: str):
         raise RuntimeError(f"Directory not found: {cwd}")
     if not script_path.is_file():
         raise RuntimeError(f"Script not found: {script_path}")
+    # Stream output directly — capture_output=True can deadlock if the
+    # subprocess produces enough output to fill the OS pipe buffer.
     r = subprocess.run(
         [sys.executable, str(script_path)],
-        capture_output=True, text=True,
         cwd=str(cwd),
     )
     if r.returncode != 0:
-        log.error("Failed %s:\n%s", label, r.stderr[-2000:])
-        raise RuntimeError(f"Step failed: {label}")
-    if r.stdout.strip():
-        log.info(r.stdout.strip())
+        raise RuntimeError(f"Step failed: {label} (exit {r.returncode})")
 
 
 def run_preprocessing():
