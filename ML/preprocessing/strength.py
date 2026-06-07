@@ -100,6 +100,13 @@ WEIGHTS = {
     'efficiency_score':     0.075,
     'volume_score':         0.075,
 }
+# Profile-derived components (rating_boost, efficiency_score, ...) are NaN for any
+# handle present in submissions but missing from profiles (left-join). Fill those
+# component NaNs with 0 so tag_strength is always defined — otherwise an entire
+# handle group can be all-NA and idxmax/idxmin raise in pandas >= 2.1.
+for col in WEIGHTS:
+    user_tag_df[col] = user_tag_df[col].fillna(0)
+
 user_tag_df['tag_strength'] = sum(
     user_tag_df[col] * w for col, w in WEIGHTS.items()
 ).clip(0, 1)
