@@ -58,11 +58,14 @@ FEATURE_NAMES = [
 
 def build_training_data():
     print("Loading datasets...")
-    _subs_dtypes = {'handle': str, 'problem_id': str,
-                    'problem_rating': 'float32', 'is_ac': 'int8', 'is_wa': 'int8',
-                    **dict.fromkeys(TAG_COLS, 'int8')}
+    # Read int flags as float32 (tolerates NA from any schema drift), then fill
+    # and downcast — forcing int8 at read raises "Integer column has NA values".
+    _int_cols = ['is_ac', 'is_wa'] + TAG_COLS
+    _subs_dtypes = {'handle': str, 'problem_id': str, 'problem_rating': 'float32',
+                    **dict.fromkeys(_int_cols, 'float32')}
     subs      = pd.read_csv(os.path.join(DATASET_DIR, "04_filtered_submissions.csv"),
                             usecols=list(_subs_dtypes), dtype=_subs_dtypes)
+    subs[_int_cols] = subs[_int_cols].fillna(0).astype('int8')
     # Categorical encoding collapses the per-row handle/problem_id string
     # overhead (the dominant memory cost at 8M rows) to small int codes.
     subs["handle"]     = subs["handle"].astype("category")

@@ -51,6 +51,34 @@ def drop_unrated(df):
     return df
 
 
+# Column-name aliases that have drifted across crawler versions. Without this,
+# pandas.concat aligns by name and treats e.g. tag_impl vs tag_implementation as
+# two different columns, each half-filled with NaN — which splits the tag signal
+# AND breaks the strict-int read in strength.py ("Integer column has NA values").
+COLUMN_ALIASES = {
+    "tag_implementation": "tag_impl",
+}
+
+
+def normalize_schema(df):
+    """Rename drifted columns to the canonical names so concat aligns cleanly.
+
+    If both the alias and the canonical column exist in the same frame, coalesce
+    them (canonical wins where present, else the alias) and drop the alias.
+    """
+    for alias, canonical in COLUMN_ALIASES.items():
+        if alias not in df.columns:
+            continue
+        if canonical in df.columns:
+            # Both present: coalesce alias into canonical (max treats the binary
+            # tag flags as logical OR), then drop the alias column.
+            df[canonical] = df[[canonical, alias]].max(axis=1)
+            df = df.drop(columns=[alias])
+        else:
+            df = df.rename(columns={alias: canonical})
+    return df
+
+
 def merge_chunks():
     chunk_dfs = []
     for i in range(NUM_CHUNKS):
@@ -64,7 +92,7 @@ def merge_chunks():
             log.warning("Chunk %d unreadable (%s): %s", i, path, e)
             continue
         if not df.empty:
-            chunk_dfs.append(df)
+            chunk_dfs.append(normalize_schema(df))
             log.info("Chunk %d: %d rows", i, len(df))
         else:
             log.warning("Chunk %d: empty file, skipping", i)
@@ -78,7 +106,7 @@ def merge_chunks():
 
     if os.path.exists(FILTERED_CSV):
         log.info("Loading existing dataset …")
-        existing = pd.read_csv(FILTERED_CSV)
+        existing = normalize_schema(pd.read_csv(FILTERED_CSV))
         combined = pd.concat([existing, new_df], ignore_index=True)
         if "submitted_at" in combined.columns:
             combined = combined.sort_values("submitted_at", ascending=False)

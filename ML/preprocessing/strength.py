@@ -11,12 +11,20 @@ df_profiles    = pd.read_csv('../dataset/02_user_profiles.csv', dtype={'handle':
 # 8M-row dataset, keeping us within GitHub Actions' 7 GB limit.
 _sub_header = pd.read_csv('../dataset/04_filtered_submissions.csv', nrows=0)
 _tag_cols_present = [c for c in _sub_header.columns if c.startswith('tag_')]
-_needed_cols = ['handle', 'problem_id', 'problem_rating', 'is_ac', 'is_wa'] + _tag_cols_present
-_dtypes = {'handle': str, 'problem_id': str,
-           'problem_rating': 'float32', 'is_ac': 'int8', 'is_wa': 'int8',
-           **dict.fromkeys(_tag_cols_present, 'int8')}
+_int_cols = ['is_ac', 'is_wa'] + _tag_cols_present
+_needed_cols = ['handle', 'problem_id', 'problem_rating'] + _int_cols
+# Only force dtypes that can't have NA. The int flag columns are read as float32
+# (which tolerates NA from schema-mismatched merges, e.g. a released base that
+# lacks columns the newer chunks have), then filled and downcast to int8 below —
+# forcing int8 at read time raises "Integer column has NA values".
+_dtypes = {'handle': str, 'problem_id': str, 'problem_rating': 'float32',
+           **dict.fromkeys(_int_cols, 'float32')}
 df_submissions = pd.read_csv('../dataset/04_filtered_submissions.csv',
                              usecols=_needed_cols, dtype=_dtypes)
+# Empty flags mean "not observed" → 0. Downcast to int8 to reclaim memory.
+df_submissions[_int_cols] = (
+    df_submissions[_int_cols].fillna(0).astype('int8')
+)
 
 
 def clean_handles_inplace(df: pd.DataFrame, col: str = 'handle') -> pd.DataFrame:
