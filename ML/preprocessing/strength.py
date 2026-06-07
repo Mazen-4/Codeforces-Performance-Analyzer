@@ -6,7 +6,17 @@ import csv
 # LOAD & CLEAN DATASETS
 # ─────────────────────────────────────────────────────────────────────────────
 df_profiles    = pd.read_csv('../dataset/02_user_profiles.csv', dtype={'handle': str})
-df_submissions = pd.read_csv('../dataset/04_filtered_submissions.csv', dtype={'handle': str})
+
+# Read only the columns needed — skipping problem_name etc. cuts RAM usage
+# by ~40% on an 8M-row dataset, keeping us within GitHub Actions' 7 GB limit.
+_sub_header = pd.read_csv('../dataset/04_filtered_submissions.csv', nrows=0)
+_tag_cols_present = [c for c in _sub_header.columns if c.startswith('tag_')]
+_needed_cols = ['handle', 'problem_id', 'problem_rating', 'is_ac', 'is_wa'] + _tag_cols_present
+_dtypes = {'handle': str, 'problem_id': str,
+           'problem_rating': 'float32', 'is_ac': 'int8', 'is_wa': 'int8',
+           **dict.fromkeys(_tag_cols_present, 'int8')}
+df_submissions = pd.read_csv('../dataset/04_filtered_submissions.csv',
+                             usecols=_needed_cols, dtype=_dtypes)
 
 def clean_handles(df: pd.DataFrame, col: str = 'handle') -> pd.DataFrame:
     # Drop rows Excel already corrupted (handle lost forever)

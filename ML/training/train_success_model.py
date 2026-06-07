@@ -58,7 +58,11 @@ FEATURE_NAMES = [
 
 def build_training_data():
     print("Loading datasets...")
-    subs      = pd.read_csv(os.path.join(DATASET_DIR, "04_filtered_submissions.csv"))
+    _subs_dtypes = {'handle': str, 'problem_id': str,
+                    'problem_rating': 'float32', 'is_ac': 'int8', 'is_wa': 'int8',
+                    **dict.fromkeys(TAG_COLS, 'int8')}
+    subs      = pd.read_csv(os.path.join(DATASET_DIR, "04_filtered_submissions.csv"),
+                            usecols=list(_subs_dtypes), dtype=_subs_dtypes)
     strengths = pd.read_csv(os.path.join(DATASET_DIR, "06_user_tag_strengths.csv"))
     profiles  = pd.read_csv(os.path.join(DATASET_DIR, "02_user_profiles.csv"))
 
