@@ -6,7 +6,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
-import { existsSync } from "fs";
+import { existsSync, statSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 dotenv.config();
 
@@ -31,6 +32,27 @@ if (existsSync(STATIC_DIR)) {
 
 // Health check for Render
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+// Model fingerprint — verify which model build is live (new vs. old/committed).
+// Reports each .pkl's SHA-256 and modified time so you can match it against the
+// GitHub Release the weekly retrain published.
+app.get("/api/ml/version", (_req, res) => {
+  const modelsDir = path.join(PROJECT_ROOT, "ML", "models");
+  const files = ["success_model.pkl", "attempts_model.pkl", "rating_progression_model.pkl"];
+  const models = files.map(name => {
+    const p = path.join(modelsDir, name);
+    if (!existsSync(p)) return { name, present: false };
+    const buf = readFileSync(p);
+    return {
+      name,
+      present: true,
+      sha256: createHash("sha256").update(buf).digest("hex").slice(0, 16),
+      size_bytes: buf.length,
+      modified: statSync(p).mtime.toISOString(),
+    };
+  });
+  res.json({ models });
+});
 
 /* ───────────── Codeforces Fetch ───────────── */
 
