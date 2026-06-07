@@ -168,7 +168,8 @@ app.get("/api/ml/analyze/:handle", async (req, res) => {
   const { handle } = req.params;
 
   const script = `
-import sys, os, json
+import sys, os, json, warnings
+warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.join(${JSON.stringify(PROJECT_ROOT)}, 'src'))
 sys.path.insert(0, ${JSON.stringify(PROJECT_ROOT)})
 from main import main
@@ -203,8 +204,8 @@ print(json.dumps(result, default=convert))
       // Kill the process if it takes more than 60 seconds
       setTimeout(() => {
         proc.kill();
-        reject(new Error("ML pipeline timed out after 60s"));
-      }, 60_000);
+        reject(new Error("ML pipeline timed out after 120s"));
+      }, 120_000);
     });
 
     let result;

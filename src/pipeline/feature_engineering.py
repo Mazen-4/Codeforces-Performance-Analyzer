@@ -122,7 +122,7 @@ def compute_target_features(
                 "total_attempts":    len(g),
                 "ac_count":          int(g["ever_ac"].sum()),
                 "avg_rating_solved": _mean_ac_rating(g),
-            }))
+            }), include_groups=False)
             .reset_index()
         )
         tag_agg["acceptance_rate"]      = ((tag_agg["ac_count"] + SMOOTHING * 0.5) /
