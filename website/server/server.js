@@ -193,7 +193,10 @@ print(json.dumps(result, default=convert))
       proc.stdout.on("data", d => { stdout += d.toString(); });
       proc.stderr.on("data", d => { stderr += d.toString(); });
       proc.on("close", code => {
-        if (code !== 0) return reject(new Error(stderr));
+        if (code !== 0) {
+          const detail = [stderr, stdout].filter(Boolean).join("\n--- stdout ---\n") || "(no output)";
+          return reject(new Error(detail));
+        }
         resolve(stdout.trim());
       });
 
@@ -204,7 +207,13 @@ print(json.dumps(result, default=convert))
       }, 60_000);
     });
 
-    const result = JSON.parse(output);
+    let result;
+    try {
+      result = JSON.parse(output);
+    } catch (parseErr) {
+      console.error("ML pipeline JSON parse error. stdout:", output);
+      return res.status(500).json({ error: `JSON parse failed: ${parseErr.message}`, output });
+    }
     res.json(result);
   } catch (err) {
     console.error("ML pipeline error:", err.message);
