@@ -591,7 +591,7 @@ export default function App() {
                       ? <div style={{ textAlign: "center", padding: 40, color: C.muted }}>No recommendations found.</div>
                       : (
                         <div style={{ columns: 2, columnGap: 14 }}>
-                          {mlProblems.slice(0, 20).map((p, i) => {
+                          {mlProblems.map((p, i) => {
                             const [contestId, idx] = p.id.split("_");
                             return (
                               <a key={i}
