@@ -50,9 +50,9 @@ jobs:
             TAG="$SOURCE_TAG"
           else
             TAG=$(gh release list \
-              --repo ${{ github.repository }} --limit 10 \
+              --repo ${{ github.repository }} --limit 20 \
               --json tagName,isDraft \
-              -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' 2>/dev/null || echo "")
+              -q '[.[] | select(.isDraft == false) | select(.tagName | startswith("data-")) | .tagName] | .[0]' 2>/dev/null || echo "")
           fi
           [ -n "$TAG" ] || { echo "ERROR: no release tag found to pull dataset from"; exit 1; }
           echo "Pulling dataset from release: $TAG"

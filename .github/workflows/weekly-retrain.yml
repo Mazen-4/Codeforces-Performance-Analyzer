@@ -58,10 +58,11 @@ jobs:
         run: |
           mkdir -p ML/dataset ML/models
           LATEST=$(gh release list \
-            --repo ${{ github.repository }} --limit 10 \
+            --repo ${{ github.repository }} --limit 20 \
             --json tagName,isDraft \
-            -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' 2>/dev/null || echo "")
+            -q '[.[] | select(.isDraft == false) | select(.tagName | startswith("data-")) | .tagName] | .[0]' 2>/dev/null || echo "")
           if [ -n "$LATEST" ]; then
+            echo "Previous dataset release: $LATEST"
             gh release download "$LATEST" \
               --repo ${{ github.repository }} \
               --pattern "dataset-*.tar.gz" \
@@ -69,6 +70,10 @@ jobs:
             for f in /tmp/release-assets/dataset-*.tar.gz; do
               [ -f "$f" ] && tar -xzf "$f" -C ML/dataset/
             done
+            # Fail fast (before the multi-hour crawl) if the release exists but
+            # the dataset didn't extract — preprocessing needs these files later.
+            [ -f ML/dataset/02_user_profiles.csv ] \
+              || { echo "ERROR: $LATEST has no usable dataset-*.tar.gz (02_user_profiles.csv missing)"; exit 1; }
           fi
           ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
 
@@ -161,10 +166,11 @@ jobs:
         run: |
           mkdir -p ML/dataset ML/models
           LATEST=$(gh release list \
-            --repo ${{ github.repository }} --limit 10 \
+            --repo ${{ github.repository }} --limit 20 \
             --json tagName,isDraft \
-            -q '[.[] | select(.isDraft == false) | .tagName] | .[0]' 2>/dev/null || echo "")
+            -q '[.[] | select(.isDraft == false) | select(.tagName | startswith("data-")) | .tagName] | .[0]' 2>/dev/null || echo "")
           if [ -n "$LATEST" ]; then
+            echo "Previous dataset release: $LATEST"
             gh release download "$LATEST" \
               --repo ${{ github.repository }} \
               --pattern "dataset-*.tar.gz" \
@@ -176,6 +182,10 @@ jobs:
             for f in /tmp/release-assets/models-*.tar.gz; do
               [ -f "$f" ] && tar -xzf "$f" -C ML/models/
             done
+            # strength.py hard-requires this file; fail here with a clear message
+            # instead of deep inside preprocessing.
+            [ -f ML/dataset/02_user_profiles.csv ] \
+              || { echo "ERROR: $LATEST has no usable dataset-*.tar.gz (02_user_profiles.csv missing)"; exit 1; }
           fi
           echo "--- Dataset ---"; ls -lh ML/dataset/ 2>/dev/null || echo "(empty)"
           echo "--- Models ---";  ls -lh ML/models/  2>/dev/null || echo "(empty)"
