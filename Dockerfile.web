@@ -1,0 +1,48 @@
+# ── Stage 1: build React frontend ──────────────────────────────────────────
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /build/website
+COPY website/package.json website/package-lock.json ./
+RUN npm ci
+COPY website/ ./
+RUN npm run build
+# Output: /build/website/dist/
+
+# ── Stage 2: production server ──────────────────────────────────────────────
+FROM node:20-slim AS server
+
+WORKDIR /app
+
+# Install Python + pip so the server can spawn the ML pipeline subprocess
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps into a venv at /app/.venv
+COPY requirements.txt ./
+RUN python3 -m venv .venv && \
+    .venv/bin/pip install --no-cache-dir -r requirements.txt lightgbm scikit-learn
+
+# Node server deps
+COPY website/server/package.json ./server/
+RUN cd server && npm install --omit=dev
+
+# Copy application code
+COPY website/server/ ./server/
+COPY main.py full_pipeline.py ./
+COPY src/ ./src/
+COPY ML/inference/ ./ML/inference/
+# ML/dataset/ and ML/models/ are provided by the PersistentVolumeClaim at /data
+
+# Copy built React app — served as static files by Express
+COPY --from=frontend-builder /build/website/dist/ ./server/public/
+
+# Patch server to serve static files and use /data for ML assets
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV ML_DATA_PATH=/data
+ENV PORT=3000
+
+EXPOSE 3000
+
+CMD ["node", "server/server.js"]

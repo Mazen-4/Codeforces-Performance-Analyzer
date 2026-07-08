@@ -1,24 +1,24 @@
 {
   "total_runs": 1,
-  "last_updated": "2026-05-16T14:51:22.473615",
+  "last_updated": "2026-06-07T16:38:55.590238",
   "runs": [
     {
-      "timestamp": "2026-05-16T14:51:13.724697",
+      "timestamp": "2026-06-07T16:38:51.262248",
       "stages": [
         {
           "stage": "data_collection",
-          "execution_time_seconds": 5.5205,
-          "memory_usage_mb": 5.55,
-          "timestamp": "2026-05-16T14:51:19.245344",
+          "execution_time_seconds": 1.5339,
+          "memory_usage_mb": 7.33,
+          "timestamp": "2026-06-07T16:38:52.796287",
           "metadata": {
-            "target_user": "goie"
+            "target_user": "o.khalifa"
           }
         },
         {
           "stage": "feature_engineering",
-          "execution_time_seconds": 0.0367,
-          "memory_usage_mb": 1.5,
-          "timestamp": "2026-05-16T14:51:19.282077",
+          "execution_time_seconds": 0.0372,
+          "memory_usage_mb": 1.75,
+          "timestamp": "2026-06-07T16:38:52.833500",
           "metadata": {
             "source": "strength.py formula",
             "dims": 82
@@ -26,9 +26,9 @@
         },
         {
           "stage": "model_inference",
-          "execution_time_seconds": 0.1756,
-          "memory_usage_mb": 41.27,
-          "timestamp": "2026-05-16T14:51:19.457677",
+          "execution_time_seconds": 0.1198,
+          "memory_usage_mb": 39.94,
+          "timestamp": "2026-06-07T16:38:52.953313",
           "metadata": {
             "k_neighbors": 50,
             "metric": "euclidean"
@@ -36,28 +36,28 @@
         },
         {
           "stage": "preprocessing",
-          "execution_time_seconds": 0.0103,
+          "execution_time_seconds": 0.0001,
           "memory_usage_mb": null,
-          "timestamp": "2026-05-16T14:51:20.975406",
+          "timestamp": "2026-06-07T16:38:54.039675",
           "metadata": {
             "source": "04_filtered_submissions.csv"
           }
         },
         {
           "stage": "recommendation_generation",
-          "execution_time_seconds": 1.2257,
-          "memory_usage_mb": 51.08,
-          "timestamp": "2026-05-16T14:51:22.412631",
+          "execution_time_seconds": 1.3494,
+          "memory_usage_mb": 83.05,
+          "timestamp": "2026-06-07T16:38:55.521882",
           "metadata": {
             "limit": 200
           }
         }
       ],
       "summary": {
-        "user_handle": "goie",
+        "user_handle": "o.khalifa",
         "num_neighbors_returned": 50,
-        "total_execution_time_seconds": 6.9688,
-        "total_memory_used_mb": 99.4,
+        "total_execution_time_seconds": 3.0404,
+        "total_memory_used_mb": 132.07,
         "num_stages": 5
       }
     }

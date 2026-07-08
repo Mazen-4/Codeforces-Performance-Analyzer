@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System deps for LightGBM
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt lightgbm scikit-learn
+
+# Copy source — dataset CSVs and model .pkl files are mounted via PVC at runtime
+COPY main.py full_pipeline.py ./
+COPY src/ ./src/
+COPY ML/inference/ ./ML/inference/
+COPY ML/training/ ./ML/training/
+COPY ML/preprocessing/ ./ML/preprocessing/
+COPY ML/evaluation/ ./ML/evaluation/
+# ML/dataset/ and ML/models/ are provided by the PersistentVolumeClaim
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+CMD ["python", "main.py"]

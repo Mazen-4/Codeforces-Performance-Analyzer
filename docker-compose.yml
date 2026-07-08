@@ -1,0 +1,73 @@
+version: "3.9"
+
+# Local development stack.
+# The 'data' volume holds ML/dataset/*.csv and ML/models/*.pkl.
+# On first run, seed the volume by running:
+#   docker compose run --rm seed
+# Then start the web server:
+#   docker compose up web
+
+services:
+
+  # ── Web + ML server ──────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: cf-analyzer-web:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      ML_DATA_PATH: /data
+    volumes:
+      - cf_data:/data
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── One-shot seed: copy local dataset + models into the volume ───────────────
+  # Run once with: docker compose run --rm seed
+  # Re-run after downloading a new dataset manually.
+  seed:
+    image: python:3.11-slim
+    volumes:
+      - ./ML/dataset:/src/dataset:ro
+      - ./ML/models:/src/models:ro
+      - cf_data:/data
+    command: >
+      sh -c "
+        mkdir -p /data/dataset /data/models &&
+        cp -v /src/dataset/*.csv /data/dataset/ &&
+        cp -v /src/models/*.pkl  /data/models/  &&
+        echo 'Seed complete.'
+      "
+
+  # ── Weekly crawl + retrain CronJob (docker compose version) ─────────────────
+  # Not scheduled here — use Kubernetes CronJob for automated scheduling.
+  # Run manually with: docker compose run --rm retrain
+  retrain:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    image: cf-analyzer-pipeline:latest
+    volumes:
+      - cf_data:/data
+    environment:
+      DATA_DIR: /data
+      CF_CRAWL_USERS: "5000"
+      CF_MIN_RATING: "900"
+      CF_MAX_RATING: "3500"
+    command: ["python", "scripts/crawl_and_retrain.py"]
+    profiles:
+      - tools
+
+volumes:
+  cf_data:
+    driver: local

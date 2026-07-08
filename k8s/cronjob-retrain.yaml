@@ -1,0 +1,54 @@
+# Runs the full crawl + preprocessing + retrain pipeline every Sunday at 02:00 UTC.
+# Adjust the schedule field using standard cron syntax.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cf-retrain
+  namespace: cf-analyzer
+spec:
+  schedule: "0 2 * * 0"   # Every Sunday at 02:00 UTC
+  concurrencyPolicy: Forbid  # Don't start a new job if the previous one is still running
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Give the crawl + train job up to 6 hours before timing out
+      activeDeadlineSeconds: 21600
+      template:
+        metadata:
+          labels:
+            app: cf-retrain
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: retrain
+              image: cf-analyzer-pipeline:latest
+              imagePullPolicy: Never
+              command: ["python", "scripts/crawl_and_retrain.py"]
+              env:
+                - name: DATA_DIR
+                  value: /data
+                - name: CF_CRAWL_USERS
+                  value: "5000"
+                - name: CF_MIN_RATING
+                  value: "900"
+                - name: CF_MAX_RATING
+                  value: "3500"
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+                - name: PYTHONPATH
+                  value: /app
+              volumeMounts:
+                - name: cf-data
+                  mountPath: /data
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  cpu: "2000m"
+                  memory: "4Gi"
+          volumes:
+            - name: cf-data
+              persistentVolumeClaim:
+                claimName: cf-data-pvc

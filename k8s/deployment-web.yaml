@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cf-analyzer-web
+  namespace: cf-analyzer
+  labels:
+    app: cf-analyzer-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cf-analyzer-web
+  template:
+    metadata:
+      labels:
+        app: cf-analyzer-web
+    spec:
+      containers:
+        - name: web
+          image: cf-analyzer-web:latest
+          # Use imagePullPolicy: Never when loading from local Docker daemon (minikube)
+          # Switch to Always + a registry URL when pushing to a remote registry.
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          env:
+            - name: ML_DATA_PATH
+              value: /data
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: /app
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cf-analyzer-secrets
+                  key: GEMINI_API_KEY
+          volumeMounts:
+            - name: cf-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: cf-data
+          persistentVolumeClaim:
+            claimName: cf-data-pvc

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cf-analyzer-web
+  namespace: cf-analyzer
+spec:
+  selector:
+    app: cf-analyzer-web
+  # NodePort lets you reach the app via minikube service or kubectl port-forward.
+  # Change to LoadBalancer when deploying to a cloud provider.
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      nodePort: 30300

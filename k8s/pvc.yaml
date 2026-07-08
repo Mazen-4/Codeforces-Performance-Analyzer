@@ -1,0 +1,15 @@
+# PersistentVolumeClaim for ML dataset CSVs and trained model .pkl files.
+# Both the web pod and the retrain CronJob mount this volume at /data.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cf-data-pvc
+  namespace: cf-analyzer
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  # Minikube/Docker Desktop uses the default StorageClass automatically.
+  # On a real cluster, set storageClassName: "standard" or your provider's class.

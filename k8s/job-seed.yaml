@@ -1,0 +1,43 @@
+# One-time job to seed the PVC with your existing local dataset and models.
+# Run with: kubectl apply -f k8s/job-seed.yaml
+# Then watch: kubectl logs -n cf-analyzer job/cf-data-seed -f
+#
+# IMPORTANT: You must first load the seed image into minikube:
+#   minikube image load cf-analyzer-web:latest
+# And make sure your local ML/dataset/ and ML/models/ are baked into the image,
+# OR use `kubectl cp` to copy them into the PVC after this job creates it.
+#
+# Simplest approach for local dev — run from your machine:
+#   kubectl run seed --rm -it --image=busybox --restart=Never \
+#     --overrides='{"spec":{"volumes":[{"name":"d","persistentVolumeClaim":{"claimName":"cf-data-pvc"}}],"containers":[{"name":"seed","image":"busybox","volumeMounts":[{"name":"d","mountPath":"/data"}],"command":["sh"]}]}}' \
+#     -n cf-analyzer
+# Then in the shell: mkdir -p /data/dataset /data/models
+# Then from another terminal: kubectl cp ML/dataset/ cf-analyzer/seed:/data/dataset/
+#                              kubectl cp ML/models/  cf-analyzer/seed:/data/models/
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cf-data-seed
+  namespace: cf-analyzer
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: create-dirs
+          image: busybox
+          command: ["sh", "-c", "mkdir -p /data/dataset /data/models && echo Dirs created."]
+          volumeMounts:
+            - name: cf-data
+              mountPath: /data
+      containers:
+        - name: done
+          image: busybox
+          command: ["echo", "Seed job complete — use kubectl cp to populate /data/dataset and /data/models"]
+          volumeMounts:
+            - name: cf-data
+              mountPath: /data
+      volumes:
+        - name: cf-data
+          persistentVolumeClaim:
+            claimName: cf-data-pvc

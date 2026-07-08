@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Python runtime artifacts
+__pycache__
+*.pyc
+*.pyo
+.venv
+*.egg-info
+
+# Large data files — mounted via PVC at runtime
+ML/dataset/
+ML/models/
+
+# Node runtime artifacts
+website/node_modules
+website/dist
+
+# macOS & editor junk
+.DS_Store
+.vscode
+.idea
+
+# Logs
+logs/
+*.log
+
+# Docs / academic deliverables (not needed in container)
+Paper/
+Presentation/
+*.md
+DEVELOPER_DOCS.md
+
+# Test / visualization scripts
+test_profiling.py
+visualization/
