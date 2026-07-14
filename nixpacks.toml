@@ -1,5 +1,7 @@
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "nodejs_20", "nodePackages.npm"]
+# nodejs_22, not _20: vite 7 requires node ^20.19.0 || >=22.12.0, and nixpacks'
+# nodejs_20 resolves to v20.18.0 — just below the cutoff (EBADENGINE at build).
+nixPkgs = ["python311", "python311Packages.pip", "nodejs_22", "nodePackages.npm"]
 
 [phases.install]
 cmds = ["bash scripts/setup_render.sh"]
@@ -10,4 +12,4 @@ cmds = ["bash scripts/setup_render.sh"]
 cmd = "bash scripts/start.sh"
 
 [variables]
-NIXPACKS_NODE_VERSION = "20"
+NIXPACKS_NODE_VERSION = "22"

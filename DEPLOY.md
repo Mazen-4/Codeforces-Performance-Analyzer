@@ -11,12 +11,22 @@ Every Sunday 02:00 UTC (GitHub's servers, always on)
   ├─ 2. Crawl Codeforces API (5,000 users, ~1.5 hrs)
   ├─ 3. Run preprocessing pipeline (rebuild CSVs)
   ├─ 4. Retrain all 3 LightGBM models
-  └─ 5. Publish new GitHub Release with:
-         dataset-YYYYMMDD.tar.gz  (all CSVs)
-         models-YYYYMMDD.tar.gz   (all .pkl files)
+  ├─ 5. Publish new GitHub Release with:
+  │      dataset-YYYYMMDD.tar.gz  (all CSVs)
+  │      models-YYYYMMDD.tar.gz   (all .pkl files)
+  └─ 6. Ping the Railway deploy hook
+         │
+         └─ Railway redeploys → scripts/start.sh runs
+            fetch_latest_release.sh → live site serves the new models
 ```
 
 No server required. GitHub provides free compute (~2,000 minutes/month on free tier; the weekly job takes ~2 hours = ~8 hrs/month).
+
+Note that the dataset and models are **never committed to the repo** — `.gitignore`
+excludes `*.csv`, `*.pkl` and `*.tar.gz`. GitHub Releases are the distribution
+channel, and the live site pulls from them at deploy time. Step 6 exists because
+publishing a release does not by itself update the running site: Railway only
+fetches new models when it redeploys.
 
 ### Step 1 — Seed the initial dataset (one-time, from your machine)
 
@@ -55,7 +65,25 @@ git commit -m "Add GitHub Actions weekly retrain workflow"
 git push
 ```
 
-### Step 3 — Verify the workflow runs
+### Step 3 — Add the Railway deploy hook (one-time)
+
+Without this, every weekly run still publishes a release, but the live site keeps
+serving the previous week's models until it happens to redeploy.
+
+1. Railway dashboard → your service → **Settings** → **Deploy Hooks** → create one,
+   pointed at the branch you deploy from (`main`). Copy the URL.
+2. GitHub repo → **Settings** → **Secrets and variables** → **Actions** →
+   **New repository secret**:
+   - Name: `RAILWAY_DEPLOY_HOOK`
+   - Value: the URL from step 1
+
+Treat the URL as a credential — anyone holding it can trigger deploys, which is why
+it lives in a secret rather than in the workflow file.
+
+If the secret is missing the workflow won't fail; it logs a warning and skips the
+redeploy, so the release still gets published.
+
+### Step 4 — Verify the workflow runs
 
 - Go to your repo → **Actions** tab → **Weekly Crawl & Retrain**
 - Click **Run workflow** to trigger it manually for the first time
@@ -78,6 +106,102 @@ gh workflow run weekly-retrain.yml \
 ```
 
 This downloads and extracts the most recent release assets into `ML/dataset/` and `ML/models/`.
+
+---
+
+# Hosting the website on Railway (from scratch)
+
+Everything to click through on a brand-new Railway account. The build and start
+commands come from the repo automatically — you never type them.
+
+**Before you start, have these two things ready:**
+
+- A **Gemini API key** — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key* → copy it.
+- At least one **`data-*` release** on the GitHub repo. If the repo is brand new and has
+  no releases yet, do
+  [Step 1 — Seed the initial dataset](#step-1--seed-the-initial-dataset-one-time-from-your-machine)
+  first, or the build will fail with *"No release with dataset + model assets found."*
+
+## Step 1 — Create the project
+
+1. Go to [railway.app](https://railway.app) → **Login with GitHub**.
+2. **New Project** → **Deploy from GitHub repo**.
+3. **Configure GitHub App** → grant Railway access to `Codeforces-Performance-Analyzer`.
+4. Pick the repo from the list.
+
+Railway immediately starts a build. **It will fail** — the variables aren't set yet.
+That's expected; continue to Step 2.
+
+## Step 2 — Add the variables
+
+Click the service → **Variables** tab → **New Variable** for each row:
+
+| Name | Value |
+|---|---|
+| `GEMINI_API_KEY` | *(paste your Gemini key)* |
+| `GH_REPO` | `Mazen-4/Codeforces-Performance-Analyzer` |
+| `NODE_ENV` | `production` |
+| `PYTHONUNBUFFERED` | `1` |
+
+**If you start over on a different GitHub account**, `GH_REPO` must be the **new**
+`owner/repo` — this is where the site downloads its models from. Leave it pointing at the
+old account and the site will keep serving the old account's models.
+
+**Add `GH_TOKEN` only if the repo is private.** GitHub → *Settings → Developer settings →
+Personal access tokens → Tokens (classic)* → generate one with the **`repo`** scope, and
+add it as a `GH_TOKEN` variable. Public repo: skip this entirely.
+
+> ⚠️ **Do not add `PORT` or `PROJECT_ROOT`.** Railway sets `PORT` itself, and the app
+> finds its own path. Adding either one manually breaks the site — this is the most
+> common way to get a failing health check.
+
+## Step 3 — Check the settings
+
+Open the **Settings** tab and confirm these were filled in from the repo. If any is
+blank, paste the value:
+
+| Setting | Value |
+|---|---|
+| Build command | `bash scripts/setup_render.sh` |
+| Start command | `bash scripts/start.sh` |
+| Health check path | `/health` |
+
+(The `setup_render.sh` name is historical — Railway uses it too. Don't rename it.)
+
+## Step 4 — Deploy and get a URL
+
+1. **Deployments** tab → **Deploy** (or *Redeploy* the failed one). First build takes a
+   few minutes — it installs Python + Node, builds the frontend, and downloads the models.
+2. **Settings → Networking → Generate Domain**.
+3. Open the URL. Add `/health` to the end — it should respond OK.
+
+## Step 5 — Turn on automatic model updates
+
+This is what makes the weekly retrain reach the live site without you touching anything.
+
+1. **Settings → Deploy Hooks** → **Create Deploy Hook** → branch `main` → **copy the URL**.
+2. Go to the **GitHub repo** → **Settings** → **Secrets and variables** → **Actions** →
+   **New repository secret**:
+   - Name: `RAILWAY_DEPLOY_HOOK`
+   - Secret: *(paste the URL)*
+
+Treat that URL like a password — anyone with it can trigger deploys.
+
+Now every Sunday: the retrain publishes a new release, pings this hook, Railway redeploys,
+and the site picks up the fresh models. Nothing is pushed to `main`, and you don't have to
+check on it.
+
+## If something goes wrong
+
+| Symptom | Fix |
+|---|---|
+| Build fails: **`sh: 1: vite: not found`** | `NODE_ENV=production` makes npm skip devDependencies, where vite lives. The build script passes `npm ci --include=dev` to defeat this — make sure you're on a commit that includes that fix, and don't remove the flag. |
+| Build warns `EBADENGINE` about vite/node | Node is older than vite 7 requires (`^20.19.0 \|\| >=22.12.0`). `nixpacks.toml` pins Node 22; don't drop it back to 20. |
+| Build fails: *"No release with dataset + model assets found"* | The repo has no `data-*` release, or `GH_REPO` points at the wrong owner. Seed a release first. |
+| Build fails downloading models on a **private** repo | `GH_TOKEN` is missing or expired. See Step 2. |
+| Site loads, but AI feedback errors | `GEMINI_API_KEY` is missing or invalid. |
+| Health check fails / site unreachable | You added `PORT` or `PROJECT_ROOT`. Delete both, redeploy. |
+| Site still serves last week's models | `RAILWAY_DEPLOY_HOOK` isn't set on GitHub. Check the weekly run's *Trigger Railway redeploy* step. |
 
 ---
 

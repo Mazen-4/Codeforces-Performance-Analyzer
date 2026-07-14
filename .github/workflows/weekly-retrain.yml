@@ -238,6 +238,31 @@ jobs:
             /tmp/models-${DATE}.tar.gz
           echo "Release published: $TAG"
 
+      # Publishing the release is not enough to update the live site: Railway only
+      # pulls new models at deploy time (scripts/start.sh → fetch_latest_release.sh),
+      # and nothing else pushes to main. Poke the deploy hook so the fresh models
+      # actually go live.
+      - name: Trigger Railway redeploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::warning::RAILWAY_DEPLOY_HOOK secret is not set — the new models are"
+            echo "::warning::released but the live site will keep serving the old ones"
+            echo "::warning::until it is redeployed. See DEPLOY.md."
+            exit 0
+          fi
+
+          CODE=$(curl -sS -X POST --fail-with-body \
+            -o /tmp/deploy_hook_response.txt -w '%{http_code}' \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            "$DEPLOY_HOOK") || {
+              echo "ERROR: Railway deploy hook failed (HTTP ${CODE:-000})"
+              cat /tmp/deploy_hook_response.txt 2>/dev/null
+              exit 1
+            }
+          echo "Railway redeploy triggered (HTTP $CODE) — new models go live once it finishes."
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v5

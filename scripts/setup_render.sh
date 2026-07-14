@@ -27,7 +27,11 @@ npm install
 
 echo "--- Installing frontend Node dependencies ---"
 cd "$PROJECT_ROOT/website"
-npm ci
+# --include=dev is required: vite lives in devDependencies, and hosts commonly set
+# NODE_ENV=production, which makes npm skip devDependencies entirely — the build
+# then dies with "vite: not found". The build tools are needed to *produce* dist/,
+# even though they're not needed to serve it.
+npm ci --include=dev
 
 echo "--- Building React frontend ---"
 npm run build
