@@ -196,7 +196,8 @@ check on it.
 | Symptom | Fix |
 |---|---|
 | Build fails: **`sh: 1: vite: not found`** | `NODE_ENV=production` makes npm skip devDependencies, where vite lives. The build script passes `npm ci --include=dev` to defeat this — make sure you're on a commit that includes that fix, and don't remove the flag. |
-| Build warns `EBADENGINE` about vite/node | Node is older than vite 7 requires (`^20.19.0 \|\| >=22.12.0`). `nixpacks.toml` pins Node 22; don't drop it back to 20. |
+| Build warns `EBADENGINE` about vite/node | Node is older than vite 7 requires (`^20.19.0 \|\| >=22.12.0`). `nixpacks.toml` pins `nodejs_23` — the only version in Nixpacks' nixpkgs revision that qualifies (20 → 20.18.0 and 22 → 22.10.0 both fall just short). Don't lower it. |
+| Build fails: **`collision between … nodejs-22 … and … nodejs-20 … node.bash`** | Two Node packages got installed at once. Almost always caused by adding `nodePackages.npm` to `nixPkgs` — it pulls its own Node 20. Remove it; the `nodejs_*` package already ships npm. |
 | Build fails: *"No release with dataset + model assets found"* | The repo has no `data-*` release, or `GH_REPO` points at the wrong owner. Seed a release first. |
 | Build fails downloading models on a **private** repo | `GH_TOKEN` is missing or expired. See Step 2. |
 | Site loads, but AI feedback errors | `GEMINI_API_KEY` is missing or invalid. |

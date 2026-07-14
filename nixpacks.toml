@@ -1,7 +1,13 @@
 [phases.setup]
-# nodejs_22, not _20: vite 7 requires node ^20.19.0 || >=22.12.0, and nixpacks'
-# nodejs_20 resolves to v20.18.0 — just below the cutoff (EBADENGINE at build).
-nixPkgs = ["python311", "python311Packages.pip", "nodejs_22", "nodePackages.npm"]
+# nodejs_23 is deliberate. Vite 7 requires node ^20.19.0 || >=22.12.0, and the
+# nixpkgs revision Nixpacks pins only offers 18.20.4 / 20.18.0 / 22.10.0 / 23.1.0 —
+# so nodejs_23 is the *only* one that satisfies it. (nodejs_20 -> 20.18.0 and
+# nodejs_22 -> 22.10.0 both sit just below the cutoff and warn EBADENGINE.)
+#
+# Do NOT add nodePackages.npm here: it drags in its own nodejs-20, which then
+# collides with this nodejs on share/bash-completion/completions/node.bash and
+# hard-fails the nix-env build. nodejs_23 already ships npm.
+nixPkgs = ["python311", "python311Packages.pip", "nodejs_23"]
 
 [phases.install]
 cmds = ["bash scripts/setup_render.sh"]
@@ -12,4 +18,4 @@ cmds = ["bash scripts/setup_render.sh"]
 cmd = "bash scripts/start.sh"
 
 [variables]
-NIXPACKS_NODE_VERSION = "22"
+NIXPACKS_NODE_VERSION = "23"
