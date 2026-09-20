@@ -13,12 +13,16 @@ Env vars:
 
 import os
 import sys
+import time
+import resource
 import logging
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
+_last_log = 0.0
 
 DATA_DIR   = os.environ.get("DATA_DIR", str(Path(__file__).parent.parent))
 NUM_CHUNKS = int(os.environ.get("NUM_CHUNKS", 10))
@@ -147,6 +151,21 @@ def _finalize_block(block, flag_cols):
     return drop_unrated(block)
 
 
+def _log_progress(label, rows_here, written, seen_n):
+    """Per-block heartbeat with RSS, so a runner-side OOM kill is pinpointed
+    to an exact row offset instead of vanishing with no traceback."""
+    global _last_log
+    now = time.time()
+    if now - _last_log < 10:
+        return
+    _last_log = now
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    # Linux reports KB, macOS bytes.
+    rss_gb = rss / (1e6 if sys.platform.startswith("linux") else 1e9)
+    log.info("  [%s] read %d rows | written %d | keys %d | RSS %.2f GB",
+             label, rows_here, written, seen_n, rss_gb)
+
+
 def merge_chunks():
     """Merge chunk CSVs into the base dataset without ever holding it all.
 
@@ -223,36 +242,35 @@ def merge_chunks():
             rows_here = 0
             for block in _iter_blocks(path, header):
                 rows_here += len(block)
+                _log_progress(label, rows_here, written, len(seen))
                 if dedup_keys:
-                    keys = list(zip(*(block[k] for k in dedup_keys)))
-                    # The released base has no submitted_at, so its rows carry
-                    # NA there while the same re-crawled submission carries a
-                    # real timestamp. Match those on the coarse key too, or
-                    # every base row would be re-added as a "new" attempt.
-                    coarse = (list(zip(*(block[k] for k in coarse_keys)))
-                              if coarse_keys else None)
-                    mask = []
-                    for idx, key in enumerate(keys):
-                        ckey = coarse[idx] if coarse is not None else None
-                        if key in seen:
-                            dup = True                    # exact re-crawl
-                        elif timeless_base and ckey in seen_timeless:
-                            # This row has a timestamp but the base recorded
-                            # the same (handle, problem_id) without one, so it
-                            # is that same submission seen again — not a new
-                            # attempt. Only base rows populate seen_timeless,
-                            # so genuine repeat attempts within the new crawl
-                            # are still kept.
-                            dup = True
-                        else:
-                            dup = False
-                        mask.append(not dup)
-                        if not dup:
-                            seen.add(key)
-                            if is_existing and ckey is not None:
-                                seen_timeless.add(ckey)
-                    dropped_dupes += len(block) - sum(mask)
-                    block = block[mask]
+                    # Vectorized dedup. Keys are hashed to ints: storing 14M
+                    # (str, str, int) tuples costs ~3.7 GB, the hashes ~1.6 GB,
+                    # and pandas does the hashing in C rather than per row.
+                    kh = pd.util.hash_pandas_object(
+                        block[dedup_keys], index=False).to_numpy()
+                    if timeless_base:
+                        ch = pd.util.hash_pandas_object(
+                            block[coarse_keys], index=False).to_numpy()
+                    else:
+                        ch = None
+
+                    keep = np.fromiter(
+                        (k not in seen for k in kh), dtype=bool, count=len(kh))
+                    if ch is not None:
+                        # A row whose (handle, problem_id) came from a base that
+                        # had no submitted_at is the same submission re-crawled,
+                        # not a new attempt.
+                        keep &= np.fromiter(
+                            (c not in seen_timeless for c in ch),
+                            dtype=bool, count=len(ch))
+
+                    seen.update(kh[keep].tolist())
+                    if is_existing and ch is not None:
+                        seen_timeless.update(ch[keep].tolist())
+
+                    dropped_dupes += int((~keep).sum())
+                    block = block[keep]
                 if block.empty:
                     continue
                 block = _finalize_block(block, flag_cols)
