@@ -76,8 +76,13 @@ jobs:
         run: |
           # No chunks/ dir → merge_chunks() is a no-op and we go straight to
           # preprocessing + training on the released 04_filtered_submissions.csv.
+          # ALLOW_EMPTY_MERGE is required because the weekly workflow now treats
+          # an empty merge as a failure (it used to silently retrain on stale
+          # data and publish a release anyway). Here the empty merge is the
+          # whole point, so the override is deliberate.
           DATA_DIR=${{ github.workspace }} \
           NUM_CHUNKS=0 \
+          ALLOW_EMPTY_MERGE=1 \
           python scripts/merge_and_retrain.py
 
       - name: Package outputs
