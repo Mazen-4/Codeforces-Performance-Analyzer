@@ -28,6 +28,16 @@ MODELS_DIR   = os.path.join(DATA_DIR, "ML", "models")
 CHUNKS_DIR   = os.path.join(DATA_DIR, "chunks")
 FILTERED_CSV = os.path.join(DATASET_DIR, "04_filtered_submissions.csv")
 
+# Rows held in memory per read block. The merge used to load every input in
+# full and concat: on a 14M-row dataset that is ~5 GB per copy, and the script
+# held several copies at once, so the 7 GB GitHub runner SIGTERM-killed it
+# (exit 143) every week. Streaming in blocks keeps peak RSS roughly flat.
+CHUNK_ROWS = int(os.environ.get("MERGE_CHUNK_ROWS", 500_000))
+
+# Narrow dtypes for the wide, low-cardinality columns. int8 flags instead of
+# int64 cuts the per-row cost of ~23 numeric columns by ~8x.
+FLAG_PREFIXES = ("is_", "tag_")
+
 os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -79,57 +89,195 @@ def normalize_schema(df):
     return df
 
 
+def _read_header(path):
+    """Column names of a CSV without loading any rows."""
+    return list(pd.read_csv(path, nrows=0).columns)
+
+
+def _dtype_map(header):
+    """Narrow dtypes for the flag columns; leave keys/text to pandas.
+
+    Flags are read as float32 (not int8) because a schema-drifted input can
+    leave them NA; they are filled and downcast just before writing.
+    """
+    dtypes = {}
+    for col in header:
+        canonical = COLUMN_ALIASES.get(col, col)
+        if canonical.startswith(FLAG_PREFIXES):
+            dtypes[col] = "float32"
+        elif canonical in ("handle", "problem_id", "problem_name"):
+            dtypes[col] = str
+        elif canonical == "problem_rating":
+            dtypes[col] = "float32"
+    return dtypes
+
+
+def _canonical_header(paths):
+    """Union of every input's columns, in first-seen order, after aliasing.
+
+    The released base dataset and the freshly-crawled chunks have drifted
+    apart (the base carries no submitted_at/is_tle/is_mle), so the output
+    header must be the union or per-block writes would misalign.
+    """
+    header = []
+    for path in paths:
+        for col in _read_header(path):
+            col = COLUMN_ALIASES.get(col, col)
+            if col not in header:
+                header.append(col)
+    return header
+
+
+def _iter_blocks(path, header):
+    """Yield row-blocks of a CSV, conformed to `header`, at bounded memory."""
+    reader = pd.read_csv(path, chunksize=CHUNK_ROWS,
+                         dtype=_dtype_map(_read_header(path)), low_memory=False)
+    for block in reader:
+        block = normalize_schema(block)
+        for col in header:
+            if col not in block.columns:
+                block[col] = pd.NA
+        yield block[header]
+
+
+def _finalize_block(block, flag_cols):
+    """Fill NA flags, downcast, and drop unrated rows before writing."""
+    if flag_cols:
+        block[flag_cols] = block[flag_cols].fillna(0).astype("int8")
+    return drop_unrated(block)
+
+
 def merge_chunks():
-    chunk_dfs = []
+    """Merge chunk CSVs into the base dataset without ever holding it all.
+
+    Streams every input through a single pass, dropping duplicate submissions
+    via a seen-key set, and appends each block straight to disk. Peak memory
+    is one block plus the key set, instead of ~4 full copies of a 14M-row
+    frame, which is what OOM-killed this job (exit 143) every week.
+    """
+    chunk_paths = []
     for i in range(NUM_CHUNKS):
         path = os.path.join(CHUNKS_DIR, f"submissions_{i}.csv")
         if not os.path.exists(path):
             log.warning("Chunk %d missing: %s", i, path)
             continue
+        if os.path.getsize(path) == 0:
+            log.warning("Chunk %d: empty file, skipping", i)
+            continue
         try:
-            df = pd.read_csv(path)
+            if not _read_header(path):
+                log.warning("Chunk %d: no header, skipping", i)
+                continue
         except Exception as e:
             log.warning("Chunk %d unreadable (%s): %s", i, path, e)
             continue
-        if not df.empty:
-            chunk_dfs.append(normalize_schema(df))
-            log.info("Chunk %d: %d rows", i, len(df))
-        else:
-            log.warning("Chunk %d: empty file, skipping", i)
+        chunk_paths.append(path)
 
-    if not chunk_dfs:
-        log.warning("No chunk data found — nothing to merge")
+    if not chunk_paths:
+        # Previously this returned quietly and the job went on to retrain on the
+        # stale dataset and publish a release — a green run that silently shipped
+        # no new data. Fail unless explicitly allowed.
+        msg = (f"No chunk data found in {CHUNKS_DIR} "
+               f"(expected submissions_0..{NUM_CHUNKS - 1}.csv)")
+        if os.environ.get("ALLOW_EMPTY_MERGE") == "1":
+            log.warning("%s — continuing because ALLOW_EMPTY_MERGE=1", msg)
+            return
+        raise RuntimeError(msg)
+
+    have_existing = os.path.exists(FILTERED_CSV)
+    # Existing rows are written FIRST and win ties, preserving the previous
+    # keep="first" dedup semantics.
+    sources = ([FILTERED_CSV] if have_existing else []) + chunk_paths
+    header = _canonical_header(sources)
+    flag_cols = [c for c in header if c.startswith(FLAG_PREFIXES)]
+    dedup_keys = [c for c in ("handle", "problem_id") if c in header]
+    if "submitted_at" in header:
+        # Dedup on the unique SUBMISSION, not the problem: keying on
+        # (handle, problem_id) alone collapses every attempt into one row and
+        # zeroes the per-problem WA counts the models aggregate with .sum().
+        dedup_keys.append("submitted_at")
+    log.info("Canonical header: %d columns | dedup keys: %s",
+             len(header), dedup_keys)
+
+    # Coarse key = the identity columns minus submitted_at, used to reconcile
+    # schema-drifted rows that have no timestamp against ones that do.
+    coarse_keys = [c for c in dedup_keys if c != "submitted_at"]
+    # True when the base dataset predates submitted_at: its rows cannot be
+    # matched to re-crawled ones on the exact key, so fall back to the coarse
+    # key for base rows only.
+    timeless_base = (have_existing and coarse_keys
+                     and "submitted_at" not in _read_header(FILTERED_CSV))
+
+    tmp_path = FILTERED_CSV + ".tmp"
+    seen = set()
+    # (handle, problem_id) of rows that came from a base dataset with no
+    # submitted_at column. Used to suppress re-crawled copies of them.
+    seen_timeless = set()
+    written = existing_rows = new_rows = dropped_dupes = 0
+
+    with open(tmp_path, "w", newline="") as out:
+        wrote_header = False
+        for path in sources:
+            is_existing = have_existing and path == FILTERED_CSV
+            label = "existing dataset" if is_existing else os.path.basename(path)
+            rows_here = 0
+            for block in _iter_blocks(path, header):
+                rows_here += len(block)
+                if dedup_keys:
+                    keys = list(zip(*(block[k] for k in dedup_keys)))
+                    # The released base has no submitted_at, so its rows carry
+                    # NA there while the same re-crawled submission carries a
+                    # real timestamp. Match those on the coarse key too, or
+                    # every base row would be re-added as a "new" attempt.
+                    coarse = (list(zip(*(block[k] for k in coarse_keys)))
+                              if coarse_keys else None)
+                    mask = []
+                    for idx, key in enumerate(keys):
+                        ckey = coarse[idx] if coarse is not None else None
+                        if key in seen:
+                            dup = True                    # exact re-crawl
+                        elif timeless_base and ckey in seen_timeless:
+                            # This row has a timestamp but the base recorded
+                            # the same (handle, problem_id) without one, so it
+                            # is that same submission seen again — not a new
+                            # attempt. Only base rows populate seen_timeless,
+                            # so genuine repeat attempts within the new crawl
+                            # are still kept.
+                            dup = True
+                        else:
+                            dup = False
+                        mask.append(not dup)
+                        if not dup:
+                            seen.add(key)
+                            if is_existing and ckey is not None:
+                                seen_timeless.add(ckey)
+                    dropped_dupes += len(block) - sum(mask)
+                    block = block[mask]
+                if block.empty:
+                    continue
+                block = _finalize_block(block, flag_cols)
+                if block.empty:
+                    continue
+                block.to_csv(out, index=False, header=not wrote_header)
+                wrote_header = True
+                written += len(block)
+            if is_existing:
+                existing_rows += rows_here
+            else:
+                new_rows += rows_here
+            log.info("Read %s: %d rows (running output: %d)",
+                     label, rows_here, written)
+
+    if not written:
+        log.warning("Merge produced no rows — keeping previous dataset")
+        os.remove(tmp_path)
         return
 
-    new_df = pd.concat(chunk_dfs, ignore_index=True)
-    log.info("Total new submissions from all chunks: %d", len(new_df))
-
-    if os.path.exists(FILTERED_CSV):
-        log.info("Loading existing dataset …")
-        existing = normalize_schema(pd.read_csv(FILTERED_CSV))
-        combined = pd.concat([existing, new_df], ignore_index=True)
-        if "submitted_at" in combined.columns:
-            combined = combined.sort_values("submitted_at", ascending=False)
-        # Dedup on the unique SUBMISSION, not the problem. Keying on
-        # (handle, problem_id) alone collapses every attempt of a problem into a
-        # single row, zeroing the per-problem WA counts that the attempts and
-        # strength models depend on (they aggregate is_wa with .sum()). Including
-        # submitted_at keeps each distinct attempt while still removing genuine
-        # duplicates re-crawled across weekly runs.
-        dedup_keys = ["handle", "problem_id"]
-        if "submitted_at" in combined.columns:
-            dedup_keys.append("submitted_at")
-        combined = combined.drop_duplicates(subset=dedup_keys, keep="first")
-        log.info("Merged: %d existing + %d new = %d unique rows",
-                 len(existing), len(new_df), len(combined))
-    else:
-        log.info("No existing dataset — creating fresh.")
-        combined = new_df
-
-    combined = drop_unrated(combined)
-
-    combined.to_csv(FILTERED_CSV, index=False)
-    log.info("Saved → %s (%.1f MB)", FILTERED_CSV, os.path.getsize(FILTERED_CSV) / 1e6)
+    os.replace(tmp_path, FILTERED_CSV)
+    log.info("Merged: %d existing + %d new -> %d unique rows (%d duplicates dropped)",
+             existing_rows, new_rows, written, dropped_dupes)
+    log.info("Saved → %s (%.1f MB)", FILTERED_CSV,
+             os.path.getsize(FILTERED_CSV) / 1e6)
 
 
 def _run_script(script_path: Path, cwd: Path, label: str):

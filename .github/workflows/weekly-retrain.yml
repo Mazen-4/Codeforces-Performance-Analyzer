@@ -200,11 +200,24 @@ jobs:
       - name: List downloaded chunks
         run: ls -lh chunks/
 
+      - name: Show runner resources
+        run: |
+          echo "--- memory ---"; free -h
+          echo "--- swap (runners have none; overcommit is fatal) ---"; swapon --show || echo "(no swap)"
+          echo "--- disk ---";   df -h /
+
       - name: Merge chunks + preprocess + retrain
         run: |
           DATA_DIR=${{ github.workspace }} \
           NUM_CHUNKS=${{ env.NUM_CHUNKS }} \
           python scripts/merge_and_retrain.py
+
+      - name: Report peak memory
+        if: always()
+        run: |
+          echo "Peak RSS of the merge step, for tracking headroom against the 7 GB runner:"
+          grep VmHWM /proc/self/status 2>/dev/null || true
+          free -h
 
       - name: Package outputs
         run: |
