@@ -208,10 +208,11 @@ jobs:
 
       - name: Merge chunks + preprocess + retrain
         env:
-          # Set this secret to publish the merged dataset into Postgres. When
-          # unset the load step is skipped and the pipeline behaves as before,
-          # so the migration can land before the database exists.
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Prefer the PUBLIC url: GitHub-hosted runners are outside Railway's
+          # network, so the private .railway.internal host does not resolve
+          # here (verified — it fails DNS). The web service keeps using the
+          # private one. When neither is set the load step is skipped.
+          DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL || secrets.DATABASE_URL }}
         run: |
           DATA_DIR=${{ github.workspace }} \
           NUM_CHUNKS=${{ env.NUM_CHUNKS }} \
@@ -260,9 +261,9 @@ jobs:
       # a silently-failed load would still go green and the site would serve
       # stale data while every step reported success.
       - name: Verify Postgres matches the new dataset
-        if: ${{ secrets.DATABASE_URL != '' }}
+        if: ${{ secrets.DATABASE_PUBLIC_URL != '' || secrets.DATABASE_URL != '' }}
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL || secrets.DATABASE_URL }}
         run: |
           DATA_DIR=${{ github.workspace }} python scripts/db/verify.py
 
