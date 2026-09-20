@@ -62,10 +62,22 @@ def main():
 
                 if actual == 0:
                     failures.append(f"{table}: table is EMPTY (csv has {expected})")
-                elif delta > tol or delta < -tol:
+                elif delta > tol:
+                    # The database is MISSING rows the CSV has. After an
+                    # incremental append this is the real failure mode: the
+                    # delta did not fully apply.
                     failures.append(
-                        f"{table}: csv={expected} db={actual} (delta {delta}, "
-                        f"tolerance {tol})")
+                        f"{table}: db is short by {delta} rows "
+                        f"(csv={expected} db={actual}, tolerance {tol})")
+                elif -delta > tol:
+                    # The database has MORE than the CSV. Expected when the
+                    # table was built by appending deltas over time while the
+                    # CSV was rebuilt from a trimmed base, so warn rather than
+                    # fail — extra history is not a broken update.
+                    log.warning("%s: db has %d MORE rows than the csv "
+                                "(csv=%d db=%d) — extra history retained "
+                                "from earlier incremental loads",
+                                table, -delta, expected, actual)
                 else:
                     log.info("%s: csv=%d db=%d (delta %d) OK",
                              table, expected, actual, delta)

@@ -41,6 +41,9 @@ DATASET_DIR = os.path.join(DATA_DIR, "ML", "dataset")
 # duration of the load.
 LOW_DISK = os.environ.get("LOW_DISK", "0") == "1"
 
+# Written by scripts/merge_and_retrain.py: only the rows this run added.
+DELTA_CSV_NAME = "04_new_submissions_delta.csv"
+
 # table -> (csv file, columns to load). Columns are resolved against the CSV
 # header at run time so a schema-drifted file loads what it has and defaults
 # the rest, rather than failing the whole load.
@@ -132,6 +135,117 @@ def _table_columns(cur, table):
 def _csv_header(path):
     with open(path, newline="") as f:
         return next(csv.reader(f))
+
+
+def append_delta(conn, csv_name=DELTA_CSV_NAME):
+    """Append only this run's new submissions, instead of reloading everything.
+
+    A full reload needs ~2x the table size on disk while the old and new copies
+    coexist, which a 1.9 GB table cannot do on Railway's default 5 GB volume.
+    Appending needs headroom proportional to the delta (a few hundred MB), and
+    takes seconds rather than minutes.
+
+    Dedup happens in the database, not just in the CSV: the delta is deduped
+    against the *previous dataset file*, but the table could already hold those
+    rows (a re-run, a partial earlier load, or a delta applied twice). Rows are
+    staged and then inserted with a NOT EXISTS guard, so applying the same
+    delta repeatedly is a no-op.
+
+    Returns (inserted, skipped) or None when there is no delta to apply.
+    """
+    path = os.path.join(DATASET_DIR, csv_name)
+    if not os.path.exists(path):
+        log.info("No delta file at %s — nothing to append", path)
+        return None
+    if os.path.getsize(path) == 0:
+        log.info("Delta file is empty — nothing to append")
+        return None
+
+    table = "submissions"
+    with conn.cursor() as cur:
+        db_cols = _table_columns(cur, table)
+        if not db_cols:
+            log.info("%s missing — applying schema.sql", table)
+            _apply_schema(cur)
+            db_cols = _table_columns(cur, table)
+        _migrate_column_types(cur, table)
+
+        header = _csv_header(path)
+        cols = [c for c in header if c in db_cols]
+        if not cols:
+            raise RuntimeError(f"delta has no columns in common with {table}")
+
+        cur.execute(f"SELECT count(*) FROM {table}")
+        before = cur.fetchone()[0]
+
+        staging = f"{table}_delta"
+        cur.execute(f"DROP TABLE IF EXISTS {staging}")
+        # UNLOGGED: this table is transient, and skipping WAL for it keeps the
+        # write amplification (and disk churn) down on a small volume.
+        cur.execute(f"CREATE UNLOGGED TABLE {staging} "
+                    f"(LIKE {table} INCLUDING DEFAULTS)")
+
+        collist = ", ".join(f'"{c}"' for c in cols)
+        numeric_cols = [c for c in cols
+                        if c not in ("handle", "tag", "problem_id", "problem_name")]
+        force_null = ""
+        if numeric_cols:
+            force_null = (", FORCE_NULL (" +
+                          ", ".join(f'"{c}"' for c in numeric_cols) + ")")
+        copy_sql = (f"COPY {staging} ({collist}) FROM STDIN "
+                    f"WITH (FORMAT csv, HEADER true, NULL ''{force_null})")
+
+        t0 = time.time()
+        log.info("delta: COPY %s (%.1f MB) into %s …",
+                 csv_name, os.path.getsize(path) / 1e6, staging)
+        _copy_into(cur, path, cols, copy_sql, header)
+
+        cur.execute(f"SELECT count(*) FROM {staging}")
+        staged = cur.fetchone()[0]
+        log.info("delta: %d rows staged in %.0fs", staged, time.time() - t0)
+
+        if staged == 0:
+            cur.execute(f"DROP TABLE {staging}")
+            log.info("delta: nothing staged")
+            return (0, 0)
+
+        # Identity of a submission. submitted_at is what separates repeat
+        # attempts at the same problem, so it belongs in the key; it is
+        # compared NULL-safely because the pre-2026 base rows have no
+        # timestamp.
+        key_cols = [c for c in ("handle", "problem_id", "submitted_at") if c in cols]
+        on_clause = " AND ".join(f"t.{c} IS NOT DISTINCT FROM s.{c}"
+                                 for c in key_cols)
+
+        # Dedup within the delta itself first: the same submission can appear
+        # in two chunks when a handle straddles a chunk boundary.
+        self_clause = " AND ".join(f"a.{c} IS NOT DISTINCT FROM b.{c}"
+                                   for c in key_cols)
+        cur.execute(f"""
+            DELETE FROM {staging} a USING {staging} b
+            WHERE a.ctid < b.ctid AND {self_clause}
+        """)
+        if cur.rowcount:
+            log.info("delta: collapsed %d duplicate rows inside the delta",
+                     cur.rowcount)
+
+        cur.execute(f"""
+            INSERT INTO {table} ({collist})
+            SELECT {', '.join(f's."{c}"' for c in cols)}
+            FROM {staging} s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM {table} t WHERE {on_clause}
+            )
+        """)
+        inserted = cur.rowcount
+        cur.execute(f"DROP TABLE {staging}")
+
+        cur.execute(f"SELECT count(*) FROM {table}")
+        after = cur.fetchone()[0]
+        skipped = staged - inserted
+        log.info("delta: inserted %d, skipped %d already present "
+                 "(%d -> %d rows)", inserted, skipped, before, after)
+        return (inserted, skipped)
 
 
 def load_table(conn, table, csv_name):
@@ -290,11 +404,50 @@ def main():
     ap.add_argument("--table", choices=sorted(TABLES), help="load just this table")
     ap.add_argument("--keep-old", action="store_true",
                     help="keep the *_old tables instead of dropping them")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--incremental", action="store_true",
+                      help="append only the new-submissions delta (default "
+                           "when the delta file exists)")
+    mode.add_argument("--full", action="store_true",
+                      help="force a full reload of every table")
     args = ap.parse_args()
+
+    delta_path = os.path.join(DATASET_DIR, DELTA_CSV_NAME)
+    incremental = args.incremental or (not args.full
+                                       and not args.table
+                                       and os.path.exists(delta_path))
+
+    conn = raw_connection()
+
+    if incremental:
+        # Submissions grows by ~2.3M rows a week and is the only table big
+        # enough to matter; the other two are small enough to replace whole.
+        try:
+            result = append_delta(conn)
+            if result is None and args.incremental:
+                raise RuntimeError(
+                    f"--incremental requested but no delta at {delta_path}")
+            for table in ("user_tag_strengths", "user_profiles"):
+                load_table(conn, table, TABLES[table])
+            conn.commit()
+            log.info("Incremental update committed")
+            with conn.cursor() as cur:
+                for table in ("user_tag_strengths", "user_profiles"):
+                    cur.execute(f"DROP TABLE IF EXISTS {table}_old")
+                cur.execute("ANALYZE submissions")
+            conn.commit()
+            log.info("ANALYZE done")
+            return
+        except Exception:
+            conn.rollback()
+            log.error("Incremental update failed — rolled back, "
+                      "existing tables untouched")
+            raise
+        finally:
+            conn.close()
 
     targets = {args.table: TABLES[args.table]} if args.table else TABLES
 
-    conn = raw_connection()
     try:
         loaded = []
         for table, csv_name in targets.items():

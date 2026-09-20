@@ -31,6 +31,11 @@ DATASET_DIR  = os.path.join(DATA_DIR, "ML", "dataset")
 MODELS_DIR   = os.path.join(DATA_DIR, "ML", "models")
 CHUNKS_DIR   = os.path.join(DATA_DIR, "chunks")
 FILTERED_CSV = os.path.join(DATASET_DIR, "04_filtered_submissions.csv")
+# Rows that survived dedup from THIS run's chunks only — i.e. genuinely new
+# submissions. Written alongside the full dataset so Postgres can be updated
+# with an append instead of a full reload, which needs no extra disk headroom
+# and takes seconds rather than minutes.
+DELTA_CSV    = os.path.join(DATASET_DIR, "04_new_submissions_delta.csv")
 
 # Rows held in memory per read block. The merge used to load every input in
 # full and concat: on a 14M-row dataset that is ~5 GB per copy, and the script
@@ -234,8 +239,12 @@ def merge_chunks():
     seen_timeless = set()
     written = existing_rows = new_rows = dropped_dupes = 0
 
-    with open(tmp_path, "w", newline="") as out:
+    delta_tmp = DELTA_CSV + ".tmp"
+    delta_rows = 0
+    with open(tmp_path, "w", newline="") as out, \
+         open(delta_tmp, "w", newline="") as delta_out:
         wrote_header = False
+        delta_wrote_header = False
         for path in sources:
             is_existing = have_existing and path == FILTERED_CSV
             label = "existing dataset" if is_existing else os.path.basename(path)
@@ -279,6 +288,13 @@ def merge_chunks():
                 block.to_csv(out, index=False, header=not wrote_header)
                 wrote_header = True
                 written += len(block)
+                if not is_existing:
+                    # Same rows, same order, same dedup decisions — this is the
+                    # exact set Postgres is missing.
+                    block.to_csv(delta_out, index=False,
+                                 header=not delta_wrote_header)
+                    delta_wrote_header = True
+                    delta_rows += len(block)
             if is_existing:
                 existing_rows += rows_here
             else:
@@ -289,9 +305,21 @@ def merge_chunks():
     if not written:
         log.warning("Merge produced no rows — keeping previous dataset")
         os.remove(tmp_path)
+        if os.path.exists(delta_tmp):
+            os.remove(delta_tmp)
         return
 
     os.replace(tmp_path, FILTERED_CSV)
+    if delta_rows:
+        os.replace(delta_tmp, DELTA_CSV)
+        log.info("Delta: %d new rows -> %s", delta_rows, DELTA_CSV)
+    else:
+        os.remove(delta_tmp)
+        # Remove a stale delta from a previous run so an incremental load can
+        # never re-apply last week's rows.
+        if os.path.exists(DELTA_CSV):
+            os.remove(DELTA_CSV)
+        log.info("Delta: no new rows this run")
     log.info("Merged: %d existing + %d new -> %d unique rows (%d duplicates dropped)",
              existing_rows, new_rows, written, dropped_dupes)
     log.info("Saved → %s (%.1f MB)", FILTERED_CSV,

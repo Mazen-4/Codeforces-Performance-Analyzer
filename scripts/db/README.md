@@ -43,7 +43,50 @@ Set `USE_POSTGRES=0` on the web service and redeploy. The code falls back to
 the CSV path, and the GitHub Release still carries the full dataset. No data
 is lost, because Postgres is a second destination, not a replacement.
 
-## How loading works
+## Incremental updates (the weekly default)
+
+A full reload needs roughly twice the table size on disk while the old and new
+copies coexist. At 1.9 GB that overruns Railway's default 5 GB volume, and it
+gets worse every week as the dataset grows.
+
+So the weekly run appends instead. `merge_and_retrain.py` writes a second file,
+`04_new_submissions_delta.csv`, holding only the rows that survived dedup from
+*this run's* chunks. `load.py` detects that file and appends it:
+
+```
+COPY delta -> unlogged staging -> INSERT ... WHERE NOT EXISTS -> drop staging
+```
+
+Disk headroom needed is proportional to the delta (a few hundred MB), not the
+table, and it takes seconds rather than minutes.
+
+Dedup happens **in the database**, not only in the CSV. The delta was deduped
+against the previous dataset file, but the table could already hold those rows
+after a re-run or a partially applied load. The `NOT EXISTS` guard keys on
+`(handle, problem_id, submitted_at)` with `IS NOT DISTINCT FROM`, so:
+
+- applying the same delta twice inserts nothing the second time;
+- repeat attempts at one problem are preserved, because the timestamp is part
+  of the key;
+- pre-2026 rows with no timestamp still compare correctly, because NULL is
+  matched NULL-safely.
+
+A week with no new submissions deletes the stale delta, so last week's rows can
+never be re-applied.
+
+Modes:
+
+| Command | Behaviour |
+|---|---|
+| `python scripts/db/load.py` | appends the delta if present, else full load |
+| `python scripts/db/load.py --incremental` | append only; fails if no delta |
+| `python scripts/db/load.py --full` | force a full reload of every table |
+
+The delta is excluded from the release tarball: its rows are already inside
+`04_filtered_submissions.csv`, and shipping both risks a future restore
+double-counting them.
+
+## How a full load works
 
 `scripts/db/load.py` copies each CSV into a staging table, then swaps it in
 inside one transaction:

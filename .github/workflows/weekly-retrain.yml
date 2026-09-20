@@ -213,9 +213,6 @@ jobs:
           # here (verified — it fails DNS). The web service keeps using the
           # private one. When neither is set the load step is skipped.
           DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL || secrets.DATABASE_URL }}
-          # See scripts/db/load.py: Railway's 5 GB volume cannot hold two
-          # copies of the submissions table during a staging swap.
-          LOW_DISK: "1"
         run: |
           DATA_DIR=${{ github.workspace }} \
           NUM_CHUNKS=${{ env.NUM_CHUNKS }} \
@@ -240,7 +237,13 @@ jobs:
           [ "$(ls ML/models/*.pkl 2>/dev/null | wc -l)" -gt 0 ] \
             || { echo "ERROR: No .pkl in ML/models/"; exit 1; }
 
-          tar -czf /tmp/dataset-${DATE}.tar.gz -C ML/dataset .
+          # Exclude the delta: it is a transient hand-off to the Postgres
+          # loader, and its rows are already inside 04_filtered_submissions.csv.
+          # Shipping it would inflate the release and risk a future restore
+          # double-counting those submissions.
+          tar -czf /tmp/dataset-${DATE}.tar.gz \
+            --exclude='04_new_submissions_delta.csv' \
+            -C ML/dataset .
           tar -czf /tmp/models-${DATE}.tar.gz  -C ML/models  .
           echo "DATE=${DATE}" >> $GITHUB_ENV
           ls -lh /tmp/dataset-${DATE}.tar.gz /tmp/models-${DATE}.tar.gz
