@@ -20,7 +20,12 @@ CREATE TABLE IF NOT EXISTS submissions (
     is_wa           SMALLINT NOT NULL DEFAULT 0,
     is_tle          SMALLINT NOT NULL DEFAULT 0,
     is_mle          SMALLINT NOT NULL DEFAULT 0,
-    submitted_at    BIGINT,
+    -- DOUBLE PRECISION, not BIGINT: the merge writes this column through
+    -- pandas, which represents a NaN-carrying integer column as float, so the
+    -- CSV contains "1783834810.0". Postgres rejects that for bigint. Stored as
+    -- a float and cast where a timestamp is needed; the value is a Unix epoch
+    -- second, well inside the 2^53 range where doubles are exact.
+    submitted_at    DOUBLE PRECISION,
 
     tag_dp               SMALLINT NOT NULL DEFAULT 0,
     tag_greedy           SMALLINT NOT NULL DEFAULT 0,

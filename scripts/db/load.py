@@ -44,6 +44,27 @@ TABLES = {
 }
 
 
+def _migrate_column_types(cur, table):
+    """Widen columns whose type no longer matches what the CSVs contain.
+
+    submitted_at was originally bigint, but the merge writes it via pandas,
+    which renders a NaN-carrying integer column as float ("1783834810.0").
+    A database created before this fix still has bigint, so widen it in place
+    rather than requiring a manual migration.
+    """
+    if table != "submissions":
+        return
+    cur.execute("""
+        SELECT data_type FROM information_schema.columns
+        WHERE table_name = %s AND column_name = 'submitted_at'
+    """, (table,))
+    row = cur.fetchone()
+    if row and row[0] == "bigint":
+        log.info("%s: widening submitted_at bigint -> double precision", table)
+        cur.execute(f"ALTER TABLE {table} "
+                    f"ALTER COLUMN submitted_at TYPE DOUBLE PRECISION")
+
+
 def _apply_schema(cur):
     """Run scripts/db/schema.sql. Idempotent — safe on every load."""
     path = Path(__file__).with_name("schema.sql")
@@ -103,6 +124,8 @@ def load_table(conn, table, csv_name):
         if missing:
             log.info("%s: CSV has no %s — those keep their column defaults",
                      table, ", ".join(sorted(missing)))
+
+        _migrate_column_types(cur, table)
 
         staging = f"{table}_staging"
         cur.execute(f"DROP TABLE IF EXISTS {staging}")
