@@ -256,6 +256,16 @@ jobs:
             /tmp/models-${DATE}.tar.gz
           echo "Release published: $TAG"
 
+      # Gate the redeploy on the database actually being current. Without this
+      # a silently-failed load would still go green and the site would serve
+      # stale data while every step reported success.
+      - name: Verify Postgres matches the new dataset
+        if: ${{ secrets.DATABASE_URL != '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          DATA_DIR=${{ github.workspace }} python scripts/db/verify.py
+
       # Publishing the release is not enough to update the live site: Railway only
       # pulls new models at deploy time (scripts/start.sh → fetch_latest_release.sh),
       # and nothing else pushes to main. Poke the deploy hook so the fresh models
@@ -265,10 +275,14 @@ jobs:
           DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
         run: |
           if [ -z "$DEPLOY_HOOK" ]; then
-            echo "::warning::RAILWAY_DEPLOY_HOOK secret is not set — the new models are"
-            echo "::warning::released but the live site will keep serving the old ones"
-            echo "::warning::until it is redeployed. See DEPLOY.md."
-            exit 0
+            # This used to warn and pass. The whole point of the weekly run is
+            # that the website ends up serving the new models, so a missing
+            # hook means the run did not achieve its goal — fail loudly.
+            echo "ERROR: RAILWAY_DEPLOY_HOOK secret is not set. The release was"
+            echo "published but the live site will keep serving the old models."
+            echo "Add the secret (see DEPLOY.md) or set ALLOW_NO_REDEPLOY=1."
+            [ "${ALLOW_NO_REDEPLOY:-0}" = "1" ] && { echo "Continuing anyway."; exit 0; }
+            exit 1
           fi
 
           CODE=$(curl -sS -X POST --fail-with-body \

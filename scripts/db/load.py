@@ -44,6 +44,14 @@ TABLES = {
 }
 
 
+def _apply_schema(cur):
+    """Run scripts/db/schema.sql. Idempotent — safe on every load."""
+    path = Path(__file__).with_name("schema.sql")
+    if not path.is_file():
+        raise RuntimeError(f"schema.sql not found at {path}")
+    cur.execute(path.read_text())
+
+
 def _csv_rows(rows) -> str:
     """Serialize rows back to CSV text for COPY, quoting everything so empty
     fields stay distinguishable and embedded commas survive."""
@@ -76,8 +84,14 @@ def load_table(conn, table, csv_name):
     with conn.cursor() as cur:
         db_cols = _table_columns(cur, table)
         if not db_cols:
+            # Bootstrap a fresh database rather than failing the weekly run.
+            # schema.sql is idempotent (CREATE TABLE IF NOT EXISTS).
+            log.info("%s missing — applying schema.sql", table)
+            _apply_schema(cur)
+            db_cols = _table_columns(cur, table)
+        if not db_cols:
             raise RuntimeError(
-                f"Table {table} does not exist. Apply scripts/db/schema.sql first.")
+                f"Table {table} does not exist and schema.sql did not create it.")
 
         header = _csv_header(path)
         # Intersection, in CSV order: tolerate a CSV that has extra columns
