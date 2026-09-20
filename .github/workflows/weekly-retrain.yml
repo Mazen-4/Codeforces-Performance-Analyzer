@@ -213,6 +213,9 @@ jobs:
           # here (verified — it fails DNS). The web service keeps using the
           # private one. When neither is set the load step is skipped.
           DATABASE_URL: ${{ secrets.DATABASE_PUBLIC_URL || secrets.DATABASE_URL }}
+          # See scripts/db/load.py: Railway's 5 GB volume cannot hold two
+          # copies of the submissions table during a staging swap.
+          LOW_DISK: "1"
         run: |
           DATA_DIR=${{ github.workspace }} \
           NUM_CHUNKS=${{ env.NUM_CHUNKS }} \

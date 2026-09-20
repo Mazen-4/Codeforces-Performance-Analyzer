@@ -34,6 +34,13 @@ log = logging.getLogger(__name__)
 DATA_DIR = os.environ.get("DATA_DIR", str(Path(__file__).resolve().parents[2]))
 DATASET_DIR = os.path.join(DATA_DIR, "ML", "dataset")
 
+# Staging-and-swap needs ~2x the table size on disk while both copies exist.
+# Railway's default Postgres volume is 5 GB, which a 14M-row submissions table
+# plus its index overruns. LOW_DISK=1 truncates and loads in place instead:
+# one copy on disk, still inside a transaction, but the table is empty for the
+# duration of the load.
+LOW_DISK = os.environ.get("LOW_DISK", "0") == "1"
+
 # table -> (csv file, columns to load). Columns are resolved against the CSV
 # header at run time so a schema-drifted file loads what it has and defaults
 # the rest, rather than failing the whole load.
@@ -71,6 +78,37 @@ def _apply_schema(cur):
     if not path.is_file():
         raise RuntimeError(f"schema.sql not found at {path}")
     cur.execute(path.read_text())
+
+
+def _copy_into(cur, path, cols, copy_sql, header):
+    """Stream a CSV into whatever table copy_sql targets."""
+    if len(cols) == len(header):
+        # Same columns in the same order: stream the file straight through.
+        with open(path, "rb") as f, cur.copy(copy_sql) as cp:
+            while chunk := f.read(1 << 20):
+                cp.write(chunk)
+        return
+
+    # The CSV carries columns this table does not want (e.g.
+    # 02_user_profiles.csv has 51 columns, user_profiles keeps 3). Project to
+    # the wanted columns while streaming, so the file is never held in memory.
+    idx = [header.index(c) for c in cols]
+    with open(path, newline="") as f, cur.copy(copy_sql) as cp:
+        reader = csv.reader(f)
+        next(reader, None)          # drop the source header
+        # COPY was told HEADER true, so feed it one header line that matches
+        # the projected column list.
+        cp.write(_csv_rows([cols]))
+        buf = []
+        for row in reader:
+            if len(row) <= idx[-1]:
+                continue            # short/ragged line
+            buf.append([row[i] for i in idx])
+            if len(buf) >= 50_000:
+                cp.write(_csv_rows(buf))
+                buf = []
+        if buf:
+            cp.write(_csv_rows(buf))
 
 
 def _csv_rows(rows) -> str:
@@ -129,9 +167,14 @@ def load_table(conn, table, csv_name):
 
         staging = f"{table}_staging"
         cur.execute(f"DROP TABLE IF EXISTS {staging}")
+        # Reclaim last run's backup before allocating this run's staging table.
+        # On a small volume (Railway's default is 5 GB) the old copy is the
+        # difference between fitting and ENOSPC.
+        cur.execute(f"DROP TABLE IF EXISTS {table}_old")
         # INCLUDING ALL carries defaults/NOT NULL but not indexes we build later.
-        cur.execute(f"CREATE TABLE {staging} (LIKE {table} INCLUDING DEFAULTS "
-                    f"INCLUDING CONSTRAINTS)")
+        if not LOW_DISK:
+            cur.execute(f"CREATE TABLE {staging} (LIKE {table} INCLUDING DEFAULTS "
+                        f"INCLUDING CONSTRAINTS)")
 
         collist = ", ".join(f'"{c}"' for c in cols)
         t0 = time.time()
@@ -147,49 +190,46 @@ def load_table(conn, table, csv_name):
         if numeric_cols:
             force_null = (", FORCE_NULL (" +
                           ", ".join(f'"{c}"' for c in numeric_cols) + ")")
-        copy_sql = (f"COPY {staging} ({collist}) FROM STDIN "
+        target = table if LOW_DISK else staging
+        copy_sql = (f"COPY {target} ({collist}) FROM STDIN "
                     f"WITH (FORMAT csv, HEADER true, NULL ''{force_null})")
 
-        if len(cols) == len(header):
-            # Same columns in the same order: stream the file straight through.
-            with open(path, "rb") as f, cur.copy(copy_sql) as cp:
-                while chunk := f.read(1 << 20):
-                    cp.write(chunk)
-        else:
-            # The CSV carries columns this table does not want (e.g.
-            # 02_user_profiles.csv has 51 columns, user_profiles keeps 3).
-            # Project to the wanted columns while streaming, so the whole file
-            # is never held in memory.
-            idx = [header.index(c) for c in cols]
-            with open(path, newline="") as f, cur.copy(copy_sql) as cp:
-                reader = csv.reader(f)
-                next(reader, None)          # drop the source header
-                # COPY was told HEADER true, so feed it one header line that
-                # matches the projected column list.
-                cp.write(_csv_rows([cols]))
-                buf = []
-                for row in reader:
-                    if len(row) <= idx[-1]:
-                        continue            # short/ragged line
-                    buf.append([row[i] for i in idx])
-                    if len(buf) >= 50_000:
-                        cp.write(_csv_rows(buf))
-                        buf = []
-                if buf:
-                    cp.write(_csv_rows(buf))
+        dropped_pk = False
+        if LOW_DISK:
+            log.info("%s: LOW_DISK=1 — truncating and loading in place "
+                     "(no staging copy; needs ~half the disk)", table)
+            cur.execute(f"TRUNCATE {table}")
+            # The CSVs contain rows that violate the primary key (duplicate
+            # and "#NAME?" handles) and are cleaned up *after* the copy. In
+            # staging mode the constraint is added afterwards, but here it
+            # already exists, so COPY would abort on the first duplicate.
+            # Drop it for the load and rebuild it once the data is clean.
+            if table in ("user_profiles", "user_tag_strengths"):
+                # Look the constraint name up rather than assuming
+                # "<table>_pkey": a table that arrived via the staging swap
+                # still carries "<table>_staging_pkey".
+                cur.execute("""
+                    SELECT conname FROM pg_constraint
+                    WHERE conrelid = %s::regclass AND contype = 'p'
+                """, (table,))
+                row = cur.fetchone()
+                if row:
+                    cur.execute(f'ALTER TABLE {table} DROP CONSTRAINT "{row[0]}"')
+                    dropped_pk = True
+        _copy_into(cur, path, cols, copy_sql, header)
 
-        cur.execute(f"SELECT count(*) FROM {staging}")
+        cur.execute(f"SELECT count(*) FROM {target}")
         n = cur.fetchone()[0]
         log.info("%s: %d rows copied in %.0fs", table, n, time.time() - t0)
 
         if n == 0:
-            raise RuntimeError(f"{table}: staging table is empty — refusing to swap")
+            raise RuntimeError(f"{table}: loaded 0 rows — refusing to publish")
 
         # The released CSVs carry Excel-corrupted handles ("#NAME?") that
         # strength.py drops at read time; they collide on the primary key here.
         # Remove them, then collapse any remaining duplicate keys.
         if table in ("user_profiles", "user_tag_strengths"):
-            cur.execute(f"DELETE FROM {staging} WHERE handle = '#NAME?' "
+            cur.execute(f"DELETE FROM {target} WHERE handle = '#NAME?' "
                         f"OR handle IS NULL OR btrim(handle) = ''")
             removed = cur.rowcount
             if removed:
@@ -197,19 +237,29 @@ def load_table(conn, table, csv_name):
 
         if table == "user_profiles":
             cur.execute(f"""
-                DELETE FROM {staging} a USING {staging} b
+                DELETE FROM {target} a USING {target} b
                 WHERE a.ctid < b.ctid AND a.handle = b.handle
             """)
             if cur.rowcount:
                 log.info("%s: collapsed %d duplicate handles", table, cur.rowcount)
         elif table == "user_tag_strengths":
             cur.execute(f"""
-                DELETE FROM {staging} a USING {staging} b
+                DELETE FROM {target} a USING {target} b
                 WHERE a.ctid < b.ctid AND a.handle = b.handle AND a.tag = b.tag
             """)
             if cur.rowcount:
                 log.info("%s: collapsed %d duplicate (handle, tag) rows",
                          table, cur.rowcount)
+
+        if LOW_DISK:
+            if dropped_pk:
+                key = "(handle, tag)" if table == "user_tag_strengths" else "(handle)"
+                cur.execute(f"ALTER TABLE {table} ADD PRIMARY KEY {key}")
+                log.info("%s: primary key rebuilt", table)
+            # submissions keeps its own handle index through TRUNCATE, so
+            # there is nothing else to rebuild or swap.
+            log.info("%s: loaded in place (%d rows)", table, n)
+            return True
 
         # Rebuild whatever the real table has on it.
         if table == "submissions":
@@ -220,7 +270,6 @@ def load_table(conn, table, csv_name):
         elif table == "user_profiles":
             cur.execute(f"ALTER TABLE {staging} ADD PRIMARY KEY (handle)")
 
-        cur.execute(f"DROP TABLE IF EXISTS {table}_old")
         cur.execute(f"ALTER TABLE {table} RENAME TO {table}_old")
         # Free the canonical index name before the staging index claims it:
         # the old table still owns it until it is renamed or dropped.
