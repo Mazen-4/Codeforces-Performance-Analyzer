@@ -70,18 +70,38 @@ git push
 Without this, every weekly run still publishes a release, but the live site keeps
 serving the previous week's models until it happens to redeploy.
 
-1. Railway dashboard → your service → **Settings** → **Deploy Hooks** → create one,
-   pointed at the branch you deploy from (`main`). Copy the URL.
-2. GitHub repo → **Settings** → **Secrets and variables** → **Actions** →
-   **New repository secret**:
-   - Name: `RAILWAY_DEPLOY_HOOK`
-   - Value: the URL from step 1
+Railway has moved this setting around, so the workflow accepts **either** of two
+approaches. Use whichever your dashboard offers.
 
-Treat the URL as a credential — anyone holding it can trigger deploys, which is why
-it lives in a secret rather than in the workflow file.
+**Option A — deploy hook (if you can find it).**
+Railway → your service → **Settings** → scroll to **Deploy Triggers** (older
+projects call it *Deploy Hooks*). Create one pointed at `main` and copy the URL.
+Add it as the GitHub secret `RAILWAY_DEPLOY_HOOK`.
 
-If the secret is missing the workflow won't fail; it logs a warning and skips the
-redeploy, so the release still gets published.
+**Option B — API token (works on every dashboard version).**
+Newer Railway projects may not show deploy hooks at all. Instead:
+
+1. Railway → **project Settings** → **Tokens** → create a token scoped to this
+   project. (Account tokens under your user settings work too.)
+2. Get the service and environment IDs from the browser URL while the service is
+   open:
+   `railway.com/project/<projectId>/service/<SERVICE_ID>?environmentId=<ENVIRONMENT_ID>`
+3. Add three GitHub secrets: `RAILWAY_TOKEN`, `RAILWAY_SERVICE_ID`,
+   `RAILWAY_ENVIRONMENT_ID`.
+
+Add secrets under GitHub repo → **Settings** → **Secrets and variables** →
+**Actions** → **New repository secret**.
+
+Treat these as credentials — anyone holding them can trigger deploys, which is why
+they live in secrets rather than in the workflow file.
+
+If none of them is set the workflow now **fails** at this step: the run's whole
+purpose is to get new models onto the live site, so silently skipping the redeploy
+would be a green run that changed nothing. Set `ALLOW_NO_REDEPLOY=1` to opt out.
+
+Do **not** use Railway's *Cron Schedule* setting for this. It runs the service on a
+schedule and then stops it, which would take the website offline; scheduling lives
+in GitHub Actions.
 
 ### Step 4 — Verify the workflow runs
 

@@ -270,30 +270,68 @@ jobs:
       # pulls new models at deploy time (scripts/start.sh → fetch_latest_release.sh),
       # and nothing else pushes to main. Poke the deploy hook so the fresh models
       # actually go live.
+      # Two ways to redeploy, because Railway has moved this feature around:
+      #  - RAILWAY_DEPLOY_HOOK: a webhook URL, if your project still offers
+      #    Settings -> Deploy Triggers / Deploy Hooks.
+      #  - RAILWAY_TOKEN (+ RAILWAY_SERVICE_ID): a project or account token,
+      #    which works regardless of the dashboard layout. Get one from
+      #    Railway -> project Settings -> Tokens.
+      # Either is enough; the hook is tried first.
       - name: Trigger Railway redeploy
         env:
-          DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+          DEPLOY_HOOK:  ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
         run: |
-          if [ -z "$DEPLOY_HOOK" ]; then
-            # This used to warn and pass. The whole point of the weekly run is
-            # that the website ends up serving the new models, so a missing
-            # hook means the run did not achieve its goal — fail loudly.
-            echo "ERROR: RAILWAY_DEPLOY_HOOK secret is not set. The release was"
-            echo "published but the live site will keep serving the old models."
-            echo "Add the secret (see DEPLOY.md) or set ALLOW_NO_REDEPLOY=1."
-            [ "${ALLOW_NO_REDEPLOY:-0}" = "1" ] && { echo "Continuing anyway."; exit 0; }
-            exit 1
+          if [ -n "$DEPLOY_HOOK" ]; then
+            echo "Using deploy hook."
+            CODE=$(curl -sS -X POST --fail-with-body \
+              -o /tmp/deploy_hook_response.txt -w '%{http_code}' \
+              --retry 3 --retry-delay 10 --retry-all-errors \
+              "$DEPLOY_HOOK") || {
+                echo "ERROR: Railway deploy hook failed (HTTP ${CODE:-000})"
+                cat /tmp/deploy_hook_response.txt 2>/dev/null
+                exit 1
+              }
+            echo "Railway redeploy triggered (HTTP $CODE)."
+            exit 0
           fi
 
-          CODE=$(curl -sS -X POST --fail-with-body \
-            -o /tmp/deploy_hook_response.txt -w '%{http_code}' \
-            --retry 3 --retry-delay 10 --retry-all-errors \
-            "$DEPLOY_HOOK") || {
-              echo "ERROR: Railway deploy hook failed (HTTP ${CODE:-000})"
-              cat /tmp/deploy_hook_response.txt 2>/dev/null
+          if [ -n "$RAILWAY_TOKEN" ] && [ -n "$RAILWAY_SERVICE_ID" ]; then
+            echo "Using Railway API (serviceInstanceRedeploy)."
+            # environmentId is required by the mutation; fall back to the
+            # service's default environment when it is not pinned by secret.
+            ENV_ID="$RAILWAY_ENVIRONMENT_ID"
+            if [ -z "$ENV_ID" ]; then
+              echo "ERROR: RAILWAY_ENVIRONMENT_ID is not set. Find it in the"
+              echo "Railway URL: railway.com/project/<proj>/service/<svc>?environmentId=<this>"
               exit 1
-            }
-          echo "Railway redeploy triggered (HTTP $CODE) — new models go live once it finishes."
+            fi
+
+            RESP=$(curl -sS --fail-with-body -X POST \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              --retry 3 --retry-delay 10 --retry-all-errors \
+              -d "{\"query\":\"mutation { serviceInstanceRedeploy(serviceId: \\\"$RAILWAY_SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\") }\"}" \
+              https://backboard.railway.com/graphql/v2) || {
+                echo "ERROR: Railway API call failed"; echo "$RESP"; exit 1
+              }
+            echo "$RESP"
+            # GraphQL returns HTTP 200 even for errors, so inspect the body.
+            case "$RESP" in
+              *'"errors"'*) echo "ERROR: Railway API returned errors"; exit 1 ;;
+            esac
+            echo "Railway redeploy triggered via API."
+            exit 0
+          fi
+
+          echo "ERROR: no redeploy credentials. The release was published but the"
+          echo "live site will keep serving the old models."
+          echo "Set RAILWAY_DEPLOY_HOOK, or RAILWAY_TOKEN + RAILWAY_SERVICE_ID +"
+          echo "RAILWAY_ENVIRONMENT_ID. See DEPLOY.md."
+          [ "${ALLOW_NO_REDEPLOY:-0}" = "1" ] && { echo "Continuing anyway."; exit 0; }
+          exit 1
 
       - name: Upload logs
         if: always()
