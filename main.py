@@ -30,6 +30,7 @@ from ML.inference.find_unsolved_problems import find_unsolved_problems
 from ML.inference.prioritize_problems import prioritize_problems
 from ML.inference.counterfactual_tag_impact import compute_tag_impact
 from ML.inference.predict_attempts import estimate_attempts
+from scripts.db.connection import get_engine, use_postgres
 
 SUBMISSIONS_CSV = os.path.join(os.path.dirname(__file__), "ML", "dataset", "04_filtered_submissions.csv")
 PROFILES_CSV    = os.path.join(os.path.dirname(__file__), "ML", "dataset", "02_user_profiles.csv")
@@ -37,12 +38,19 @@ DATASET_CSV     = os.path.join(os.path.dirname(__file__), "ML", "dataset", "06_u
 
 
 def _load_submissions_csv(handles: set | None = None) -> pd.DataFrame:
-    """Load 04_filtered_submissions.csv.
+    """Load submissions for the given handles.
 
-    When `handles` is given, filter to those handles *during* the read in chunks so
-    peak memory stays at one chunk (~a few MB) instead of the full ~100 MB file.
-    This keeps the web pipeline under tight container memory limits (e.g. Railway).
+    Reads from Postgres when DATABASE_URL is configured, else falls back to
+    04_filtered_submissions.csv. The name is kept for its callers; the CSV is
+    now the fallback path, not the primary one.
+
+    The dataset is ~1.5 GB and grows every week, so the full file is never
+    loaded: Postgres answers this with an index lookup on handle, and the CSV
+    path filters during a chunked read.
     """
+    if use_postgres():
+        return _load_submissions_pg(handles)
+
     if handles is None:
         return pd.read_csv(SUBMISSIONS_CSV)
 
@@ -55,6 +63,51 @@ def _load_submissions_csv(handles: set | None = None) -> pd.DataFrame:
         return pd.concat(parts, ignore_index=True)
     # Preserve column schema even when no rows match
     return pd.read_csv(SUBMISSIONS_CSV, nrows=0)
+
+
+def _load_submissions_pg(handles: set | None) -> pd.DataFrame:
+    """Submissions for `handles` from Postgres, as an indexed lookup."""
+    from sqlalchemy import text
+
+    engine = get_engine()
+    if handles is None:
+        # 14M rows would exhaust the container. Callers always pass a handle
+        # set; guard rather than let this silently become a full scan.
+        raise ValueError(
+            "_load_submissions_csv(handles=None) would read the entire "
+            "submissions table (~14M rows). Pass an explicit handle set."
+        )
+    if not handles:
+        handles = set()
+
+    sql = text("SELECT * FROM submissions WHERE handle = ANY(:handles)")
+    with engine.connect() as conn:
+        df = pd.read_sql(sql, conn, params={"handles": list(handles)})
+    return df
+
+
+def _load_tag_strengths(handles: set | None = None) -> pd.DataFrame:
+    """Load 06_user_tag_strengths rows, from Postgres when configured.
+
+    Previously read the whole 15 MB CSV on every request just to filter it to
+    ~50 neighbour handles; now the filter happens in the query.
+    """
+    if use_postgres():
+        from sqlalchemy import text
+        engine = get_engine()
+        if handles:
+            sql = text("SELECT * FROM user_tag_strengths WHERE handle = ANY(:handles)")
+            params = {"handles": list(handles)}
+        else:
+            sql = text("SELECT * FROM user_tag_strengths")
+            params = {}
+        with engine.connect() as conn:
+            return pd.read_sql(sql, conn, params=params)
+
+    df = pd.read_csv(DATASET_CSV)
+    if handles:
+        df = df[df["handle"].isin(handles)]
+    return df
 
 
 def _compute_tag_strength_for_model(submission_rows: list, cf_rating: int, cf_max_rating: int) -> dict:
@@ -327,7 +380,7 @@ def main(user_handle: str, verbose: bool = True) -> dict:
                     target_submission_rows, cf_rating, cf_max_rating
                 )
 
-                tag_strengths_csv = pd.read_csv(DATASET_CSV)
+                tag_strengths_csv = _load_tag_strengths(neighbor_handles)
                 # Build a map of neighbor handle → similarity weight
                 neighbor_sim_map = {
                     n["user_handle"]: n["display_similarity"] / 100.0

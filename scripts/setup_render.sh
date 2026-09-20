@@ -17,7 +17,8 @@ echo ""
 echo "--- Installing Python dependencies ---"
 pip3 install --quiet --no-cache-dir --break-system-packages \
     "numpy~=2.1" "pandas~=2.3" "requests~=2.32" "psutil~=7.2" \
-    "lightgbm~=4.6" "scikit-learn~=1.8"
+    "lightgbm~=4.6" "scikit-learn~=1.8" \
+    "psycopg[binary]~=3.2" "SQLAlchemy~=2.0"
 
 # ── 2. Node dependencies + React build ───────────────────────────────────────
 echo ""
@@ -39,10 +40,18 @@ npm run build
 
 cd "$PROJECT_ROOT"
 
-# ── 3. Download latest dataset + models from GitHub Release ──────────────────
+# ── 3. Download models (and the dataset only when not using Postgres) ────────
 echo ""
-echo "--- Fetching latest dataset and models from GitHub Release ---"
-bash "$PROJECT_ROOT/scripts/fetch_latest_release.sh"
+if [ -n "${DATABASE_URL:-}" ] && [ "${USE_POSTGRES:-1}" != "0" ]; then
+  # The submissions dataset is ~1.5 GB uncompressed and grows weekly. With
+  # Postgres serving it, the web container only needs the ~6 MB models, so
+  # skip the dataset download entirely.
+  echo "--- DATABASE_URL set — fetching models only (dataset served from Postgres) ---"
+  MODELS_ONLY=1 bash "$PROJECT_ROOT/scripts/fetch_latest_release.sh"
+else
+  echo "--- Fetching latest dataset and models from GitHub Release ---"
+  bash "$PROJECT_ROOT/scripts/fetch_latest_release.sh"
+fi
 
 echo ""
 echo "=== Build complete ==="

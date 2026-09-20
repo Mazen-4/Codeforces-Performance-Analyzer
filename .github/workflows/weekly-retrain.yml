@@ -207,6 +207,11 @@ jobs:
           echo "--- disk ---";   df -h /
 
       - name: Merge chunks + preprocess + retrain
+        env:
+          # Set this secret to publish the merged dataset into Postgres. When
+          # unset the load step is skipped and the pipeline behaves as before,
+          # so the migration can land before the database exists.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           DATA_DIR=${{ github.workspace }} \
           NUM_CHUNKS=${{ env.NUM_CHUNKS }} \

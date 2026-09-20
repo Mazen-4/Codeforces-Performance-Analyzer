@@ -330,11 +330,31 @@ def run_training():
         _run_script(training_dir / script, training_dir, script)
 
 
+def load_to_postgres():
+    """Publish the merged CSVs into Postgres, if configured.
+
+    Opt-in: without DATABASE_URL this is a no-op, so the pipeline behaves
+    exactly as before. The CSVs are still written and still published as
+    release assets — Postgres is an additional destination, not a replacement,
+    which keeps the release as a rollback path.
+    """
+    if not os.environ.get("DATABASE_URL"):
+        log.info("DATABASE_URL not set — skipping Postgres load")
+        return
+    script = Path(DATA_DIR) / "scripts" / "db" / "load.py"
+    if not script.is_file():
+        log.warning("Postgres loader not found at %s — skipping", script)
+        return
+    log.info("Loading dataset into Postgres …")
+    _run_script(script, Path(DATA_DIR), "db/load.py")
+
+
 def main():
     log.info("=== Merge + retrain ===")
     merge_chunks()
     run_preprocessing()
     run_training()
+    load_to_postgres()
     log.info("=== Done ===")
 
 

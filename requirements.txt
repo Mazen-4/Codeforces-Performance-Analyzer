@@ -11,3 +11,9 @@ psutil~=7.2
 # the retrain reproducible and runnable outside CI.
 lightgbm~=4.6
 scikit-learn~=1.8
+
+# Postgres — the website reads submissions/tag-strengths from the DB instead of
+# the ~1.5 GB CSV. psycopg 3 is used directly for COPY-based bulk loading;
+# SQLAlchemy provides the pooled engine the request path uses.
+psycopg[binary]~=3.2
+SQLAlchemy~=2.0
