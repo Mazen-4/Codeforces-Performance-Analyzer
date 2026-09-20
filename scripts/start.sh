@@ -9,6 +9,11 @@ set -euo pipefail
 
 PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
 
+# Session cookies only get the Secure flag when NODE_ENV=production, so this
+# is a security setting, not just an optimisation. Default it here rather than
+# relying on the platform to provide it.
+export NODE_ENV="${NODE_ENV:-production}"
+
 echo "=== Refreshing latest models before start (dataset already in image) ==="
 if MODELS_ONLY=1 bash "$PROJECT_ROOT/scripts/fetch_latest_release.sh"; then
   echo "Latest models in place."

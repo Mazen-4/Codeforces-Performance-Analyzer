@@ -8,6 +8,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { existsSync, statSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import cookieParser from "cookie-parser";
+import { dbEnabled, ensureSchema, query } from "./db/pool.js";
+import { attachUser, pruneExpired, requireAuth } from "./middleware/auth.js";
+import rateLimit from "express-rate-limit";
+import authRoutes from "./routes/auth.js";
+import adminRoutes from "./routes/admin.js";
 
 dotenv.config();
 
@@ -21,8 +27,52 @@ const VENV_PYTHON = path.join(PROJECT_ROOT, ".venv", "bin", "python");
 const PYTHON = existsSync(VENV_PYTHON) ? VENV_PYTHON : "python3";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+// Railway terminates TLS at its proxy; trust one hop so req.ip and secure
+// cookies behave correctly.
+app.set("trust proxy", 1);
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
+
+// Accounts are optional: without DATABASE_URL the analyzer still works
+// anonymously, it just cannot sign anyone in.
+const ACCOUNTS_ENABLED = dbEnabled();
+if (ACCOUNTS_ENABLED) {
+  app.use(attachUser);
+  ensureSchema()
+    .then(() => { console.log("Account schema ready."); return pruneExpired(); })
+    .catch((err) => console.error("Account schema setup failed:", err.message));
+  setInterval(pruneExpired, 6 * 60 * 60 * 1000).unref();
+} else {
+  console.warn("DATABASE_URL not set — accounts and admin are disabled.");
+  app.use((req, _res, next) => { req.user = null; next(); });
+}
+
+app.get("/api/config", (_req, res) => {
+  res.json({ accounts_enabled: ACCOUNTS_ENABLED });
+});
+
+if (ACCOUNTS_ENABLED) {
+  // Coarse network-level limits. The per-account lockout in routes/auth.js is
+  // the real credential-stuffing defence; this caps raw request volume.
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, limit: 60,
+    standardHeaders: "draft-7", legacyHeaders: false,
+    message: { error: "Too many requests. Try again shortly." },
+  });
+  app.use("/api/auth/login",  authLimiter);
+  app.use("/api/auth/signup", authLimiter);
+  app.use("/api/auth", authRoutes);
+  app.use("/api/admin", adminRoutes);
+}
+
+// The ML pipeline spawns a Python process per call, so it must not be a free
+// denial-of-service lever.
+app.use("/api/ml/analyze", rateLimit({
+  windowMs: 10 * 60 * 1000, limit: 20,
+  standardHeaders: "draft-7", legacyHeaders: false,
+  message: { error: "You have run a lot of analyses. Try again in a few minutes." },
+}));
 
 // ── Serve React frontend (production build) ───────────────────────────────────
 const STATIC_DIR = path.join(PROJECT_ROOT, "website", "dist");
@@ -230,8 +280,26 @@ Format each day exactly like this — nothing else:
 
 /* ───────────── ML Pipeline ───────────── */
 
+// Record one analysis for history and admin review. Never fails the request.
+async function logSearch(req, handle, info) {
+  if (!ACCOUNTS_ENABLED || !req.user) return;
+  try {
+    await query(
+      `INSERT INTO searches
+         (account_id, cf_handle, ok, duration_ms, cf_rating, weakest_tag, error)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [req.user.id, handle, info.ok, info.duration_ms ?? null,
+       info.cf_rating ?? null, info.weakest_tag ?? null,
+       info.error ? String(info.error).slice(0, 400) : null]
+    );
+  } catch (err) {
+    console.error("search log failed:", err.message);
+  }
+}
+
 app.get("/api/ml/analyze/:handle", async (req, res) => {
   const { handle } = req.params;
+  const startedAt = Date.now();
 
   const script = `
 import sys, os, json, warnings
@@ -281,10 +349,46 @@ print(json.dumps(result, default=convert))
       console.error("ML pipeline JSON parse error. stdout:", output);
       return res.status(500).json({ error: `JSON parse failed: ${parseErr.message}`, output });
     }
+    // Weakest tag = lowest peer-benchmarked score, used for the history row.
+    let weakest = null, rating = null;
+    try {
+      const ts = result?.tag_strengths || {};
+      const entries = Object.entries(ts)
+        .map(([k, v]) => [k, typeof v === "object" ? v?.user_strength : v])
+        .filter(([, v]) => typeof v === "number");
+      if (entries.length) {
+        entries.sort((a, b) => a[1] - b[1]);
+        weakest = entries[0][0];
+      }
+      rating = result?.recommendation?.recommendation?.cf_rating
+            ?? result?.cf_rating ?? null;
+    } catch { /* logging must never break the response */ }
+
+    await logSearch(req, handle, {
+      ok: true, duration_ms: Date.now() - startedAt,
+      cf_rating: rating, weakest_tag: weakest,
+    });
     res.json(result);
   } catch (err) {
     console.error("ML pipeline error:", err.message);
+    await logSearch(req, handle, {
+      ok: false, duration_ms: Date.now() - startedAt, error: err.message,
+    });
     res.status(500).json({ error: err.message });
+  }
+});
+
+// A signed-in user's own analysis history.
+app.get("/api/me/searches", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, cf_handle, searched_at, ok, duration_ms, cf_rating, weakest_tag
+         FROM searches WHERE account_id = $1
+        ORDER BY searched_at DESC LIMIT 30`, [req.user.id]);
+    res.json({ searches: rows });
+  } catch (err) {
+    console.error("history failed:", err.message);
+    res.status(500).json({ error: "Could not load your history" });
   }
 });
 
