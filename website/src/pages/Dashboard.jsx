@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { T, font } from "../lib/theme.js";
+import { T, font, band } from "../lib/theme.js";
 import { useAuth } from "../lib/auth.jsx";
 import { api } from "../lib/api.js";
 import { Button, Input, Card, Spinner, Badge, Toast } from "../components/ui.jsx";
@@ -10,6 +10,7 @@ import Compare from "../components/Compare.jsx";
 import ClockWarning, { useClockCheck } from "../components/ClockWarning.jsx";
 import UpgradeGate, { shouldShowUpgrade } from "../components/UpgradeGate.jsx";
 import { tagInfo } from "../lib/copy.js";
+import Icon, { IconTile } from "../components/Icon.jsx";
 
 // Shown while the pipeline runs. Deliberately about the user's data, not about
 // what the system is doing internally.
@@ -177,9 +178,21 @@ export default function Dashboard() {
         />
       )}
 
-      <Card style={{ padding: 20, marginBottom: 26 }}>
+      <Card style={{
+        padding: 22, marginBottom: 26,
+        background: `linear-gradient(180deg, ${T.accent}0a, transparent 60%), ${T.surface}`,
+        borderColor: T.borderHi,
+      }}>
         {isAdmin ? (
           <>
+            <div style={{ display: "flex", alignItems: "center", gap: 9,
+                          marginBottom: 14 }}>
+              <IconTile name="search" color={T.accent} size={30} iconSize={15} />
+              <span style={{ fontSize: 13, fontWeight: 650, color: T.textDim,
+                             letterSpacing: 0.3 }}>
+                Analyse a handle
+              </span>
+            </div>
             <form onSubmit={run} style={{ display: "flex", gap: 11, flexWrap: "wrap" }}>
               <Input
                 value={handle}
@@ -207,7 +220,9 @@ export default function Dashboard() {
         ) : (
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap",
                         alignItems: "center", justifyContent: "space-between" }}>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+              <IconTile name="user" color={T.accent} size={38} iconSize={18} />
+              <div>
               <div style={{ fontSize: 12, color: T.textFaint, letterSpacing: 0.6,
                             textTransform: "uppercase", marginBottom: 6 }}>
                 Your linked handle
@@ -218,6 +233,7 @@ export default function Dashboard() {
               <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 7 }}>
                 Analysing someone else? Change your handle on the{" "}
                 <Link to="/profile" style={{ color: T.accent }}>profile page</Link>.
+              </div>
               </div>
             </div>
             <Button onClick={run} loading={busy} disabled={busy || clockBad} size="lg">
@@ -353,41 +369,19 @@ export default function Dashboard() {
           </m.div>
         )}
 
-        {!busy && !data && !error && history.length > 0 && (
-          <m.div key="hist" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Card>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 14px" }}>
-                Recent
-              </h3>
-              <div style={{ display: "grid", gap: 8 }}>
-                {history.slice(0, 8).map((h) => (
-                  <button
-                    key={h.id}
-                    onClick={() => openSaved(h)}
-                    disabled={loadingSaved === h.id}
-                    style={{
-                      display: "flex", justifyContent: "space-between",
-                      alignItems: "center", gap: 12, textAlign: "left",
-                      padding: "11px 13px", borderRadius: 9, cursor: "pointer",
-                      background: T.bgAlt, border: `1px solid ${T.border}`,
-                      color: T.text, fontFamily: font.sans, fontSize: 14,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>{h.cf_handle}</span>
-                    <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      {h.weakest_tag && (
-                        <span style={{ fontSize: 12.5, color: T.textFaint }}>
-                          focus: {tagInfo(h.weakest_tag).name}
-                        </span>
-                      )}
-                      <span style={{ fontSize: 12, color: T.textFaint }}>
-                        {new Date(h.searched_at).toLocaleDateString()}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </Card>
+        {!busy && !data && !error && (
+          <m.div key="hist" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                 style={{ display: "grid", gap: 20 }}>
+            {history.length > 0 && <HistoryStats history={history} />}
+            {history.length > 0 ? (
+              <RecentRuns
+                history={history}
+                onOpen={openSaved}
+                loadingId={loadingSaved}
+              />
+            ) : (
+              <FirstRunHint />
+            )}
           </m.div>
         )}
       </AnimatePresence>
@@ -490,5 +484,223 @@ function UpgradeNote({ onClose }) {
         </div>
       </m.div>
     </m.div>
+  );
+}
+
+/* ── Landing state: stats + history ──────────────────────────────────────── */
+
+/** Averages a run's stored per-topic scores into one overall number, the same
+ *  way the results view does, so the history agrees with what was shown. */
+function runScore(h) {
+  const vals = Object.values(h?.scores || {})
+    .map(Number).filter(Number.isFinite);
+  if (!vals.length) return null;
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+
+/** Headline numbers across everything the user has run. The page had all of
+ *  this in memory and was showing none of it. */
+function HistoryStats({ history }) {
+  const scored = history.map(runScore).filter((v) => v !== null);
+  const handles = new Set(history.map((h) => String(h.cf_handle).toLowerCase()));
+
+  // Movement between the two most recent scored runs of the same handle.
+  let delta = null;
+  const byHandle = {};
+  for (const h of history) {
+    const k = String(h.cf_handle).toLowerCase();
+    (byHandle[k] ||= []).push(h);
+  }
+  for (const runs of Object.values(byHandle)) {
+    const s = runs.map(runScore).filter((v) => v !== null);
+    if (s.length >= 2) { delta = s[0] - s[1]; break; }
+  }
+
+  const items = [
+    { icon: "bolt",   tone: T.accent, value: history.length, label: "analyses run" },
+    { icon: "search", tone: T.violet, value: handles.size,   label: "handles studied" },
+    { icon: "radar",  tone: T.cyan,
+      value: scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length) : "—",
+      label: "average score" },
+    { icon: "trend",  tone: delta === null ? T.textFaint : delta >= 0 ? T.good : T.risk,
+      value: delta === null ? "—" : `${delta >= 0 ? "+" : ""}${delta}`,
+      label: "since last run" },
+  ];
+
+  return (
+    <div style={{
+      display: "grid", gap: 1, overflow: "hidden",
+      gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+      borderRadius: T.radius, background: T.border,
+      border: `1px solid ${T.border}`,
+    }}>
+      {items.map((s, i) => (
+        <m.div
+          key={s.label}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: i * 0.06 }}
+          style={{ background: T.surface, padding: "18px 18px" }}
+        >
+          <span style={{ color: s.tone, display: "block", marginBottom: 10 }}>
+            <Icon name={s.icon} size={17} strokeWidth={1.8} />
+          </span>
+          <div style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 820,
+                        letterSpacing: -0.8, lineHeight: 1, color: s.tone }}>
+            {s.value}
+          </div>
+          <div style={{ fontSize: 12, color: T.textFaint, marginTop: 6 }}>
+            {s.label}
+          </div>
+        </m.div>
+      ))}
+    </div>
+  );
+}
+
+function RecentRuns({ history, onOpen, loadingId }) {
+  return (
+    <Card style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10,
+                    padding: "17px 20px", borderBottom: `1px solid ${T.border}` }}>
+        <IconTile name="clock" color={T.textDim} size={28} iconSize={14} />
+        <h3 style={{ fontSize: 15.5, fontWeight: 700, margin: 0 }}>Recent runs</h3>
+        <span style={{ marginLeft: "auto", fontSize: 12, color: T.textFaint }}>
+          Click any run to reopen it
+        </span>
+      </div>
+
+      <div>
+        {history.slice(0, 8).map((h, i) => {
+          const score = runScore(h);
+          const b = score === null ? null : band(score);
+          return (
+            <m.button
+              key={h.id}
+              onClick={() => onOpen(h)}
+              disabled={loadingId === h.id}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: Math.min(i * 0.04, 0.3), duration: 0.32 }}
+              whileHover={{ backgroundColor: T.bgAlt }}
+              style={{
+                display: "grid", width: "100%", textAlign: "left",
+                gridTemplateColumns: "34px minmax(0,1.3fr) 1fr 74px 78px",
+                alignItems: "center", gap: 13,
+                padding: "13px 20px", cursor: "pointer",
+                background: "transparent", color: T.text,
+                border: "none", borderTop: i ? `1px solid ${T.border}` : "none",
+                fontFamily: font.sans,
+                opacity: loadingId === h.id ? 0.5 : 1,
+              }}
+            >
+              {/* score ring, or a dash when the run predates stored scores */}
+              <ScoreDot score={score} tone={b?.color} />
+
+              <span style={{ display: "flex", flexDirection: "column", gap: 3,
+                             overflow: "hidden" }}>
+                <span style={{ fontWeight: 650, fontSize: 14, overflow: "hidden",
+                               textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {h.cf_handle}
+                </span>
+                <span style={{ fontSize: 11.5, color: T.textFaint }}>
+                  {new Date(h.searched_at).toLocaleDateString(undefined,
+                    { day: "numeric", month: "short" })}
+                  {h.cf_rating ? ` · rated ${h.cf_rating}` : ""}
+                </span>
+              </span>
+
+              {h.weakest_tag ? (
+                <span style={{ display: "flex", alignItems: "center", gap: 7,
+                               minWidth: 0 }}>
+                  <Icon name="target" size={13} color={T.risk} />
+                  <span style={{ fontSize: 12.5, color: T.textDim,
+                                 overflow: "hidden", textOverflow: "ellipsis",
+                                 whiteSpace: "nowrap" }}>
+                    {tagInfo(h.weakest_tag).name}
+                  </span>
+                </span>
+              ) : <span />}
+
+              {b ? (
+                <Badge color={b.color} style={{ fontSize: 10.5 }}>{b.label}</Badge>
+              ) : <span />}
+
+              <span style={{ display: "flex", alignItems: "center", gap: 6,
+                             justifyContent: "flex-end", fontSize: 12,
+                             color: T.textFaint }}>
+                {loadingId === h.id ? "Opening…" : "Open"}
+                <Icon name="arrowRight" size={12} />
+              </span>
+            </m.button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+/** A small ring showing the run's overall score at a glance. */
+function ScoreDot({ score, tone }) {
+  if (score === null) {
+    return (
+      <span style={{ width: 34, height: 34, borderRadius: 999,
+                     display: "grid", placeItems: "center",
+                     border: `1px dashed ${T.border}`, color: T.textFaint,
+                     fontSize: 12, fontFamily: font.mono }}>
+        –
+      </span>
+    );
+  }
+  const r = 15, c = 2 * Math.PI * r;
+  return (
+    <span style={{ position: "relative", width: 34, height: 34, display: "block" }}>
+      <svg width="34" height="34" viewBox="0 0 34 34" style={{ display: "block" }}>
+        <circle cx="17" cy="17" r={r} fill="none" stroke={T.border} strokeWidth="2.5" />
+        <circle cx="17" cy="17" r={r} fill="none" stroke={tone} strokeWidth="2.5"
+                strokeLinecap="round" strokeDasharray={c}
+                strokeDashoffset={c * (1 - score / 100)}
+                transform="rotate(-90 17 17)" />
+      </svg>
+      <span style={{
+        position: "absolute", inset: 0, display: "grid", placeItems: "center",
+        fontFamily: font.mono, fontSize: 11.5, fontWeight: 700, color: tone,
+      }}>
+        {score}
+      </span>
+    </span>
+  );
+}
+
+/** Shown before the first run, so the page is never an empty grey box. */
+function FirstRunHint() {
+  const steps = [
+    { icon: "user",   tone: T.accent, t: "We read your full submission history" },
+    { icon: "users",  tone: T.violet, t: "Match you to competitors who solve like you" },
+    { icon: "target", tone: T.good,   t: "Rank your gaps and pick problems" },
+  ];
+  return (
+    <Card style={{ padding: 26 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 5px" }}>
+        Your first analysis
+      </h3>
+      <p style={{ color: T.textDim, fontSize: 13.5, margin: "0 0 20px" }}>
+        About thirty seconds. Here is what happens.
+      </p>
+      <div style={{ display: "grid", gap: 11 }}>
+        {steps.map((s, i) => (
+          <m.div
+            key={s.t}
+            initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 + i * 0.09, duration: 0.35 }}
+            style={{ display: "flex", alignItems: "center", gap: 13,
+                     padding: "12px 14px", borderRadius: T.radiusSm,
+                     background: T.bgAlt, border: `1px solid ${T.border}` }}
+          >
+            <IconTile name={s.icon} color={s.tone} size={30} iconSize={15} />
+            <span style={{ fontSize: 13.5, color: T.textDim }}>{s.t}</span>
+          </m.div>
+        ))}
+      </div>
+    </Card>
   );
 }
