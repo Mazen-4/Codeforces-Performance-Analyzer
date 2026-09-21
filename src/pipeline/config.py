@@ -49,9 +49,18 @@ KNN_ALGORITHM = "auto"
 CODEFORCES_API_BASE_URL = "https://codeforces.com/api"
 CODEFORCES_API_TIMEOUT = 30  # seconds
 
-# Maximum number of submissions to fetch per user (to optimize API calls)
-# Feature extraction only needs stats, not full history
-MAX_SUBMISSIONS_PER_USER = 500
+# Maximum number of submissions to fetch per user.
+#
+# This was 500 on the assumption that feature extraction "only needs stats,
+# not full history". That assumption was wrong once peers were matched on
+# solve count: a 500-submission window showed tourist as having solved 343
+# problems when the real figure is 2,762, so he was matched to genuine
+# 340-solve accounts. Heavy users were truncated to 5-12% of their history.
+#
+# The full history of the heaviest accounts is ~8,600 submissions, fetched in
+# about 4 seconds — small next to a 17s analysis, and it only affects the one
+# user being analysed.
+MAX_SUBMISSIONS_PER_USER = 10000
 
 # Cache settings for API calls (to reduce redundant API calls)
 ENABLE_API_CACHE = True

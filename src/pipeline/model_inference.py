@@ -70,6 +70,8 @@ class KNNModel:
     # These penalties push the search toward users of similar size.
     VOLUME_PENALTY_WEIGHT = 1.0   # solve-count mismatch, log-ratio
     RATING_PENALTY_WEIGHT = 0.5   # rating mismatch, per 400 points
+    RATING_PENALTY_CAP    = 2.0   # ~800 points; beyond this all peers are
+                                  # equally distant and only volume should rank
 
     def set_profile_context(self, solved_counts=None, ratings=None,
                             target_solved=0, target_rating=0):
@@ -105,11 +107,23 @@ class KNNModel:
 
         if ratings is not None and self._target_rating > 0:
             rv = np.asarray(ratings, dtype=np.float64)
-            # One Codeforces division is ~400 points. Unknown rating carries
-            # no penalty: only ~10% of reference users have one recorded, and
-            # excluding the rest would gut the candidate pool.
+            known = rv > 0
             pen = np.abs(rv - self._target_rating) / 400.0
-            pen = np.where(rv > 0, pen, 0.0)
+
+            # Cap the penalty. Without it, a target far outside the dataset's
+            # rating range (the highest reference user is ~2600) pays a huge,
+            # near-constant penalty on every rated candidate, which drowns the
+            # volume signal instead of refining it.
+            pen = np.minimum(pen, self.RATING_PENALTY_CAP)
+
+            # An unknown rating is charged the median penalty of the known
+            # ones, not zero. Charging zero made missing data an advantage:
+            # unrated users outranked every rated candidate, so fetching a
+            # peer's rating actively hurt them.
+            if known.any():
+                pen = np.where(known, pen, float(np.median(pen[known])))
+            else:
+                pen = np.zeros_like(pen)
             out += self.RATING_PENALTY_WEIGHT * pen
 
         return out

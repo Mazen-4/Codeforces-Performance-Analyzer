@@ -11,6 +11,7 @@ Codeforces Performance Analyzer — Main Pipeline
 
 import sys
 import os
+import re
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 sys.path.insert(0, os.path.dirname(__file__))
@@ -84,6 +85,40 @@ def _load_submissions_pg(handles: set | None) -> pd.DataFrame:
     with engine.connect() as conn:
         df = pd.read_sql(sql, conn, params={"handles": list(handles)})
     return df
+
+
+def _fetch_live_ratings(handles: list) -> dict:
+    """Ratings straight from the Codeforces API, for handles we lack locally.
+
+    user_profiles covers only ~10% of reference users, so the rating penalty
+    was inert for most candidates — tourist (3307) was matched to a 1362.
+    Codeforces accepts up to ~300 handles per call, so filling the gap for a
+    shortlist costs one request.
+    """
+    if not handles:
+        return {}
+    import urllib.request, urllib.parse, json as _json
+    out = {}
+    CHUNK = 250
+    for i in range(0, len(handles), CHUNK):
+        batch = [h for h in handles[i:i + CHUNK]
+                 if re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{1,23}", str(h))]
+        if not batch:
+            continue
+        url = ("https://codeforces.com/api/user.info?handles="
+               + urllib.parse.quote(";".join(batch)))
+        try:
+            with urllib.request.urlopen(url, timeout=20) as r:
+                data = _json.loads(r.read())
+            if data.get("status") == "OK":
+                for u in data.get("result", []):
+                    if u.get("rating"):
+                        out[u["handle"]] = int(u["rating"])
+        except Exception:
+            # One deleted handle fails the whole batch; a missing rating just
+            # means no penalty for that user, so carry on.
+            continue
+    return out
 
 
 def _load_peer_scale(handles: list) -> tuple:
@@ -352,13 +387,49 @@ def main(user_handle: str, verbose: bool = True) -> dict:
                     pd.DataFrame(target_submission_rows)
                       .query("is_ac == 1")["problem_id"].nunique()
                 ) if target_submission_rows else 0
-                solved_arr, ratings_arr = _load_peer_scale(
-                    list(engineered["dataset_handles"]))
+                ds_handles = list(engineered["dataset_handles"])
+                solved_arr, ratings_arr = _load_peer_scale(ds_handles)
                 if solved_arr is not None:
+                    # Pass 1: rank on solving profile + volume only, to get a
+                    # shortlist of plausible peers.
                     model.set_profile_context(
                         solved_counts=solved_arr, ratings=ratings_arr,
                         target_solved=target_solved, target_rating=cf_rating,
                     )
+                    if cf_rating > 0:
+                        import numpy as _np
+                        shortlist_n = min(400, len(ds_handles))
+                        pre = model.model  # inner KNN, for a cheap first pass
+                        pre.fit(engineered["feature_matrix"])
+                        _, pre_idx = pre.predict(target_features)
+                        # predict() returns only k; rank the wider pool here.
+                        d = _np.linalg.norm(
+                            engineered["feature_matrix"] - target_features, axis=1)
+                        safe = _np.maximum(solved_arr, 1.0)
+                        volpen = _np.where(
+                            solved_arr > 0,
+                            _np.abs(_np.log(safe / max(target_solved, 1))), 3.0)
+                        order = _np.argsort(d + pre.VOLUME_PENALTY_WEIGHT * volpen)
+                        short = order[:shortlist_n]
+
+                        # Pass 2: fill missing ratings for the shortlist only,
+                        # so the rating penalty is not inert.
+                        missing = [ds_handles[i] for i in short if ratings_arr[i] <= 0]
+                        if missing:
+                            live = _fetch_live_ratings(missing)
+                            if live:
+                                for i in short:
+                                    h = ds_handles[i]
+                                    if ratings_arr[i] <= 0 and h in live:
+                                        ratings_arr[i] = live[h]
+                                if verbose:
+                                    print(f"[OK] Fetched {len(live)} peer ratings "
+                                          f"from Codeforces")
+                                model.set_profile_context(
+                                    solved_counts=solved_arr, ratings=ratings_arr,
+                                    target_solved=target_solved,
+                                    target_rating=cf_rating,
+                                )
                     if verbose:
                         known = int((ratings_arr > 0).sum())
                         print(f"[OK] Scale context: you solved {target_solved}; "
