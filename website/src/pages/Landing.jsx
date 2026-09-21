@@ -7,7 +7,6 @@ import { Button, Card, Badge } from "../components/ui.jsx";
 import DiscountClaim from "../components/DiscountClaim.jsx";
 import Aurora from "../components/Aurora.jsx";
 import Icon, { IconTile } from "../components/Icon.jsx";
-import { LogoMark } from "../components/Logo.jsx";
 
 const PLUS_PRICE = 399;          // EGP per month
 
@@ -71,7 +70,6 @@ function Hero({ trainingUsers }) {
           style={{ display: "flex", alignItems: "center", gap: 11,
                    justifyContent: "center", marginBottom: 20 }}
         >
-          <LogoMark size={30} id="hero" />
           <span style={{
             fontSize: "clamp(13px, 1.8vw, 15px)", fontWeight: 650,
             letterSpacing: 2.4, textTransform: "uppercase", color: T.textDim,
