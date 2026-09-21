@@ -339,19 +339,57 @@ async function logSearch(req, handle, info) {
     return await query(
       `INSERT INTO searches
          (account_id, cf_handle, ok, duration_ms, cf_rating, weakest_tag,
-          error, scores)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          error, scores, result)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [req.user.id, handle, info.ok, info.duration_ms ?? null,
        info.cf_rating ?? null, info.weakest_tag ?? null,
        info.error ? String(info.error).slice(0, 400) : null,
-       info.scores ? JSON.stringify(info.scores) : null]
+       info.scores ? JSON.stringify(info.scores) : null,
+       info.result ? JSON.stringify(info.result) : null]
     ).then(r => r.rows?.[0]?.id ?? null);
   } catch (err) {
     console.error("search log failed:", err.message);
     return null;
   }
 }
+
+// Re-open a past analysis from storage. No model run, no database egress:
+// this is the same payload the user already saw.
+app.get("/api/me/searches/:id", async (req, res) => {
+  if (!ACCOUNTS_ENABLED || !req.user) {
+    return res.status(401).json({ error: "Sign in to view past analyses" });
+  }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Not a valid analysis id" });
+  }
+  try {
+    // Scoped to the signed-in account: one user must never read another's run.
+    const { rows } = await query(
+      `SELECT id, cf_handle, searched_at, cf_rating, result
+         FROM searches
+        WHERE id = $1 AND account_id = $2`, [id, req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: "Analysis not found" });
+    const row = rows[0];
+    if (!row.result) {
+      return res.status(410).json({
+        error: "This analysis was run before results were saved. "
+             + "Run it again to see the full report.",
+        code: "NO_STORED_RESULT",
+      });
+    }
+    res.json({
+      ...row.result,
+      run_id: row.id,
+      cached: true,
+      searched_at: row.searched_at,
+    });
+  } catch (err) {
+    console.error("stored analysis failed:", err.message);
+    res.status(500).json({ error: "Could not load that analysis." });
+  }
+});
 
 app.get("/api/ml/analyze/:handle", requireAccurateClock, async (req, res) => {
   let { handle } = req.params;
@@ -439,9 +477,13 @@ print(json.dumps(result, default=convert))
             ?? result?.cf_rating ?? null;
     } catch { /* logging must never break the response */ }
 
+    // Keep the full result so the user can reopen this run without paying
+    // for the model again. Diagnostics are dropped: they are not rendered and
+    // would roughly double the row.
+    const { profiling, problem_attempts, ...storable } = result || {};
     const runId = await logSearch(req, handle, {
       ok: true, duration_ms: Date.now() - startedAt,
-      cf_rating: rating, weakest_tag: weakest, scores,
+      cf_rating: rating, weakest_tag: weakest, scores, result: storable,
     });
     // The client uses this to exclude the run it is displaying from the
     // "compare with an earlier run" list.

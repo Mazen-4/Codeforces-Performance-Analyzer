@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS searches (
 -- Adding the column to a database created before comparison existed.
 ALTER TABLE searches ADD COLUMN IF NOT EXISTS scores JSONB;
 
+-- The full result, so opening a past analysis re-renders it instead of
+-- re-running the model (30-60s of work and real database egress). Profiling
+-- and problem_attempts are stripped first — they are diagnostics, not part of
+-- what the user sees. ~27 KB per run.
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS result JSONB;
+
 CREATE INDEX IF NOT EXISTS searches_account_idx ON searches (account_id, searched_at DESC);
 CREATE INDEX IF NOT EXISTS searches_time_idx    ON searches (searched_at DESC);
 

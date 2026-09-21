@@ -31,6 +31,9 @@ export default function Dashboard() {
   // id of the search row created by the run currently on screen
   const [lastRunId, setLastRunId] = useState(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // Set when the view is a stored run rather than a fresh one.
+  const [viewingSaved, setViewingSaved] = useState(null);
+  const [loadingSaved, setLoadingSaved] = useState(null);
   const abortRef = useRef(null);
   const isAdmin = user?.role === "admin";
   const clock = useClockCheck();
@@ -75,6 +78,31 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [busy]);
 
+  // Re-open a past analysis from storage. No model run: the stored payload is
+  // exactly what was shown at the time.
+  async function openSaved(h) {
+    setLoadingSaved(h.id);
+    setError("");
+    try {
+      const saved = await api.storedAnalysis(h.id);
+      setHandle(saved.target_user || h.cf_handle);
+      setData(saved);
+      setLastRunId(h.id);
+      setCompareWith(null);
+      setViewingSaved({ id: h.id, at: saved.searched_at || h.searched_at });
+    } catch (err) {
+      // Runs from before results were stored cannot be re-opened.
+      if (err.code === "NO_STORED_RESULT") {
+        setHandle(h.cf_handle);
+        setError(err.message);
+      } else {
+        setError(err.message || "Could not open that analysis.");
+      }
+    } finally {
+      setLoadingSaved(null);
+    }
+  }
+
   async function run(e) {
     e?.preventDefault();
     const h = handle.trim();
@@ -95,6 +123,7 @@ export default function Dashboard() {
         );
       }
       setData(result);
+      setViewingSaved(null);
       setLastRunId(result.run_id ?? null);
       setCompareWith(null);
       loadHistory();
@@ -228,6 +257,30 @@ export default function Dashboard() {
         {!busy && data && (
           <m.div key="data" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div style={{ display: "grid", gap: 22 }}>
+              {viewingSaved && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                  padding: "12px 16px", borderRadius: T.radiusSm,
+                  background: T.bgAlt, border: `1px solid ${T.border}`,
+                }}>
+                  <span style={{ fontSize: 13.5, color: T.textDim }}>
+                    Saved analysis from{" "}
+                    <strong style={{ color: T.text }}>
+                      {new Date(viewingSaved.at).toLocaleString(undefined,
+                        { dateStyle: "medium", timeStyle: "short" })}
+                    </strong>
+                    . Nothing was re-run.
+                  </span>
+                  <Button
+                    variant="subtle" onClick={run} loading={busy}
+                    disabled={busy || clockBad}
+                    style={{ marginLeft: "auto" }}
+                  >
+                    Run a fresh analysis
+                  </Button>
+                </div>
+              )}
+
               {comparable.length > 0 && (
                 <CompareBar
                   options={comparable}
@@ -299,7 +352,8 @@ export default function Dashboard() {
                 {history.slice(0, 8).map((h) => (
                   <button
                     key={h.id}
-                    onClick={() => { setHandle(h.cf_handle); }}
+                    onClick={() => openSaved(h)}
+                    disabled={loadingSaved === h.id}
                     style={{
                       display: "flex", justifyContent: "space-between",
                       alignItems: "center", gap: 12, textAlign: "left",

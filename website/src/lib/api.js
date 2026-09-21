@@ -46,6 +46,7 @@ export const api = {
   updateMe:(body)  => request("/api/auth/me", { method: "PATCH", body }),
   changePassword: (body) => request("/api/auth/password", { method: "POST", body }),
   mySearches: ()   => request("/api/me/searches"),
+  storedAnalysis: (id) => request(`/api/me/searches/${id}`),
 
   analyze: (handle, signal) =>
     request(`/api/ml/analyze/${encodeURIComponent(handle)}`, { signal }),
