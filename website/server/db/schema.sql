@@ -65,8 +65,15 @@ CREATE TABLE IF NOT EXISTS searches (
     duration_ms   INTEGER,
     cf_rating     INTEGER,
     weakest_tag   TEXT,
-    error         TEXT
+    error         TEXT,
+    -- Per-topic scores for this run, so a user can compare today against an
+    -- earlier analysis. Only the 20 numbers are kept, not the whole result:
+    -- recommendations are regenerated on demand and would bloat the row.
+    scores        JSONB
 );
+
+-- Adding the column to a database created before comparison existed.
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS scores JSONB;
 
 CREATE INDEX IF NOT EXISTS searches_account_idx ON searches (account_id, searched_at DESC);
 CREATE INDEX IF NOT EXISTS searches_time_idx    ON searches (searched_at DESC);

@@ -303,11 +303,13 @@ async function logSearch(req, handle, info) {
   try {
     await query(
       `INSERT INTO searches
-         (account_id, cf_handle, ok, duration_ms, cf_rating, weakest_tag, error)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         (account_id, cf_handle, ok, duration_ms, cf_rating, weakest_tag,
+          error, scores)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [req.user.id, handle, info.ok, info.duration_ms ?? null,
        info.cf_rating ?? null, info.weakest_tag ?? null,
-       info.error ? String(info.error).slice(0, 400) : null]
+       info.error ? String(info.error).slice(0, 400) : null,
+       info.scores ? JSON.stringify(info.scores) : null]
     );
   } catch (err) {
     console.error("search log failed:", err.message);
@@ -315,8 +317,22 @@ async function logSearch(req, handle, info) {
 }
 
 app.get("/api/ml/analyze/:handle", async (req, res) => {
-  const { handle } = req.params;
+  let { handle } = req.params;
   const startedAt = Date.now();
+
+  // A signed-in user may only analyse the handle linked to their account.
+  // Admins may analyse anyone. Enforced here rather than only in the UI,
+  // because the endpoint is reachable directly.
+  if (ACCOUNTS_ENABLED && req.user && req.user.role !== "admin") {
+    if (handle.toLowerCase() !== String(req.user.cf_handle).toLowerCase()) {
+      return res.status(403).json({
+        error: "You can only analyse the Codeforces handle linked to your "
+             + "account. Change it on your profile page.",
+      });
+    }
+    // Use the stored spelling so history rows stay consistent.
+    handle = req.user.cf_handle;
+  }
 
   const script = `
 import sys, os, json, warnings
@@ -366,18 +382,21 @@ print(json.dumps(result, default=convert))
       console.error("ML pipeline JSON parse error. stdout:", output);
       return res.status(500).json({ error: `JSON parse failed: ${parseErr.message}`, output });
     }
-    // Weakest tag = lowest peer-benchmarked score, used for the history row.
-    let weakest = null, rating = null;
+    // Flatten tag_strengths to {tag: number} once: used for the weakest-tag
+    // column and stored so a later run can be compared against this one.
+    let weakest = null, rating = null, scores = null;
     try {
       const ts = result?.tag_strengths || {};
       const entries = Object.entries(ts)
         .map(([k, v]) => [k, typeof v === "object"
           ? (v?.strength ?? v?.user_strength ?? v?.score)
           : v])
-        .filter(([, v]) => typeof v === "number");
+        .filter(([, v]) => typeof v === "number" && Number.isFinite(v));
       if (entries.length) {
-        entries.sort((a, b) => a[1] - b[1]);
-        weakest = entries[0][0];
+        scores = Object.fromEntries(
+          entries.map(([k, v]) => [k, Math.round(v * 10) / 10]));
+        const sorted = [...entries].sort((a, b) => a[1] - b[1]);
+        weakest = sorted[0][0];
       }
       rating = result?.recommendation?.recommendation?.cf_rating
             ?? result?.cf_rating ?? null;
@@ -385,7 +404,7 @@ print(json.dumps(result, default=convert))
 
     await logSearch(req, handle, {
       ok: true, duration_ms: Date.now() - startedAt,
-      cf_rating: rating, weakest_tag: weakest,
+      cf_rating: rating, weakest_tag: weakest, scores,
     });
     res.json(result);
   } catch (err) {
@@ -400,11 +419,17 @@ print(json.dumps(result, default=convert))
 // A signed-in user's own analysis history.
 app.get("/api/me/searches", requireAuth, async (req, res) => {
   try {
+    // Only successful runs that captured scores are useful for comparison,
+    // but the caller may want the full list, so return both flags.
     const { rows } = await query(
-      `SELECT id, cf_handle, searched_at, ok, duration_ms, cf_rating, weakest_tag
-         FROM searches WHERE account_id = $1
+      `SELECT id, cf_handle, searched_at, ok, duration_ms, cf_rating,
+              weakest_tag, scores
+         FROM searches
+        WHERE account_id = $1
         ORDER BY searched_at DESC LIMIT 30`, [req.user.id]);
-    res.json({ searches: rows });
+    res.json({
+      searches: rows.map(r => ({ ...r, comparable: Boolean(r.scores && r.ok) })),
+    });
   } catch (err) {
     console.error("history failed:", err.message);
     res.status(500).json({ error: "Could not load your history" });

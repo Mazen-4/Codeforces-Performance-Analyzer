@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { m, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 import { T, font } from "../lib/theme.js";
 import { useAuth } from "../lib/auth.jsx";
 import { api } from "../lib/api.js";
 import { Button, Input, Card, Spinner, Badge, Toast } from "../components/ui.jsx";
 import Results from "../components/Results.jsx";
+import Compare from "../components/Compare.jsx";
 import { tagInfo } from "../lib/copy.js";
 
 // Shown while the pipeline runs. Deliberately about the user's data, not about
@@ -24,7 +26,33 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [step, setStep] = useState(0);
   const [history, setHistory] = useState([]);
+  const [compareWith, setCompareWith] = useState(null);
   const abortRef = useRef(null);
+  const isAdmin = user?.role === "admin";
+
+  // Flatten the current result the same way the server stores snapshots, so
+  // today's numbers and a saved run are directly comparable.
+  const currentScores = useMemo(() => {
+    const ts = data?.tag_strengths;
+    if (!ts) return null;
+    const out = {};
+    for (const [k, v] of Object.entries(ts)) {
+      const n = typeof v === "object"
+        ? (v?.strength ?? v?.user_strength ?? v?.score)
+        : v;
+      if (Number.isFinite(Number(n))) out[k] = Math.round(Number(n) * 10) / 10;
+    }
+    return Object.keys(out).length ? out : null;
+  }, [data]);
+
+  // Earlier runs for the SAME handle that captured scores. Comparing across
+  // handles would be meaningless.
+  const comparable = useMemo(() => {
+    if (!data || !handle) return [];
+    return history.filter(h =>
+      h.comparable &&
+      String(h.cf_handle).toLowerCase() === handle.trim().toLowerCase());
+  }, [history, data, handle]);
 
   useEffect(() => { loadHistory(); }, []);
   async function loadHistory() {
@@ -79,30 +107,59 @@ export default function Dashboard() {
           {user?.full_name ? `Hey ${user.full_name.split(" ")[0]}.` : "Your analysis"}
         </h1>
         <p style={{ color: T.textDim, fontSize: 15, margin: "0 0 26px" }}>
-          Enter a Codeforces handle to see where the gaps are.
+          {isAdmin
+            ? "Enter any Codeforces handle to see where the gaps are."
+            : "See where your gaps are, and what to practise next."}
         </p>
       </m.div>
 
       <Card style={{ padding: 20, marginBottom: 26 }}>
-        <form onSubmit={run} style={{ display: "flex", gap: 11, flexWrap: "wrap" }}>
-          <Input
-            value={handle}
-            onChange={(e) => setHandle(e.target.value)}
-            placeholder="Codeforces handle"
-            style={{ flex: 1, minWidth: 220 }}
-            disabled={busy}
-            aria-label="Codeforces handle"
-          />
-          <Button type="submit" loading={busy} disabled={busy || !handle.trim()}>
-            {busy ? "Analysing" : "Analyse"}
-          </Button>
-          {user?.cf_handle && handle !== user.cf_handle && !busy && (
-            <Button type="button" variant="ghost"
-                    onClick={() => setHandle(user.cf_handle)}>
-              Use mine
+        {isAdmin ? (
+          <>
+            <form onSubmit={run} style={{ display: "flex", gap: 11, flexWrap: "wrap" }}>
+              <Input
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+                placeholder="Codeforces handle"
+                style={{ flex: 1, minWidth: 220 }}
+                disabled={busy}
+                aria-label="Codeforces handle"
+              />
+              <Button type="submit" loading={busy} disabled={busy || !handle.trim()}>
+                {busy ? "Analysing" : "Analyse"}
+              </Button>
+              {user?.cf_handle && handle !== user.cf_handle && !busy && (
+                <Button type="button" variant="ghost"
+                        onClick={() => setHandle(user.cf_handle)}>
+                  Use mine
+                </Button>
+              )}
+            </form>
+            <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 10 }}>
+              As an admin you can analyse any handle.
+            </div>
+          </>
+        ) : (
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap",
+                        alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 12, color: T.textFaint, letterSpacing: 0.6,
+                            textTransform: "uppercase", marginBottom: 6 }}>
+                Your linked handle
+              </div>
+              <div style={{ fontFamily: font.mono, fontSize: 17, fontWeight: 700 }}>
+                {user?.cf_handle}
+              </div>
+              <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 7 }}>
+                Analysing someone else? Change your handle on the{" "}
+                <Link to="/profile" style={{ color: T.accent }}>profile page</Link>.
+              </div>
+            </div>
+            <Button onClick={run} loading={busy} disabled={busy} size="lg">
+              {busy ? "Analysing" : "Analyse my profile"}
             </Button>
-          )}
-        </form>
+          </div>
+        )}
       </Card>
 
       <AnimatePresence mode="wait">
@@ -145,7 +202,23 @@ export default function Dashboard() {
 
         {!busy && data && (
           <m.div key="data" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Results data={data} handle={handle} />
+            <div style={{ display: "grid", gap: 22 }}>
+              {comparable.length > 0 && (
+                <CompareBar
+                  options={comparable}
+                  selected={compareWith}
+                  onSelect={setCompareWith}
+                />
+              )}
+              {compareWith && currentScores && (
+                <Compare
+                  current={currentScores}
+                  previous={compareWith}
+                  onClose={() => setCompareWith(null)}
+                />
+              )}
+              <Results data={data} handle={handle} />
+            </div>
           </m.div>
         )}
 
@@ -222,5 +295,47 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+
+/** Lets the user pick an earlier run of the same handle to compare against. */
+function CompareBar({ options, selected, onSelect }) {
+  return (
+    <Card style={{ padding: 16 }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap",
+                    alignItems: "center" }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: T.textDim }}>
+          Compare with an earlier run
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {options.slice(0, 5).map((o) => {
+            const active = selected?.id === o.id;
+            const when = new Date(o.searched_at).toLocaleDateString(undefined,
+              { day: "numeric", month: "short" });
+            return (
+              <button
+                key={o.id}
+                onClick={() => onSelect(active ? null : o)}
+                style={{
+                  padding: "7px 13px", borderRadius: 8, cursor: "pointer",
+                  fontFamily: font.sans, fontSize: 13, fontWeight: 600,
+                  background: active ? T.surfaceHi : "transparent",
+                  border: `1px solid ${active ? T.accent : T.border}`,
+                  color: active ? T.text : T.textDim,
+                }}
+              >
+                {when}
+              </button>
+            );
+          })}
+        </div>
+        {options.length === 0 && (
+          <span style={{ fontSize: 13, color: T.textFaint }}>
+            Run this again in a few days to see your progress.
+          </span>
+        )}
+      </div>
+    </Card>
   );
 }
