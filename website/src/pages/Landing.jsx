@@ -13,22 +13,28 @@ const PLUS_PRICE = 399;          // EGP per month
 export default function Landing() {
   // Real number from the deployed model, so the page never overstates itself.
   const [trainingUsers, setTrainingUsers] = useState(null);
+  const [stats, setStats] = useState(null);
   useEffect(() => {
     let alive = true;
     api.mlVersion?.()
       .then((v) => { if (alive && v?.training_users) setTrainingUsers(v.training_users); })
       .catch(() => { /* the page reads fine without it */ });
+    api.siteStats?.()
+      .then((s2) => { if (alive && s2?.peers) setStats(s2); })
+      .catch(() => {});
     return () => { alive = false; };
   }, []);
 
   return (
     <div>
       <Hero trainingUsers={trainingUsers} />
+      <StatsBand stats={stats} trainingUsers={trainingUsers} />
       <HowItWorks />
       <Features />
       <WeeklyModel trainingUsers={trainingUsers} />
       <Pricing />
       <FinalCta />
+      <Disclaimer />
     </div>
   );
 }
@@ -56,6 +62,21 @@ function Hero({ trainingUsers }) {
         >
           <Pulse />
           Retrained every week
+        </m.div>
+
+        <m.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.04 }}
+          style={{ display: "flex", alignItems: "center", gap: 11,
+                   justifyContent: "center", marginBottom: 20 }}
+        >
+          <BrandMark />
+          <span style={{
+            fontSize: "clamp(13px, 1.8vw, 15px)", fontWeight: 650,
+            letterSpacing: 2.4, textTransform: "uppercase", color: T.textDim,
+          }}>
+            Codeforces Performance Analyzer
+          </span>
         </m.div>
 
         <m.h1
@@ -569,6 +590,123 @@ function Pulse() {
       />
       <span style={{ position: "relative", width: 7, height: 7,
                      borderRadius: 999, background: T.good }} />
+    </span>
+  );
+}
+
+/* ── Stats band ──────────────────────────────────────────────────────────── */
+
+/** Real figures from /api/stats, with static fallbacks so the band never
+ *  renders empty if the call fails. Counting animation runs once on view. */
+function StatsBand({ stats, trainingUsers }) {
+  const items = [
+    { icon: "users",  tone: T.accent,
+      value: stats?.peers ?? trainingUsers ?? 28492,
+      label: "rated competitors" },
+    { icon: "layers", tone: T.violet,
+      value: stats?.submissions ?? 14321151,
+      label: "submissions analysed" },
+    { icon: "target", tone: T.good,
+      value: stats?.problems ?? 12921,
+      label: "problems in the pool" },
+    { icon: "radar",  tone: T.cyan,
+      value: stats?.topics ?? 20,
+      label: "topics scored" },
+  ];
+  return (
+    <section style={{ padding: "0 24px", marginTop: -28, position: "relative", zIndex: 2 }}>
+      <div style={{
+        maxWidth: 1080, margin: "0 auto",
+        display: "grid", gap: 1, overflow: "hidden",
+        gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+        borderRadius: T.radius, background: T.border,
+        border: `1px solid ${T.border}`,
+      }}>
+        {items.map((s, i) => (
+          <m.div
+            key={s.label}
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.45, delay: i * 0.07 }}
+            style={{ background: T.surface, padding: "22px 20px" }}
+          >
+            <span style={{ color: s.tone, display: "block", marginBottom: 12 }}>
+              <Icon name={s.icon} size={19} strokeWidth={1.8} />
+            </span>
+            <div style={{ fontFamily: font.mono, fontSize: "clamp(20px, 2.6vw, 26px)",
+                          fontWeight: 820, letterSpacing: -0.8, lineHeight: 1 }}>
+              <CountUp to={s.value} />
+            </div>
+            <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 7 }}>
+              {s.label}
+            </div>
+          </m.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Counts up once, then holds. Large numbers are abbreviated so the band
+ *  stays readable: 14,321,151 reads as 14.3M. */
+function CountUp({ to }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let raf, start;
+    const dur = 1100;
+    const tick = (t) => {
+      if (!start) start = t;
+      const p = Math.min(1, (t - start) / dur);
+      // easeOutExpo: fast then settling, which reads as "counting up".
+      const eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+      setN(Math.round(to * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+
+  if (to >= 1_000_000) return <>{(n / 1_000_000).toFixed(1)}M</>;
+  return <>{n.toLocaleString()}</>;
+}
+
+/* ── Disclaimer ──────────────────────────────────────────────────────────── */
+
+function Disclaimer() {
+  return (
+    <section style={{ padding: "0 24px 64px" }}>
+      <div style={{
+        maxWidth: 1080, margin: "0 auto", display: "flex", gap: 13,
+        alignItems: "flex-start", padding: "16px 18px",
+        borderRadius: T.radiusSm, background: T.bgAlt,
+        border: `1px solid ${T.border}`,
+      }}>
+        <span style={{ color: T.textFaint, marginTop: 1 }}>
+          <Icon name="alert" size={16} />
+        </span>
+        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: T.textFaint }}>
+          <strong style={{ color: T.textDim }}>Not affiliated with Codeforces.</strong>{" "}
+          This is an independent project. It is not built, endorsed or sponsored
+          by Codeforces or its developers. It reads publicly available data
+          through the official Codeforces API. Codeforces is a trademark of its
+          respective owner.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/** Wordmark badge: the radar shape from the product, so the hero reads as
+ *  the app rather than as generic marketing. */
+function BrandMark() {
+  return (
+    <span style={{
+      width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+      display: "grid", placeItems: "center",
+      background: `linear-gradient(135deg, ${T.accent}, ${T.violet})`,
+    }}>
+      <Icon name="radar" size={16} color="#0B0D12" strokeWidth={2.1} />
     </span>
   );
 }

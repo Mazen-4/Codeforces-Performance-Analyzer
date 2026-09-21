@@ -171,6 +171,35 @@ async function countTrainingUsers() {
 // Reports each .pkl's SHA-256 and modified time so you can match it against the
 // GitHub Release the weekly retrain published. Also reports training_users (the
 // dynamic count the KNN model was trained on) and last_updated (newest model).
+// Headline dataset figures for the homepage. Cached for six hours: these
+// change only when the weekly retrain republishes, and the counts are a
+// full scan of a 14M-row table.
+let _statsCache = null;
+app.get("/api/stats", async (_req, res) => {
+  try {
+    if (_statsCache && Date.now() - _statsCache.at < 6 * 60 * 60 * 1000) {
+      return res.json(_statsCache.data);
+    }
+    if (!ACCOUNTS_ENABLED) return res.json({});
+    const { rows } = await query(`
+      SELECT
+        (SELECT count(DISTINCT handle)::int FROM user_tag_strengths)  AS peers,
+        (SELECT count(*)::bigint FROM submissions)                    AS submissions,
+        (SELECT count(DISTINCT problem_id)::int FROM submissions)     AS problems`);
+    const data = {
+      peers: Number(rows[0].peers),
+      submissions: Number(rows[0].submissions),
+      problems: Number(rows[0].problems),
+      topics: 20,
+    };
+    _statsCache = { at: Date.now(), data };
+    res.json(data);
+  } catch (err) {
+    console.error("stats failed:", err.message);
+    res.json({});          // the homepage has static fallbacks
+  }
+});
+
 app.get("/api/ml/version", async (_req, res) => {
   const modelsDir = path.join(PROJECT_ROOT, "ML", "models");
   const files = ["success_model.pkl", "attempts_model.pkl", "rating_progression_model.pkl"];

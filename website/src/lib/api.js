@@ -47,6 +47,7 @@ export const api = {
   changePassword: (body) => request("/api/auth/password", { method: "POST", body }),
   mySearches: ()   => request("/api/me/searches"),
   mlVersion: ()    => request("/api/ml/version"),
+  siteStats: ()    => request("/api/stats"),
   checkDiscount:  (c) => request(`/api/discounts/${encodeURIComponent(c)}`),
   redeemDiscount: (c) => request(`/api/discounts/${encodeURIComponent(c)}/redeem`, { method: "POST" }),
   adminDiscounts:      ()   => request("/api/admin/discounts"),
