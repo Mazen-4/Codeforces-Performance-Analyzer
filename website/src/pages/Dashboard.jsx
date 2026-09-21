@@ -7,6 +7,7 @@ import { api } from "../lib/api.js";
 import { Button, Input, Card, Spinner, Badge, Toast } from "../components/ui.jsx";
 import Results from "../components/Results.jsx";
 import Compare from "../components/Compare.jsx";
+import ClockWarning, { useClockCheck } from "../components/ClockWarning.jsx";
 import { tagInfo } from "../lib/copy.js";
 
 // Shown while the pipeline runs. Deliberately about the user's data, not about
@@ -32,6 +33,8 @@ export default function Dashboard() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const abortRef = useRef(null);
   const isAdmin = user?.role === "admin";
+  const clock = useClockCheck();
+  const clockBad = clock.checked && !clock.ok;
 
   // Flatten the current result the same way the server stores snapshots, so
   // today's numbers and a saved run are directly comparable.
@@ -76,6 +79,10 @@ export default function Dashboard() {
     e?.preventDefault();
     const h = handle.trim();
     if (!h) return;
+    if (clockBad) {
+      setError("Your device clock is wrong. Fix the date and time, then try again.");
+      return;
+    }
     setBusy(true); setError(""); setData(null); setStep(0);
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -121,6 +128,15 @@ export default function Dashboard() {
         </p>
       </m.div>
 
+      {clockBad && (
+        <ClockWarning
+          skewMs={clock.skewMs}
+          serverTime={clock.serverTime}
+          deviceTime={clock.deviceTime}
+          onRecheck={clock.recheck}
+        />
+      )}
+
       <Card style={{ padding: 20, marginBottom: 26 }}>
         {isAdmin ? (
           <>
@@ -133,7 +149,8 @@ export default function Dashboard() {
                 disabled={busy}
                 aria-label="Codeforces handle"
               />
-              <Button type="submit" loading={busy} disabled={busy || !handle.trim()}>
+              <Button type="submit" loading={busy}
+                      disabled={busy || !handle.trim() || clockBad}>
                 {busy ? "Analysing" : "Analyse"}
               </Button>
               {user?.cf_handle && handle !== user.cf_handle && !busy && (
@@ -163,7 +180,7 @@ export default function Dashboard() {
                 <Link to="/profile" style={{ color: T.accent }}>profile page</Link>.
               </div>
             </div>
-            <Button onClick={run} loading={busy} disabled={busy} size="lg">
+            <Button onClick={run} loading={busy} disabled={busy || clockBad} size="lg">
               {busy ? "Analysing" : "Analyse my profile"}
             </Button>
           </div>

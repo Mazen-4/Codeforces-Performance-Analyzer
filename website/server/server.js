@@ -48,6 +48,41 @@ if (ACCOUNTS_ENABLED) {
   app.use((req, _res, next) => { req.user = null; next(); });
 }
 
+// ─── Clock validation ───────────────────────────────────────────────────────
+// Subscriptions depend on an accurate clock: a device that is hours or years
+// off would compute the wrong billing period, show an expired plan as active,
+// or let a lapsed one keep working. The server's time is the authority — the
+// client sends its own clock and we compare.
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
+app.get("/api/time", (req, res) => {
+  // No caching: a cached timestamp is worse than useless for this check.
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.json({ server_time: Date.now(), max_skew_ms: MAX_CLOCK_SKEW_MS });
+});
+
+/** Express guard for routes that must not run on a device with a bad clock. */
+function requireAccurateClock(req, res, next) {
+  const raw = req.get("X-Client-Time");
+  if (!raw) return next();   // older clients: do not lock them out
+
+  const clientTime = Number(raw);
+  if (!Number.isFinite(clientTime)) return next();
+
+  const skew = Math.abs(Date.now() - clientTime);
+  if (skew > MAX_CLOCK_SKEW_MS) {
+    return res.status(409).json({
+      error: "Your device clock is wrong, so this action is paused. "
+           + "Turn on automatic date and time, then try again.",
+      code: "CLOCK_SKEW",
+      server_time: Date.now(),
+      client_time: clientTime,
+      skew_ms: skew,
+    });
+  }
+  return next();
+}
+
 app.get("/api/config", (_req, res) => {
   res.json({ accounts_enabled: ACCOUNTS_ENABLED });
 });
@@ -318,7 +353,7 @@ async function logSearch(req, handle, info) {
   }
 }
 
-app.get("/api/ml/analyze/:handle", async (req, res) => {
+app.get("/api/ml/analyze/:handle", requireAccurateClock, async (req, res) => {
   let { handle } = req.params;
   const startedAt = Date.now();
 

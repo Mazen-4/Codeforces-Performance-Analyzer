@@ -6,7 +6,13 @@ async function request(path, { method = "GET", body, signal } = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      // The server compares this against its own clock. Billing periods and
+      // plan expiry depend on an accurate date, so a badly-wrong device is
+      // refused rather than silently given the wrong answer.
+      "X-Client-Time": String(Date.now()),
+    },
     body: body ? JSON.stringify(body) : undefined,
     signal,
   });
@@ -21,6 +27,11 @@ async function request(path, { method = "GET", body, signal } = {}) {
   if (!res.ok) {
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;
+    err.code = data?.code;
+    if (data?.code === "CLOCK_SKEW") {
+      err.serverTime = data.server_time;
+      err.skewMs = data.skew_ms;
+    }
     throw err;
   }
   return data;
