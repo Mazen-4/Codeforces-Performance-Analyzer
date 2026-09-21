@@ -72,7 +72,8 @@ def compute_target_features(
 
     df = pd.DataFrame(submission_rows)
 
-    # Collapse to one row per distinct problem (mirrors strength.py submissions_to_per_problem)
+    # Collapse to one row per distinct problem. Used for solved counts and
+    # ratings — NOT for attempt counts, see the per-tag aggregate below.
     agg_dict = {"is_ac": "max", "problem_rating": "first"}
     for t in TAG_COLS:
         if t in df.columns:
@@ -92,16 +93,27 @@ def compute_target_features(
     first_try_rate   = float(first_attempts["is_ac"].mean()) if len(first_attempts) else 0.0
     efficiency_score = min(first_try_rate, 1.0)
 
-    # Global stats for unattempted-tag fallback
-    ac_per_prob = per_prob[per_prob["ever_ac"] == 1]
-    global_acceptance = min(
-        (total_ac + SMOOTHING * 0.5) / (len(per_prob) + SMOOTHING), 1.0
+    # Per-tag aggregates.
+    #
+    # total_attempts must count RAW submissions, not distinct problems: that is
+    # what strength.py counts when it builds the reference dataset
+    # (total_attempts = count of submission rows). Counting deduplicated
+    # problems here made acceptance_rate ~0.97 for a user whose dataset-style
+    # rate is ~0.42, because every failed attempt was collapsed away. The
+    # inflated vector then only matched near-perfect, high-volume accounts,
+    # which is why neighbours were always heavy solvers.
+    raw = df[df["problem_rating"] > 0] if "problem_rating" in df.columns else df
+    raw_melted = raw.melt(
+        id_vars=["problem_id", "is_ac"],
+        value_vars=[t for t in TAG_COLS if t in raw.columns],
+        var_name="tag", value_name="has_tag",
     )
-    global_difficulty = min(
-        float(ac_per_prob["problem_rating"].mean() or 0) / MAX_RATING, 1.0
+    raw_melted = raw_melted[raw_melted["has_tag"] == 1]
+    raw_counts = raw_melted.groupby("tag").agg(
+        total_attempts=("problem_id", "count"),
+        raw_ac=("is_ac", "sum"),
     )
 
-    # Per-tag aggregates on deduplicated per-problem rows
     melted = per_prob.melt(
         id_vars=["problem_id", "problem_rating", "ever_ac"],
         value_vars=[t for t in TAG_COLS if t in per_prob.columns],
@@ -119,24 +131,38 @@ def compute_target_features(
         tag_agg = (
             melted.groupby("tag")
             .apply(lambda g: pd.Series({
-                "total_attempts":    len(g),
-                "ac_count":          int(g["ever_ac"].sum()),
+                "solved_problems":   int(g["ever_ac"].sum()),
                 "avg_rating_solved": _mean_ac_rating(g),
             }), include_groups=False)
             .reset_index()
         )
+        # Attempts and AC count come from raw submissions, matching the dataset.
+        tag_agg = tag_agg.merge(raw_counts, on="tag", how="left")
+        tag_agg["total_attempts"] = tag_agg["total_attempts"].fillna(0).astype(int)
+        tag_agg["ac_count"]       = tag_agg["raw_ac"].fillna(0).astype(int)
         tag_agg["acceptance_rate"]      = ((tag_agg["ac_count"] + SMOOTHING * 0.5) /
                                            (tag_agg["total_attempts"] + SMOOTHING)).clip(0, 1)
         tag_agg["difficulty_score"]     = (tag_agg["avg_rating_solved"] / MAX_RATING).clip(0, 1)
         tag_agg["volume_score"]         = (np.log1p(tag_agg["ac_count"]) / np.log1p(50)).clip(0, 1)
-        tag_agg["specialization_score"] = (
-            (tag_agg["ac_count"] / total_ac) if total_ac > 0 else 0.0
-        ).clip(0, 1)
+        # specialization_score is ac_count / total_ac, where total_ac comes from
+        # the profiles table. That column does not exist in the reference data,
+        # so the merge yields NaN and the dataset stores 0.0 for 91% of cells.
+        # Computing a real value here made the target's largest distance
+        # component (32% of squared distance) one the reference set does not
+        # carry, matching on an axis that is almost always zero. Mirror the
+        # dataset until profiles actually provides total_ac.
+        tag_agg["specialization_score"] = 0.0
         tag_map = tag_agg.set_index("tag").to_dict("index")
 
+    # A tag the user has never attempted must look the way the reference set
+    # encodes it, which is all zeros (the pivot reindexes missing tags and
+    # fills 0.0). Substituting the user's global averages here made every
+    # untouched tag look "attempted with average skill", inflating the target
+    # vector and matching it to broad, high-volume accounts instead of to
+    # users with a genuinely similar profile.
     fallback = {
-        "acceptance_rate":      global_acceptance,
-        "difficulty_score":     global_difficulty,
+        "acceptance_rate":      0.0,
+        "difficulty_score":     0.0,
         "specialization_score": 0.0,
         "volume_score":         0.0,
     }
