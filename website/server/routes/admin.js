@@ -238,3 +238,104 @@ router.get("/searches", async (req, res) => {
 });
 
 export default router;
+
+/* ── Discount codes ──────────────────────────────────────────────────────── */
+
+const discountSchema = z.object({
+  code: z.string().trim().min(3).max(32)
+    .regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphen or underscore only"),
+  percent_off: z.coerce.number().int().min(1).max(100),
+  max_uses: z.coerce.number().int().min(1).max(1000000),
+  expires_at: z.string().min(1),
+  note: z.string().trim().max(200).optional().nullable(),
+});
+
+router.get("/discounts", async (_req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT d.*, a.email AS created_by_email,
+             (d.active
+               AND d.expires_at > now()
+               AND d.used_count < d.max_uses) AS redeemable
+        FROM discount_codes d
+        LEFT JOIN accounts a ON a.id = d.created_by
+       ORDER BY d.created_at DESC
+       LIMIT 200`);
+    res.json({ discounts: rows });
+  } catch (err) {
+    console.error("list discounts failed:", err.message);
+    res.status(500).json({ error: "Could not load discount codes." });
+  }
+});
+
+router.post("/discounts", async (req, res) => {
+  const parsed = discountSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0].message });
+  }
+  const { code, percent_off, max_uses, expires_at, note } = parsed.data;
+
+  const expiry = new Date(expires_at);
+  if (Number.isNaN(expiry.getTime())) {
+    return res.status(400).json({ error: "That expiry date is not valid." });
+  }
+  if (expiry.getTime() <= Date.now()) {
+    return res.status(400).json({ error: "The expiry date must be in the future." });
+  }
+
+  try {
+    const { rows } = await query(
+      `INSERT INTO discount_codes
+         (code, code_upper, percent_off, max_uses, expires_at, note, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [code, code.toUpperCase(), percent_off, max_uses, expiry.toISOString(),
+       note || null, req.user.id]);
+    res.status(201).json({ discount: rows[0] });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "That code already exists." });
+    }
+    console.error("create discount failed:", err.message);
+    res.status(500).json({ error: "Could not create that code." });
+  }
+});
+
+// Deactivating keeps the row and its redemption history; deleting a code that
+// people have already claimed would erase what they were given.
+router.patch("/discounts/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad id" });
+  const active = Boolean(req.body?.active);
+  try {
+    const { rows } = await query(
+      `UPDATE discount_codes SET active = $2 WHERE id = $1 RETURNING *`,
+      [id, active]);
+    if (!rows.length) return res.status(404).json({ error: "Code not found" });
+    res.json({ discount: rows[0] });
+  } catch (err) {
+    console.error("update discount failed:", err.message);
+    res.status(500).json({ error: "Could not update that code." });
+  }
+});
+
+router.delete("/discounts/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad id" });
+  try {
+    const { rows } = await query(
+      `SELECT used_count FROM discount_codes WHERE id = $1`, [id]);
+    if (!rows.length) return res.status(404).json({ error: "Code not found" });
+    if (rows[0].used_count > 0) {
+      return res.status(409).json({
+        error: "This code has already been redeemed. Deactivate it instead, "
+             + "so the people who claimed it keep their discount.",
+      });
+    }
+    await query(`DELETE FROM discount_codes WHERE id = $1`, [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("delete discount failed:", err.message);
+    res.status(500).json({ error: "Could not delete that code." });
+  }
+});

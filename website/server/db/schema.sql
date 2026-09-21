@@ -96,3 +96,36 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 
 CREATE INDEX IF NOT EXISTS login_attempts_email_idx ON login_attempts (email_lower, at DESC);
 CREATE INDEX IF NOT EXISTS login_attempts_ip_idx    ON login_attempts (ip, at DESC);
+
+
+-- ─── Discount codes ─────────────────────────────────────────────────────────
+-- Admin-created promo codes for the Plus plan. A code is redeemable while it
+-- is active, has not expired, and has uses left.
+CREATE TABLE IF NOT EXISTS discount_codes (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    code          TEXT NOT NULL,
+    -- Compared case-insensitively: people type promo codes in any case.
+    code_upper    TEXT NOT NULL UNIQUE,
+    percent_off   INTEGER NOT NULL CHECK (percent_off BETWEEN 1 AND 100),
+    max_uses      INTEGER NOT NULL CHECK (max_uses > 0),
+    used_count    INTEGER NOT NULL DEFAULT 0,
+    expires_at    TIMESTAMPTZ NOT NULL,
+    active        BOOLEAN NOT NULL DEFAULT true,
+    note          TEXT,
+    created_by    UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- One redemption row per account per code: the unique constraint is what stops
+-- a user claiming the same code twice, including under concurrent requests.
+CREATE TABLE IF NOT EXISTS discount_redemptions (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    code_id       BIGINT NOT NULL REFERENCES discount_codes(id) ON DELETE CASCADE,
+    account_id    UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    percent_off   INTEGER NOT NULL,
+    redeemed_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (code_id, account_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_redemptions_account
+    ON discount_redemptions(account_id);

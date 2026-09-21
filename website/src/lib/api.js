@@ -47,6 +47,12 @@ export const api = {
   changePassword: (body) => request("/api/auth/password", { method: "POST", body }),
   mySearches: ()   => request("/api/me/searches"),
   mlVersion: ()    => request("/api/ml/version"),
+  checkDiscount:  (c) => request(`/api/discounts/${encodeURIComponent(c)}`),
+  redeemDiscount: (c) => request(`/api/discounts/${encodeURIComponent(c)}/redeem`, { method: "POST" }),
+  adminDiscounts:      ()   => request("/api/admin/discounts"),
+  adminCreateDiscount: (b)  => request("/api/admin/discounts", { method: "POST", body: b }),
+  adminSetDiscount:    (id, active) => request(`/api/admin/discounts/${id}`, { method: "PATCH", body: { active } }),
+  adminDeleteDiscount: (id) => request(`/api/admin/discounts/${id}`, { method: "DELETE" }),
   storedAnalysis: (id) => request(`/api/me/searches/${id}`),
 
   analyze: (handle, signal) =>

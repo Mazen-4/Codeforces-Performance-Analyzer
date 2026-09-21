@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { T, font } from "../lib/theme.js";
 import { api } from "../lib/api.js";
 import { Button, Card, Badge } from "../components/ui.jsx";
+import DiscountClaim from "../components/DiscountClaim.jsx";
 import Aurora from "../components/Aurora.jsx";
 
 const PLUS_PRICE = 399;          // EGP per month
@@ -353,7 +354,7 @@ function Pricing() {
       />
       <div style={{ display: "grid", gap: 20, alignItems: "start",
                     gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                    maxWidth: 860, margin: "0 auto" }}>
+                    maxWidth: 860, margin: "0 auto 26px" }}>
         <Reveal>
           <PlanCard
             name="Free"
@@ -378,6 +379,12 @@ function Pricing() {
           />
         </Reveal>
       </div>
+
+      <Reveal delay={0.14}>
+        <div style={{ maxWidth: 480, margin: "0 auto" }}>
+          <DiscountClaim />
+        </div>
+      </Reveal>
     </Section>
   );
 }

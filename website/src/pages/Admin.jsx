@@ -7,6 +7,7 @@ import {
   Button, Input, Card, Badge, Spinner, Field, Toast, Stat,
 } from "../components/ui.jsx";
 import { tagInfo } from "../lib/copy.js";
+import AdminDiscounts from "../components/AdminDiscounts.jsx";
 
 export default function Admin() {
   const [tab, setTab] = useState("users");
@@ -39,7 +40,7 @@ export default function Admin() {
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[["users", "Users"], ["activity", "Activity"]].map(([id, label]) => (
+        {[["users", "Users"], ["activity", "Activity"], ["discounts", "Discounts"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             padding: "9px 18px", borderRadius: 9, cursor: "pointer",
             fontFamily: font.sans, fontSize: 14, fontWeight: 620,
@@ -50,7 +51,9 @@ export default function Admin() {
         ))}
       </div>
 
-      {tab === "users" ? <Users onToast={setToast} /> : <Activity />}
+      {tab === "users"     && <Users onToast={setToast} />}
+      {tab === "activity"  && <Activity />}
+      {tab === "discounts" && <AdminDiscounts />}
       <Toast message={toast?.message} tone={toast?.tone} onDone={() => setToast(null)} />
     </div>
   );
