@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { T, font } from "../lib/theme.js";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -347,7 +347,7 @@ function Modal({ children, onClose, wide }) {
     };
   }, [onClose]);
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={onClose}
       style={{
@@ -356,7 +356,7 @@ function Modal({ children, onClose, wide }) {
         background: "rgba(3,4,6,.78)", backdropFilter: "blur(6px)",
       }}
     >
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -370,8 +370,8 @@ function Modal({ children, onClose, wide }) {
         }}
       >
         {children}
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }
 

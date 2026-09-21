@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { T } from "../lib/theme.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -40,7 +40,7 @@ function AuthForm({ mode }) {
     <div style={{ position: "relative", minHeight: "calc(100vh - 66px)",
                   display: "grid", placeItems: "center", padding: "48px 20px" }}>
       <Aurora intensity={0.55} />
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         style={{ width: "100%", maxWidth: 430, position: "relative", zIndex: 1 }}
@@ -90,7 +90,7 @@ function AuthForm({ mode }) {
             </Field>
 
             {error && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
                 style={{
                   padding: "11px 14px", borderRadius: 10, marginBottom: 16,
@@ -99,7 +99,7 @@ function AuthForm({ mode }) {
                 }}
               >
                 {error}
-              </motion.div>
+              </m.div>
             )}
 
             <Button type="submit" loading={busy} disabled={busy}
@@ -119,7 +119,7 @@ function AuthForm({ mode }) {
             </Link>
           </div>
         </Card>
-      </motion.div>
+      </m.div>
     </div>
   );
 }

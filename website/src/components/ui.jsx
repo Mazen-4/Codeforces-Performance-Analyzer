@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import { T, font } from "../lib/theme.js";
 
@@ -39,7 +39,7 @@ export function Button({
     },
   };
   return (
-    <motion.button
+    <m.button
       whileHover={{ y: props.disabled || loading ? 0 : -1 }}
       whileTap={{ scale: props.disabled || loading ? 1 : 0.985 }}
       transition={{ duration: 0.15 }}
@@ -55,13 +55,13 @@ export function Button({
     >
       {loading && <Spinner size={14} />}
       {children}
-    </motion.button>
+    </m.button>
   );
 }
 
 export function Spinner({ size = 16, color = "currentColor" }) {
   return (
-    <motion.span
+    <m.span
       animate={{ rotate: 360 }}
       transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
       style={{
@@ -90,13 +90,13 @@ export function Field({ label, hint, error, children, required }) {
       )}
       <AnimatePresence>
         {error && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             style={{ fontSize: 12, color: T.risk, marginTop: 6 }}
           >
             {error}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </label>
@@ -126,7 +126,7 @@ export function Input({ style, invalid, ...props }) {
 
 export function Card({ children, style, hover, delay = 0, ...rest }) {
   return (
-    <motion.div
+    <m.div
       initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}
       custom={delay} variants={fadeUp}
       whileHover={hover ? { y: -3, borderColor: T.borderHi } : undefined}
@@ -137,7 +137,7 @@ export function Card({ children, style, hover, delay = 0, ...rest }) {
       {...rest}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -181,7 +181,7 @@ export function Info({ text, children }) {
       >?</button>
       <AnimatePresence>
         {open && (
-          <motion.span
+          <m.span
             initial={{ opacity: 0, y: 4, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.97 }}
@@ -198,7 +198,7 @@ export function Info({ text, children }) {
             }}
           >
             {text || children}
-          </motion.span>
+          </m.span>
         )}
       </AnimatePresence>
     </span>
@@ -242,7 +242,7 @@ export function Toast({ message, tone = "error", onDone }) {
   return (
     <AnimatePresence>
       {message && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           style={{
@@ -254,7 +254,7 @@ export function Toast({ message, tone = "error", onDone }) {
           }}
         >
           {message}
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

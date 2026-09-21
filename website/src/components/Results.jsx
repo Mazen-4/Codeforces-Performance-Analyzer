@@ -1,9 +1,10 @@
-import { useMemo } from "react";
-import { motion } from "framer-motion";
-import {
-  ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis,
-  Radar, Tooltip as RTooltip,
-} from "recharts";
+import { useMemo, lazy, Suspense } from "react";
+import { m } from "framer-motion";
+
+// Code-split: the chart library is ~318 KB and is only needed once a user has
+// actually run an analysis. Loading it on the landing page made first paint
+// roughly 2s slower on a mobile connection.
+const SkillRadar = lazy(() => import("./SkillRadar.jsx"));
 import { T, band, font } from "../lib/theme.js";
 import { tagInfo, METRICS, weakestHeadline } from "../lib/copy.js";
 import { Card, Badge, Info, fadeUp } from "./ui.jsx";
@@ -108,7 +109,7 @@ function FocusList({ tags }) {
         {tags.map((t, i) => {
           const b = band(t.score);
           return (
-            <motion.div
+            <m.div
               key={t.key} custom={i} variants={fadeUp}
               initial="hidden" animate="visible"
             >
@@ -122,12 +123,13 @@ function FocusList({ tags }) {
               </div>
               <div style={{ height: 7, background: T.bgAlt, borderRadius: 999,
                             overflow: "hidden" }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${t.score}%` }}
+                <m.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: t.score / 100 }}
                   transition={{ duration: 0.9, delay: 0.1 + i * 0.08,
                                 ease: [0.22, 1, 0.36, 1] }}
-                  style={{ height: "100%", borderRadius: 999,
+                  style={{ height: "100%", width: "100%", borderRadius: 999,
+                           transformOrigin: "left center",
                            background: `linear-gradient(90deg, ${b.color}99, ${b.color})` }}
                 />
               </div>
@@ -135,7 +137,7 @@ function FocusList({ tags }) {
                             lineHeight: 1.5 }}>
                 {t.blurb}
               </div>
-            </motion.div>
+            </m.div>
           );
         })}
       </div>
@@ -158,27 +160,14 @@ function ShapeCard({ tags }) {
         info="A quick read on where you are even, and where one topic lags behind the rest. Balanced profiles tend to climb more steadily."
       />
       <div style={{ height: 290, marginTop: 10 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={shown} outerRadius="72%">
-            <PolarGrid stroke={T.border} />
-            <PolarAngleAxis
-              dataKey="tag"
-              tick={{ fill: T.textDim, fontSize: 11 }}
-            />
-            <RTooltip
-              contentStyle={{
-                background: T.surfaceHi, border: `1px solid ${T.borderHi}`,
-                borderRadius: 10, fontSize: 13, color: T.text,
-              }}
-              formatter={(v) => [`${v} / 100`, "Score"]}
-            />
-            <Radar
-              dataKey="score" stroke={T.accent}
-              fill={T.accent} fillOpacity={0.22} strokeWidth={2}
-              isAnimationActive animationDuration={900}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+        <Suspense fallback={
+          <div style={{ height: "100%", display: "grid", placeItems: "center",
+                        color: T.textFaint, fontSize: 13 }}>
+            Drawing your profile…
+          </div>
+        }>
+          <SkillRadar data={shown} />
+        </Suspense>
       </div>
     </Card>
   );
@@ -228,7 +217,7 @@ function AllTopics({ tags }) {
         {ordered.map((t, i) => {
           const b = band(t.score);
           return (
-            <motion.div
+            <m.div
               key={t.key}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
@@ -243,10 +232,11 @@ function AllTopics({ tags }) {
             >
               <span style={{ fontSize: 14, fontWeight: 550 }}>{t.name}</span>
               <div style={{ height: 5, background: T.bgAlt, borderRadius: 999 }}>
-                <motion.div
-                  initial={{ width: 0 }} animate={{ width: `${t.score}%` }}
-                  transition={{ duration: 0.7, delay: 0.15 + Math.min(i * 0.02, 0.4) }}
-                  style={{ height: "100%", background: b.color, borderRadius: 999 }}
+                <m.div
+                  initial={{ scaleX: 0 }} animate={{ scaleX: t.score / 100 }}
+                  transition={{ duration: 0.7, delay: 0.15 + Math.min(i * 0.02, 0.3) }}
+                  style={{ height: "100%", width: "100%", background: b.color,
+                           borderRadius: 999, transformOrigin: "left center" }}
                 />
               </div>
               <span style={{
@@ -255,7 +245,7 @@ function AllTopics({ tags }) {
               }}>
                 {Math.round(t.score)} · {b.label}
               </span>
-            </motion.div>
+            </m.div>
           );
         })}
       </div>
@@ -281,7 +271,7 @@ function Problems({ problems }) {
           const rating = p.problem_rating || p.rating;
           const tags = (p.tags || []).map((x) => tagInfo(x).name).filter(Boolean);
           return (
-            <motion.a
+            <m.a
               key={id || i}
               href={url || undefined}
               target="_blank" rel="noopener noreferrer"
@@ -311,7 +301,7 @@ function Problems({ problems }) {
                   ))}
                 </div>
               )}
-            </motion.a>
+            </m.a>
           );
         })}
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { T, font } from "../lib/theme.js";
 import { useAuth } from "../lib/auth.jsx";
 import { api } from "../lib/api.js";
@@ -70,7 +70,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 1120, margin: "0 auto", padding: "36px 22px 90px" }}>
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 }}
       >
@@ -81,7 +81,7 @@ export default function Dashboard() {
         <p style={{ color: T.textDim, fontSize: 15, margin: "0 0 26px" }}>
           Enter a Codeforces handle to see where the gaps are.
         </p>
-      </motion.div>
+      </m.div>
 
       <Card style={{ padding: 20, marginBottom: 26 }}>
         <form onSubmit={run} style={{ display: "flex", gap: 11, flexWrap: "wrap" }}>
@@ -107,31 +107,31 @@ export default function Dashboard() {
 
       <AnimatePresence mode="wait">
         {busy && (
-          <motion.div
+          <m.div
             key="loading"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <Card style={{ padding: 44, textAlign: "center" }}>
               <Spinner size={30} color={T.accent} />
               <AnimatePresence mode="wait">
-                <motion.div
+                <m.div
                   key={step}
                   initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35 }}
                   style={{ marginTop: 20, fontSize: 15, color: T.textDim }}
                 >
                   {STEPS[step]}…
-                </motion.div>
+                </m.div>
               </AnimatePresence>
               <div style={{ marginTop: 10, fontSize: 12.5, color: T.textFaint }}>
                 This usually takes 30 to 60 seconds.
               </div>
             </Card>
-          </motion.div>
+          </m.div>
         )}
 
         {!busy && error && (
-          <motion.div key="err" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <m.div key="err" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card style={{ borderColor: `${T.risk}55`, padding: 26 }}>
               <div style={{ color: T.risk, fontWeight: 650, marginBottom: 6 }}>
                 Could not complete that analysis
@@ -140,17 +140,17 @@ export default function Dashboard() {
                 {error}
               </div>
             </Card>
-          </motion.div>
+          </m.div>
         )}
 
         {!busy && data && (
-          <motion.div key="data" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <m.div key="data" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Results data={data} handle={handle} />
-          </motion.div>
+          </m.div>
         )}
 
         {!busy && !data && !error && history.length === 0 && (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <m.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card style={{ padding: 40 }}>
               <h3 style={{ fontSize: 19, fontWeight: 720, margin: "0 0 10px" }}>
                 What you will get
@@ -181,11 +181,11 @@ export default function Dashboard() {
                 ))}
               </div>
             </Card>
-          </motion.div>
+          </m.div>
         )}
 
         {!busy && !data && !error && history.length > 0 && (
-          <motion.div key="hist" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <m.div key="hist" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 14px" }}>
                 Recent
@@ -218,7 +218,7 @@ export default function Dashboard() {
                 ))}
               </div>
             </Card>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { m, LazyMotion, domAnimation } from "framer-motion";
 import { AuthProvider, useAuth } from "./lib/auth.jsx";
 import { T, font } from "./lib/theme.js";
 import { Button, Spinner } from "./components/ui.jsx";
@@ -12,9 +12,14 @@ import Admin from "./pages/Admin.jsx";
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Shell />
-      </BrowserRouter>
+      {/* LazyMotion + the lightweight `m` component keep the animation engine
+          out of the initial bundle: it is fetched once, in parallel, instead of
+          blocking first paint. */}
+      <LazyMotion features={domAnimation} strict>
+        <BrowserRouter>
+          <Shell />
+        </BrowserRouter>
+      </LazyMotion>
     </AuthProvider>
   );
 }
@@ -92,7 +97,7 @@ function Nav() {
   );
 
   return (
-    <motion.header
+    <m.header
       initial={{ y: -14, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4 }}
       style={{
@@ -136,6 +141,6 @@ function Nav() {
           )}
         </nav>
       </div>
-    </motion.header>
+    </m.header>
   );
 }

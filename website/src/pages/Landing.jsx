@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { T } from "../lib/theme.js";
 import { TAGLINES } from "../lib/copy.js";
@@ -22,7 +22,7 @@ export default function Landing() {
       }}>
         <Aurora />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 820, margin: "0 auto" }}>
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             style={{
@@ -35,9 +35,9 @@ export default function Landing() {
             <span style={{ width: 6, height: 6, borderRadius: "50%",
                            background: T.good, boxShadow: `0 0 8px ${T.good}` }} />
             Built on real Codeforces submission data
-          </motion.div>
+          </m.div>
 
-          <motion.h1
+          <m.h1
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.08 }}
             style={{
@@ -53,22 +53,22 @@ export default function Landing() {
             }}>
               holding your rating back
             </span>
-          </motion.h1>
+          </m.h1>
 
           <div style={{ height: 32, marginTop: 20 }}>
             <AnimatePresence mode="wait">
-              <motion.p
+              <m.p
                 key={line}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4 }}
                 style={{ fontSize: 17.5, color: T.textDim, margin: 0 }}
               >
                 {TAGLINES[line]}
-              </motion.p>
+              </m.p>
             </AnimatePresence>
           </div>
 
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
             style={{ display: "flex", gap: 12, justifyContent: "center",
@@ -76,15 +76,15 @@ export default function Landing() {
           >
             <Link to="/signup"><Button size="lg">Analyse my profile</Button></Link>
             <Link to="/login"><Button size="lg" variant="ghost">Sign in</Button></Link>
-          </motion.div>
+          </m.div>
 
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
             style={{ marginTop: 18, fontSize: 13, color: T.textFaint }}
           >
             Free to use. Takes about a minute.
-          </motion.div>
+          </m.div>
         </div>
       </section>
 

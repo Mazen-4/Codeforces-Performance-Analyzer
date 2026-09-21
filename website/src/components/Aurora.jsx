@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { T } from "../lib/theme.js";
 
 /** Slow drifting gradient field used behind heroes. Pure CSS/transform, so it
@@ -7,10 +7,11 @@ export default function Aurora({ intensity = 1.9 }) {
   const reduce = typeof window !== "undefined"
     && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+  // Two blobs, not three: each one is a large blurred surface and the cost is
+  // per-pixel, so the third was the most expensive decoration in the app.
   const blobs = [
-    { c: T.accent, size: 620, x: "12%",  y: "8%",  dur: 26 },
-    { c: T.violet, size: 540, x: "68%",  y: "2%",  dur: 32 },
-    { c: T.cyan,   size: 420, x: "42%",  y: "46%", dur: 38 },
+    { c: T.accent, size: 620, x: "12%", y: "8%", dur: 30 },
+    { c: T.violet, size: 540, x: "64%", y: "2%", dur: 38 },
   ];
 
   return (
@@ -19,11 +20,11 @@ export default function Aurora({ intensity = 1.9 }) {
       pointerEvents: "none", zIndex: 0,
     }}>
       {blobs.map((b, i) => (
-        <motion.div
+        <m.div
           key={i}
-          animate={reduce ? undefined : {
-            x: [0, 40, -25, 0], y: [0, -30, 20, 0], scale: [1, 1.08, 0.96, 1],
-          }}
+          // Translate only. Animating scale re-rasterises the blurred layer on
+          // every frame; translation can be handled by the compositor.
+          animate={reduce ? undefined : { x: [0, 38, -22, 0], y: [0, -26, 18, 0] }}
           transition={reduce ? undefined : {
             duration: b.dur, repeat: Infinity, ease: "easeInOut",
           }}
@@ -31,17 +32,15 @@ export default function Aurora({ intensity = 1.9 }) {
             position: "absolute", left: b.x, top: b.y,
             width: b.size, height: b.size, borderRadius: "50%",
             background: `radial-gradient(circle, ${b.c}${Math.round(30 * intensity).toString(16).padStart(2,"0")} 0%, transparent 68%)`,
-            filter: "blur(80px)",
+            filter: "blur(64px)",
+            // Promote to its own compositor layer so the blur is rasterised
+            // once rather than on every frame of the drift.
+            willChange: "transform",
           }}
         />
       ))}
-      {/* Fine grain keeps large flat areas from banding. */}
-      <div style={{
-        position: "absolute", inset: 0, opacity: 0.35,
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E\")",
-        mixBlendMode: "overlay",
-      }} />
+      {/* Grain removed: an SVG turbulence filter stretched across the viewport
+          costs real paint time for a texture that is barely perceptible. */}
     </div>
   );
 }
