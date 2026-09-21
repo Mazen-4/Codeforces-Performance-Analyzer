@@ -371,7 +371,9 @@ print(json.dumps(result, default=convert))
     try {
       const ts = result?.tag_strengths || {};
       const entries = Object.entries(ts)
-        .map(([k, v]) => [k, typeof v === "object" ? v?.user_strength : v])
+        .map(([k, v]) => [k, typeof v === "object"
+          ? (v?.strength ?? v?.user_strength ?? v?.score)
+          : v])
         .filter(([, v]) => typeof v === "number");
       if (entries.length) {
         entries.sort((a, b) => a[1] - b[1]);

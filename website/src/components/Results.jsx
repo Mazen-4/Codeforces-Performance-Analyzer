@@ -15,8 +15,14 @@ function useTags(data) {
   return useMemo(() => {
     const raw = data?.tag_strengths || {};
     const rows = Object.entries(raw).map(([key, v]) => {
-      let score = typeof v === "number" ? v : (v?.user_strength ?? v?.score ?? 0);
-      if (score <= 1.0001) score *= 100;           // some paths emit 0–1
+      // The pipeline returns {strength: 0-100, ...} per tag. Older/other shapes
+      // used user_strength or score, and some paths emit a bare 0-1 float, so
+      // accept all of them rather than silently scoring everything zero.
+      let score = typeof v === "number"
+        ? v
+        : (v?.strength ?? v?.user_strength ?? v?.score ?? 0);
+      score = Number(score) || 0;
+      if (score > 0 && score <= 1.0001) score *= 100;   // 0–1 float form
       return { key, ...tagInfo(key), score: Math.max(0, Math.min(100, score)) };
     });
     return rows.sort((a, b) => a.score - b.score);
