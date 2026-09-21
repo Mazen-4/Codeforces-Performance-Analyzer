@@ -110,6 +110,10 @@ def prioritize_problems(
             "id":               p["id"],
             "rating":           p["rating"],
             "tags":             p["tags"],
+            # How many similar users solved this, weighted by similarity. The
+            # UI uses it to mark widely-solved problems as "common"; it was
+            # computed upstream and previously discarded here.
+            "problem_score":    round(float(p.get("problem_score", 0)), 4),
             "difficulty_match": round(difficulty_match, 4),
             "solve_score":      round(float(solve_score), 4),
             "weakness_boost":   round(weakness_boost, 4),

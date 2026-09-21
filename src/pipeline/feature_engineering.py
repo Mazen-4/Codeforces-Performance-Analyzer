@@ -162,6 +162,35 @@ class FeatureEngineer:
     def __init__(self):
         self._pivot: Optional[pd.DataFrame] = None
 
+    # The pivot is identical for every user and only changes when the weekly
+    # retrain republishes the dataset. Each request spawns a fresh Python
+    # process, so the in-memory cache below never survives — without a disk
+    # cache every analysis re-downloads the whole reference table.
+    _CACHE_PATH = os.path.join(
+        os.environ.get("CF_CACHE_DIR", "/tmp"), "cf_knn_pivot.parquet")
+    _CACHE_TTL_SECONDS = 24 * 60 * 60
+
+    @classmethod
+    def _cached_pivot(cls):
+        try:
+            import time
+            if not os.path.exists(cls._CACHE_PATH):
+                return None
+            if time.time() - os.path.getmtime(cls._CACHE_PATH) > cls._CACHE_TTL_SECONDS:
+                return None
+            return pd.read_parquet(cls._CACHE_PATH)
+        except Exception:
+            return None   # a bad cache must never break an analysis
+
+    @classmethod
+    def _store_pivot(cls, pivot) -> None:
+        try:
+            tmp = cls._CACHE_PATH + ".tmp"
+            pivot.to_parquet(tmp)
+            os.replace(tmp, cls._CACHE_PATH)   # atomic: readers see old or new
+        except Exception:
+            pass
+
     @staticmethod
     def _read_tag_strengths() -> pd.DataFrame:
         """Load every user's tag strengths, from Postgres when configured.
@@ -178,8 +207,14 @@ class FeatureEngineer:
 
         if use_postgres():
             from sqlalchemy import text
+            # Only the columns the feature vector is built from. SELECT * pulled
+            # all 21 columns of a 52 MB table on every single analysis, which
+            # dominated both request time and Railway egress.
+            cols = ["handle", "tag", *TAG_FEATURE_COLS, *USER_FEATURE_COLS]
+            collist = ", ".join(f'"{c}"' for c in cols)
             with get_engine().connect() as conn:
-                return pd.read_sql(text("SELECT * FROM user_tag_strengths"), conn)
+                return pd.read_sql(
+                    text(f"SELECT {collist} FROM user_tag_strengths"), conn)
 
         if not os.path.exists(TAG_STRENGTHS_CSV):
             raise RuntimeError(
@@ -190,6 +225,11 @@ class FeatureEngineer:
 
     def _load_pivot(self) -> pd.DataFrame:
         if self._pivot is None:
+            cached = self._cached_pivot()
+            if cached is not None:
+                self._pivot = cached
+                return self._pivot
+
             df = self._read_tag_strengths()
 
             # Tag-level features: 4 × 20 = 80 columns
@@ -211,6 +251,7 @@ class FeatureEngineer:
             )
 
             self._pivot = tag_pivot.join(user_feats, how="left").fillna(0.0)
+            self._store_pivot(self._pivot)
 
         return self._pivot
 

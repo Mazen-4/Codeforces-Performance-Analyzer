@@ -27,6 +27,9 @@ export default function Dashboard() {
   const [step, setStep] = useState(0);
   const [history, setHistory] = useState([]);
   const [compareWith, setCompareWith] = useState(null);
+  // id of the search row created by the run currently on screen
+  const [lastRunId, setLastRunId] = useState(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const abortRef = useRef(null);
   const isAdmin = user?.role === "admin";
 
@@ -51,8 +54,11 @@ export default function Dashboard() {
     if (!data || !handle) return [];
     return history.filter(h =>
       h.comparable &&
-      String(h.cf_handle).toLowerCase() === handle.trim().toLowerCase());
-  }, [history, data, handle]);
+      String(h.cf_handle).toLowerCase() === handle.trim().toLowerCase() &&
+      // History reloads after each run, so the run just displayed is in this
+      // list. Comparing it with itself would show zero change everywhere.
+      h.id !== lastRunId);
+  }, [history, data, handle, lastRunId]);
 
   useEffect(() => { loadHistory(); }, []);
   async function loadHistory() {
@@ -82,6 +88,8 @@ export default function Dashboard() {
         );
       }
       setData(result);
+      setLastRunId(result.run_id ?? null);
+      setCompareWith(null);
       loadHistory();
     } catch (err) {
       if (err.name !== "AbortError") {
@@ -217,7 +225,14 @@ export default function Dashboard() {
                   onClose={() => setCompareWith(null)}
                 />
               )}
-              <Results data={data} handle={handle} />
+              <Results
+                data={data}
+                handle={handle}
+                userRating={data?.recommendation?.recommendation?.cf_rating
+                         ?? data?.cf_rating ?? null}
+                isPro={user?.plan === "pro"}
+                onUpgrade={() => setShowUpgrade(true)}
+              />
             </div>
           </m.div>
         )}
@@ -294,6 +309,12 @@ export default function Dashboard() {
           </m.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showUpgrade && (
+          <UpgradeNote onClose={() => setShowUpgrade(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -337,5 +358,49 @@ function CompareBar({ options, selected, onSelect }) {
         )}
       </div>
     </Card>
+  );
+}
+
+
+/** Shown when a free account taps a Pro-only control. */
+function UpgradeNote({ onClose }) {
+  return (
+    <m.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 160, display: "grid",
+        placeItems: "center", padding: 20,
+        background: "rgba(3,4,6,.78)", backdropFilter: "blur(6px)",
+      }}
+    >
+      <m.div
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 420, background: T.surface,
+          border: `1px solid ${T.borderHi}`, borderRadius: 16, padding: 28,
+          boxShadow: "0 30px 70px rgba(0,0,0,.6)",
+        }}
+      >
+        <Badge color={T.violet}>Pro</Badge>
+        <h3 style={{ fontSize: 20, fontWeight: 750, margin: "14px 0 10px" }}>
+          The full problem list
+        </h3>
+        <p style={{ color: T.textDim, fontSize: 14.5, lineHeight: 1.7, margin: 0 }}>
+          Pro opens every recommendation, not just the top twelve, and adds
+          sorting and filtering by topic and rating so you can build a session
+          around exactly what you want to practise.
+        </p>
+        <p style={{ color: T.textFaint, fontSize: 13, lineHeight: 1.6,
+                    margin: "14px 0 22px" }}>
+          Pro is not on sale yet. This is a preview of what it will include.
+        </p>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button variant="subtle" onClick={onClose}>Got it</Button>
+        </div>
+      </m.div>
+    </m.div>
   );
 }

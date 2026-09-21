@@ -21,5 +21,9 @@ else
   echo "WARNING: model fetch failed — starting with whatever models are present."
 fi
 
+# Drop the KNN reference cache so a freshly deployed build rebuilds it from
+# the current dataset rather than serving last week's numbers.
+rm -f "${CF_CACHE_DIR:-/tmp}/cf_knn_pivot.parquet" 2>/dev/null || true
+
 echo "=== Starting web server ==="
 exec node "$PROJECT_ROOT/website/server/server.js"

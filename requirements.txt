@@ -17,3 +17,7 @@ scikit-learn~=1.8
 # SQLAlchemy provides the pooled engine the request path uses.
 psycopg[binary]~=3.2
 SQLAlchemy~=2.0
+
+# Parquet, for the on-disk KNN reference cache. Without it every analysis
+# re-downloads the whole tag-strengths table from Postgres.
+pyarrow>=17,<26

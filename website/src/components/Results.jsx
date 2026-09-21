@@ -8,6 +8,7 @@ const SkillRadar = lazy(() => import("./SkillRadar.jsx"));
 import { T, band, font } from "../lib/theme.js";
 import { tagInfo, METRICS, weakestHeadline } from "../lib/copy.js";
 import { Card, Badge, Info, fadeUp } from "./ui.jsx";
+import Problems from "./Problems.jsx";
 
 /* Normalize whatever the pipeline returns into a flat [{key,name,score}] list.
    The backend has carried a few shapes over time, so be forgiving here. */
@@ -29,7 +30,7 @@ function useTags(data) {
   }, [data]);
 }
 
-export default function Results({ data, handle }) {
+export default function Results({ data, handle, userRating, isPro, onUpgrade }) {
   const tags = useTags(data);
   if (!tags.length) return null;
 
@@ -37,7 +38,7 @@ export default function Results({ data, handle }) {
   const strongest = [...tags].reverse().slice(0, 3);
   const avg = tags.reduce((s, t) => s + t.score, 0) / tags.length;
 
-  const problems = (data?.recommended_problems || []).slice(0, 12);
+  const problems = data?.recommended_problems || [];
 
   return (
     <div style={{ display: "grid", gap: 22 }}>
@@ -53,7 +54,10 @@ export default function Results({ data, handle }) {
 
       <StrengthsRow tags={strongest} />
       <AllTopics tags={tags} />
-      {problems.length > 0 && <Problems problems={problems} />}
+      {problems.length > 0 && (
+        <Problems problems={problems} userRating={userRating}
+                  isPro={isPro} onUpgrade={onUpgrade} />
+      )}
     </div>
   );
 }
@@ -252,62 +256,6 @@ function AllTopics({ tags }) {
                 {Math.round(t.score)} · {b.label}
               </span>
             </m.div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-function Problems({ problems }) {
-  return (
-    <Card>
-      <CardTitle
-        title="Practise these next"
-        info={METRICS.priority.long}
-      />
-      <div style={{ display: "grid", gap: 10, marginTop: 16,
-                    gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))" }}>
-        {problems.map((p, i) => {
-          const id = p.problem_id || p.id || "";
-          const [contest, index] = String(id).split("_");
-          const url = contest && index
-            ? `https://codeforces.com/problemset/problem/${contest}/${index}`
-            : null;
-          const rating = p.problem_rating || p.rating;
-          const tags = (p.tags || []).map((x) => tagInfo(x).name).filter(Boolean);
-          return (
-            <m.a
-              key={id || i}
-              href={url || undefined}
-              target="_blank" rel="noopener noreferrer"
-              custom={i} variants={fadeUp} initial="hidden" animate="visible"
-              whileHover={{ y: -3, borderColor: T.accent }}
-              style={{
-                display: "block", padding: 16, borderRadius: T.radiusSm,
-                background: T.bgAlt, border: `1px solid ${T.border}`,
-                textDecoration: "none", color: "inherit",
-                cursor: url ? "pointer" : "default",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between",
-                            alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ fontWeight: 650, fontSize: 14.5 }}>
-                  {p.problem_name || p.name || id}
-                </span>
-                {rating ? <Badge color={T.violet}>{rating}</Badge> : null}
-              </div>
-              {tags.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {tags.slice(0, 3).map((t) => (
-                    <span key={t} style={{
-                      fontSize: 11, color: T.textFaint, padding: "2px 7px",
-                      border: `1px solid ${T.border}`, borderRadius: 6,
-                    }}>{t}</span>
-                  ))}
-                </div>
-              )}
-            </m.a>
           );
         })}
       </div>

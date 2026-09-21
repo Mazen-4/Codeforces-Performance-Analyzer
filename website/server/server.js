@@ -299,20 +299,22 @@ Format each day exactly like this — nothing else:
 
 // Record one analysis for history and admin review. Never fails the request.
 async function logSearch(req, handle, info) {
-  if (!ACCOUNTS_ENABLED || !req.user) return;
+  if (!ACCOUNTS_ENABLED || !req.user) return null;
   try {
-    await query(
+    return await query(
       `INSERT INTO searches
          (account_id, cf_handle, ok, duration_ms, cf_rating, weakest_tag,
           error, scores)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id`,
       [req.user.id, handle, info.ok, info.duration_ms ?? null,
        info.cf_rating ?? null, info.weakest_tag ?? null,
        info.error ? String(info.error).slice(0, 400) : null,
        info.scores ? JSON.stringify(info.scores) : null]
-    );
+    ).then(r => r.rows?.[0]?.id ?? null);
   } catch (err) {
     console.error("search log failed:", err.message);
+    return null;
   }
 }
 
@@ -402,11 +404,13 @@ print(json.dumps(result, default=convert))
             ?? result?.cf_rating ?? null;
     } catch { /* logging must never break the response */ }
 
-    await logSearch(req, handle, {
+    const runId = await logSearch(req, handle, {
       ok: true, duration_ms: Date.now() - startedAt,
       cf_rating: rating, weakest_tag: weakest, scores,
     });
-    res.json(result);
+    // The client uses this to exclude the run it is displaying from the
+    // "compare with an earlier run" list.
+    res.json({ ...result, run_id: runId });
   } catch (err) {
     console.error("ML pipeline error:", err.message);
     await logSearch(req, handle, {

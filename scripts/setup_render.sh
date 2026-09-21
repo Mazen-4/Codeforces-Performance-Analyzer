@@ -18,7 +18,7 @@ echo "--- Installing Python dependencies ---"
 pip3 install --quiet --no-cache-dir --break-system-packages \
     "numpy~=2.1" "pandas~=2.3" "requests~=2.32" "psutil~=7.2" \
     "lightgbm~=4.6" "scikit-learn~=1.8" \
-    "psycopg[binary]~=3.2" "SQLAlchemy~=2.0"
+    "psycopg[binary]~=3.2" "SQLAlchemy~=2.0" "pyarrow>=17,<26"
 
 # ── 2. Node dependencies + React build ───────────────────────────────────────
 echo ""
