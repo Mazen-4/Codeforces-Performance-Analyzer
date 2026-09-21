@@ -6,6 +6,7 @@ import { api } from "../lib/api.js";
 import { Button, Card, Badge } from "../components/ui.jsx";
 import DiscountClaim from "../components/DiscountClaim.jsx";
 import Aurora from "../components/Aurora.jsx";
+import Icon, { IconTile } from "../components/Icon.jsx";
 
 const PLUS_PRICE = 399;          // EGP per month
 
@@ -54,7 +55,7 @@ function Hero({ trainingUsers }) {
           }}
         >
           <Pulse />
-          Model retrained every week
+          Retrained every week
         </m.div>
 
         <m.h1
@@ -78,9 +79,8 @@ function Hero({ trainingUsers }) {
             lineHeight: 1.65, maxWidth: 620, margin: "0 auto 34px",
           }}
         >
-          We read your Codeforces history, score all 20 topics against
-          competitors who solve like you, and hand you the problems that move
-          your rating fastest.
+          Your Codeforces history, scored against competitors who solve like
+          you — and the exact problems to open next.
         </m.p>
 
         <m.div
@@ -186,12 +186,12 @@ function HeroPreview({ trainingUsers }) {
 
 function HowItWorks() {
   const steps = [
-    { n: "01", title: "Link your handle",
-      body: "One field. We pull your full public submission history from Codeforces — every attempt, not just the wins." },
-    { n: "02", title: "We find your real peers",
-      body: "A nearest-neighbour model matches you to competitors with a genuinely similar solving profile: comparable volume, comparable rating." },
-    { n: "03", title: "You get a plan",
-      body: "Every topic scored against those peers, the gaps ranked by what they cost you, and specific problems to open next." },
+    { n: "01", icon: "user",  tone: T.accent,
+      title: "Your handle",  body: "Every attempt, not just the wins." },
+    { n: "02", icon: "users", tone: T.violet,
+      title: "Your real peers", body: "Matched on how — and how much — you solve." },
+    { n: "03", icon: "target", tone: T.good,
+      title: "Your plan",    body: "Ranked gaps. Specific problems." },
   ];
   return (
     <Section>
@@ -204,14 +204,18 @@ function HowItWorks() {
         {steps.map((s, i) => (
           <Reveal key={s.n} delay={i * 0.08}>
             <Card style={{ height: "100%", padding: 24 }}>
-              <div style={{ fontFamily: font.mono, fontSize: 12.5,
-                            color: T.accent, fontWeight: 700, marginBottom: 14 }}>
-                {s.n}
+              <div style={{ display: "flex", alignItems: "center",
+                            justifyContent: "space-between", marginBottom: 16 }}>
+                <IconTile name={s.icon} color={s.tone} />
+                <span style={{ fontFamily: font.mono, fontSize: 12,
+                               color: T.textFaint, fontWeight: 700 }}>
+                  {s.n}
+                </span>
               </div>
-              <h3 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 9px" }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 7px" }}>
                 {s.title}
               </h3>
-              <p style={{ color: T.textDim, fontSize: 14, lineHeight: 1.65, margin: 0 }}>
+              <p style={{ color: T.textDim, fontSize: 14, lineHeight: 1.55, margin: 0 }}>
                 {s.body}
               </p>
             </Card>
@@ -226,17 +230,21 @@ function HowItWorks() {
 
 function Features() {
   const items = [
-    { title: "Every topic, scored against your peers",
-      body: "All 20 Codeforces topics on a 0–100 scale. Not an absolute grade — a comparison against people who solve at your level, so the number means something.",
-      wide: true },
-    { title: "Problems chosen, not listed",
-      body: "Ranked by what they actually teach you, labelled Warm-up, Stretch or Reach relative to your rating." },
-    { title: "See your ten closest peers",
-      body: "The competitors you were measured against, with similarity and solve counts. Your scores stop being a black box." },
-    { title: "Track progress between runs",
-      body: "Compare any two analyses side by side and see exactly which topics moved, and by how much." },
-    { title: "Sort and filter your practice",
-      body: "Build a session around one topic or a rating band, instead of scrolling a fixed list." },
+    { icon: "radar", tone: T.accent, wide: true,
+      title: "20 topics. One honest number each.",
+      body: "Scored against people at your level — not an absolute grade." },
+    { icon: "target", tone: T.good,
+      title: "Problems chosen, not listed",
+      body: "Warm-up, Stretch, Reach." },
+    { icon: "users", tone: T.violet,
+      title: "Meet your ten closest peers",
+      body: "No black box." },
+    { icon: "trend", tone: T.cyan,
+      title: "Watch the gaps close",
+      body: "Any two runs, side by side." },
+    { icon: "filter", tone: T.warn,
+      title: "Build the session you want",
+      body: "By topic. By rating." },
   ];
   return (
     <Section alt>
@@ -251,12 +259,16 @@ function Features() {
           <Reveal key={f.title} delay={i * 0.06}
                   style={f.wide ? { gridColumn: "1 / -1" } : undefined}>
             <Card style={{ height: "100%", padding: 24 }} hover>
-              <h3 style={{ fontSize: f.wide ? 20 : 16.5, fontWeight: 700,
-                           margin: "0 0 10px", letterSpacing: -0.3 }}>
+              <IconTile name={f.icon} color={f.tone}
+                        size={f.wide ? 46 : 38} iconSize={f.wide ? 22 : 18} />
+              <h3 style={{ fontSize: f.wide ? 23 : 16.5, fontWeight: 740,
+                           margin: "16px 0 8px", letterSpacing: -0.5,
+                           lineHeight: 1.22 }}>
                 {f.title}
               </h3>
-              <p style={{ color: T.textDim, fontSize: 14.5, lineHeight: 1.68,
-                          margin: 0, maxWidth: f.wide ? 620 : undefined }}>
+              <p style={{ color: T.textDim, fontSize: f.wide ? 15.5 : 14,
+                          lineHeight: 1.55, margin: 0,
+                          maxWidth: f.wide ? 460 : undefined }}>
                 {f.body}
               </p>
             </Card>
@@ -288,19 +300,20 @@ function WeeklyModel({ trainingUsers }) {
                          letterSpacing: -0.9, margin: "0 0 14px", lineHeight: 1.2 }}>
               The model does not go stale
             </h2>
-            <p style={{ color: T.textDim, fontSize: 15, lineHeight: 1.7, margin: 0 }}>
-              Every Sunday the pipeline pulls fresh submissions, rebuilds the
-              peer dataset and retrains. New problems, shifting difficulty and
-              changing metas are reflected within the week — your scores track
-              the Codeforces of now, not of last year.
+            <p style={{ color: T.textDim, fontSize: 15, lineHeight: 1.65, margin: 0 }}>
+              Fresh submissions, rebuilt peers, full retrain — every Sunday.
+              Your scores track the Codeforces of now.
             </p>
           </div>
 
           <div style={{ display: "grid", gap: 12 }}>
-            <MetricRow value={trainingUsers ? trainingUsers.toLocaleString() : "28,492"}
-                       label="rated competitors in the model" />
-            <MetricRow value="20" label="topics scored on every run" />
-            <MetricRow value="Weekly" label="full retrain, every Sunday" />
+            <MetricRow icon="users" tone={T.accent}
+                       value={trainingUsers ? trainingUsers.toLocaleString() : "28,492"}
+                       label="rated competitors" />
+            <MetricRow icon="radar" tone={T.violet}
+                       value="20" label="topics, every run" />
+            <MetricRow icon="refresh" tone={T.good}
+                       value="Weekly" label="full retrain, Sundays" />
           </div>
         </div>
       </Card>
@@ -308,13 +321,14 @@ function WeeklyModel({ trainingUsers }) {
   );
 }
 
-function MetricRow({ value, label }) {
+function MetricRow({ icon, tone, value, label }) {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 14,
-                  padding: "14px 18px", borderRadius: T.radiusSm,
+    <div style={{ display: "flex", alignItems: "center", gap: 14,
+                  padding: "13px 16px", borderRadius: T.radiusSm,
                   background: T.bgAlt, border: `1px solid ${T.border}` }}>
-      <span style={{ fontFamily: font.mono, fontSize: 21, fontWeight: 800,
-                     color: T.accent, minWidth: 92 }}>
+      <IconTile name={icon} color={tone} size={32} iconSize={16} />
+      <span style={{ fontFamily: font.mono, fontSize: 20, fontWeight: 800,
+                     color: tone, minWidth: 84 }}>
         {value}
       </span>
       <span style={{ fontSize: 13.5, color: T.textDim }}>{label}</span>
@@ -325,23 +339,23 @@ function MetricRow({ value, label }) {
 /* ── Pricing ─────────────────────────────────────────────────────────────── */
 
 const FREE = [
-  { t: "One analysis per week" },
-  { t: "Up to 12 recommended problems" },
-  { t: "All 20 topics scored" },
-  { t: "Analyse another handle once every 3 months" },
-  { t: "Problem sorting and filtering", no: true },
-  { t: "See your closest peers", no: true },
-  { t: "AI-Coach free trial", soon: true },
+  { t: "One analysis a week",        icon: "calendar" },
+  { t: "12 problems",                icon: "target" },
+  { t: "All 20 topics scored",       icon: "radar" },
+  { t: "Another handle every 3 months", icon: "search" },
+  { t: "Sorting and filtering",      no: true },
+  { t: "Peer view",                  no: true },
+  { t: "AI-Coach free trial",        soon: true },
 ];
 
 const PLUS = [
-  { t: "One analysis every 3 days" },
-  { t: "Up to 50 recommended problems, matched to your results" },
-  { t: "Sort and filter by topic and rating" },
-  { t: "See your ten closest peers" },
-  { t: "Analyse another handle once a week" },
-  { t: "Compare any two runs side by side" },
-  { t: "AI-Coach early access", soon: true },
+  { t: "One analysis every 3 days",  icon: "bolt" },
+  { t: "Up to 50 problems",          icon: "target" },
+  { t: "Sort and filter",            icon: "filter" },
+  { t: "Your ten closest peers",     icon: "users" },
+  { t: "Another handle every week",  icon: "search" },
+  { t: "Compare any two runs",       icon: "trend" },
+  { t: "AI-Coach early access",      soon: true },
 ];
 
 function Pricing() {
@@ -360,7 +374,7 @@ function Pricing() {
             name="Free"
             price="0"
             period="forever"
-            blurb="Everything you need to find your weakest topic and start fixing it."
+            blurb="Find your weakest topic. Start fixing it."
             features={FREE}
             cta="Create a free account"
             to="/signup"
@@ -371,7 +385,7 @@ function Pricing() {
             name="Plus"
             price={PLUS_PRICE}
             period="EGP / month"
-            blurb="For anyone practising seriously and pushing for the next rating band."
+            blurb="For the next rating band."
             features={PLUS}
             cta="Get Plus"
             to="/signup"
@@ -429,7 +443,7 @@ function PlanCard({ name, price, period, blurb, features, cta, to, highlight }) 
       <div style={{ display: "grid", gap: 11, marginTop: 24 }}>
         {features.map((f) => (
           <div key={f.t} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <Mark no={f.no} soon={f.soon} />
+            <Mark no={f.no} soon={f.soon} icon={f.icon} />
             <span style={{
               fontSize: 13.5, lineHeight: 1.5,
               color: f.no ? T.textFaint : T.textDim,
@@ -455,16 +469,15 @@ function PlanCard({ name, price, period, blurb, features, cta, to, highlight }) 
   );
 }
 
-function Mark({ no, soon }) {
+function Mark({ no, soon, icon }) {
+  // The icon carries the meaning of the line; the tick alone said only
+  // "included", which every row already implies.
+  const name = no ? "cross" : soon ? "clock" : (icon || "check");
   const color = no ? T.textFaint : soon ? T.violet : T.good;
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color}
-         strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"
-         style={{ flexShrink: 0, marginTop: 2 }} aria-hidden>
-      {no ? <path d="M18 6L6 18M6 6l12 12" />
-          : soon ? <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>
-                 : <path d="M20 6L9 17l-5-5" />}
-    </svg>
+    <span style={{ color, marginTop: 1 }}>
+      <Icon name={name} size={15} strokeWidth={2.1} />
+    </span>
   );
 }
 
@@ -480,9 +493,9 @@ function FinalCta() {
                      letterSpacing: -1.2, margin: "0 0 16px", lineHeight: 1.15 }}>
           Find your weakest topic in thirty seconds
         </h2>
-        <p style={{ color: T.textDim, fontSize: 16, lineHeight: 1.65,
+        <p style={{ color: T.textDim, fontSize: 16, lineHeight: 1.6,
                     margin: "0 0 30px" }}>
-          Enter your handle and see where your rating is actually stuck.
+          One handle. One honest answer.
         </p>
         <Link to="/signup" style={{ textDecoration: "none" }}>
           <Button size="lg">Analyse my profile — free</Button>

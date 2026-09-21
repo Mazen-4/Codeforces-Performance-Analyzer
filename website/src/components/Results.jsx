@@ -10,6 +10,7 @@ import { tagInfo, METRICS, weakestHeadline } from "../lib/copy.js";
 import { Card, Badge, Info, fadeUp } from "./ui.jsx";
 import Problems from "./Problems.jsx";
 import Peers from "./Peers.jsx";
+import { IconTile } from "./Icon.jsx";
 
 /* Normalize whatever the pipeline returns into a flat [{key,name,score}] list.
    The backend has carried a few shapes over time, so be forgiving here. */
@@ -130,7 +131,7 @@ function FocusList({ tags }) {
   return (
     <Card>
       <CardTitle
-        title="Where to spend your next sessions"
+        title="Where to spend your next sessions" icon="target" tone={T.risk}
         info={METRICS.score.long}
       />
       <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
@@ -202,7 +203,7 @@ function ShapeCard({ tags }) {
   return (
     <Card>
       <CardTitle
-        title="The shape of your skills"
+        title="The shape of your skills" icon="chart" tone={T.violet}
         info="A quick read on where you are even, and where one topic lags behind the rest. Balanced profiles tend to climb more steadily."
       />
       <div style={{ height: 290, marginTop: 10 }}>
@@ -223,7 +224,7 @@ function StrengthsRow({ tags }) {
   return (
     <Card>
       <CardTitle
-        title="What you are already good at"
+        title="What you are already good at" icon="shield" tone={T.good}
         info="Keep these sharp, but they are not where your next rating points come from."
       />
       <div style={{ display: "grid", gap: 12, marginTop: 16,
@@ -259,7 +260,7 @@ function AllTopics({ tags }) {
   return (
     <Card>
       <CardTitle
-        title="Every topic, scored"
+        title="Every topic, scored" icon="radar" tone={T.accent}
         info={METRICS.score.long}
       />
       <div style={{ display: "grid", gap: 9, marginTop: 16 }}>
@@ -310,11 +311,11 @@ function AllTopics({ tags }) {
   );
 }
 
-function CardTitle({ title, info }) {
+function CardTitle({ title, info, icon, tone }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <h3 style={{ fontSize: 16.5, fontWeight: 700, margin: 0,
-                   letterSpacing: -0.2 }}>{title}</h3>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {icon && <IconTile name={icon} color={tone} size={30} iconSize={15} />}
+      <h3 style={{ fontSize: 16.5, fontWeight: 700, margin: 0 }}>{title}</h3>
       {info && <Info text={info} />}
     </div>
   );

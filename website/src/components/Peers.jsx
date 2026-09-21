@@ -1,6 +1,7 @@
 import { m } from "framer-motion";
 import { T, font } from "../lib/theme.js";
 import { Card, Badge, Info } from "./ui.jsx";
+import Icon from "./Icon.jsx";
 
 /** The ten users the model matched you against. Pro only.
  *
@@ -48,7 +49,7 @@ export default function Peers({ peers, isPro, onUpgrade }) {
                 boxShadow: "0 12px 30px rgba(0,0,0,.45)",
               }}
             >
-              <Lock /> See your ten closest peers with Pro
+              <Icon name="lock" size={13} color={T.accent} /> See your ten closest peers with Pro
             </m.button>
           </div>
         )}
@@ -129,13 +130,3 @@ function SimilarityBar({ value }) {
   );
 }
 
-function Lock() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-         stroke={T.accent} strokeWidth="2" strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden>
-      <rect x="4" y="11" width="16" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 1 1 8 0v4" />
-    </svg>
-  );
-}

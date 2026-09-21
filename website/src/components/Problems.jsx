@@ -3,6 +3,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { T, font } from "../lib/theme.js";
 import { METRICS } from "../lib/copy.js";
 import { Card, Badge, Info, Button } from "./ui.jsx";
+import Icon from "./Icon.jsx";
 import {
   normalize, withLabels, selectHeadline, applyFilters, availableTopics, SORTS,
 } from "../lib/problems.js";
@@ -161,7 +162,7 @@ function Controls({ isPro, onUpgrade, sort, setSort, topic, setTopic, topics,
         fontSize: 12.5, fontWeight: 600, color: T.textDim,
         background: "transparent", border: `1px dashed ${T.borderHi}`,
       }}>
-        <Lock /> Sort and filter with Pro
+        <Icon name="lock" size={13} /> Sort and filter with Pro
       </button>
     );
   }
@@ -221,7 +222,7 @@ function MoreButton({ count, isPro, expanded, onExpand, onUpgrade }) {
         display: "grid", placeItems: "center",
         background: `${T.accent}1a`, border: `1px solid ${T.accent}44`,
       }}>
-        <Lock size={15} color={T.accent} />
+        <Icon name="lock" size={15} color={T.accent} />
       </div>
       <div>
         <div style={{ fontSize: 14.5, fontWeight: 700, color: T.text }}>
@@ -236,13 +237,3 @@ function MoreButton({ count, isPro, expanded, onExpand, onUpgrade }) {
   );
 }
 
-function Lock({ size = 13, color = "currentColor" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-         stroke={color} strokeWidth="2" strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden>
-      <rect x="4" y="11" width="16" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 1 1 8 0v4" />
-    </svg>
-  );
-}

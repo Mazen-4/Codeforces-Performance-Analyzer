@@ -3,6 +3,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { T, font } from "../lib/theme.js";
 import { api } from "../lib/api.js";
 import { Button, Input } from "./ui.jsx";
+import Icon from "./Icon.jsx";
 
 const PLUS_PRICE = 399;
 
@@ -119,7 +120,7 @@ function Claimed({ result }) {
             background: `${T.good}14`, border: `1px solid ${T.good}44`,
           }}
         >
-          <Check /> Code applied
+          <Icon name="check" size={12} strokeWidth={3} /> Code applied
         </m.div>
 
         <m.div
@@ -212,7 +213,7 @@ function Countdown({ expiresAt }) {
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-      <Clock />
+      <Icon name="clock" size={12} />
       <span style={{ fontFamily: font.mono }}>
         {d > 0 ? `${d}d ${h}h left` : `${String(h).padStart(2,"0")}:${String(m2).padStart(2,"0")}:${String(s).padStart(2,"0")} left`}
       </span>
@@ -277,20 +278,4 @@ function Sheen() {
   );
 }
 
-function Check() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  );
-}
 
-function Clock() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
-    </svg>
-  );
-}
