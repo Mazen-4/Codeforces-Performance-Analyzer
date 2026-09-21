@@ -142,10 +142,6 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
                 <Icon name="sparkle" size={12} />
                 Written by {plan.model?.includes("opus") ? "Claude Opus" : "Claude Sonnet"}
               </span>
-              <Button size="sm" variant="ghost" onClick={generate}
-                      style={{ marginLeft: "auto" }}>
-                Rewrite
-              </Button>
             </div>
           </m.div>
         )}
