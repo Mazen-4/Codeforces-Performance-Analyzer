@@ -500,7 +500,7 @@ app.get("/api/discounts/:code", async (req, res) => {
   if (!code) return res.status(400).json({ error: "Enter a code" });
   try {
     const { rows } = await query(
-      `SELECT percent_off, max_uses, used_count, expires_at, active
+      `SELECT percent_off, max_uses, used_count, expires_at, active, applies_to
          FROM discount_codes WHERE code_upper = $1`, [code]);
     if (!rows.length) {
       return res.status(404).json({ error: "That code does not exist.", code: "NOT_FOUND" });
@@ -518,6 +518,7 @@ app.get("/api/discounts/:code", async (req, res) => {
       remaining: d.max_uses - d.used_count,
       max_uses: d.max_uses,
       expires_at: d.expires_at,
+      applies_to: d.applies_to,
     });
   } catch (err) {
     console.error("discount lookup failed:", err.message);
@@ -543,7 +544,7 @@ app.post("/api/discounts/:code/redeem", async (req, res) => {
           AND active
           AND expires_at > now()
           AND used_count < max_uses
-        RETURNING id, percent_off, max_uses, used_count, expires_at`,
+        RETURNING id, percent_off, max_uses, used_count, expires_at, applies_to`,
       [code]);
 
     if (!rows.length) {
@@ -586,6 +587,7 @@ app.post("/api/discounts/:code/redeem", async (req, res) => {
       remaining: d.max_uses - d.used_count,
       max_uses: d.max_uses,
       expires_at: d.expires_at,
+      applies_to: d.applies_to,
     });
   } catch (err) {
     console.error("discount redeem failed:", err.message);

@@ -11,7 +11,14 @@ export default function AdminDiscounts() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const blank = { code: "", percent_off: "", max_uses: "", expires_at: "", note: "" };
+  // Empty appliesTo means every plan, matching the column's NULL default.
+  const blank = { code: "", percent_off: "", max_uses: "", expires_at: "",
+                  note: "", appliesTo: [] };
+  const PLAN_OPTIONS = [
+    { key: "monthly",   label: "1 month",  price: 399 },
+    { key: "quarterly", label: "3 months", price: 1099 },
+    { key: "biannual",  label: "6 months", price: 1799 },
+  ];
   const [form, setForm] = useState(blank);
 
   const load = useCallback(async () => {
@@ -37,6 +44,7 @@ export default function AdminDiscounts() {
         // datetime-local gives no timezone; treat it as the admin's local time.
         expires_at: new Date(form.expires_at).toISOString(),
         note: form.note.trim() || null,
+        applies_to: form.appliesTo.length ? form.appliesTo : null,
       });
       setForm(blank);
       await load();
@@ -100,6 +108,50 @@ export default function AdminDiscounts() {
             </Field>
           </div>
 
+          <Field label="Applies to"
+                 hint="Leave all unchecked for every plan.">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {PLAN_OPTIONS.map((p) => {
+                const on = form.appliesTo.includes(p.key);
+                const pct = Number(form.percent_off) || 0;
+                const after = pct > 0 ? Math.round(p.price * (1 - pct / 100)) : null;
+                return (
+                  <button
+                    key={p.key} type="button"
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      appliesTo: on ? f.appliesTo.filter(k => k !== p.key)
+                                    : [...f.appliesTo, p.key],
+                    }))}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "9px 13px", borderRadius: T.radiusSm,
+                      cursor: "pointer", fontFamily: font.sans, fontSize: 13,
+                      background: on ? T.surfaceHi : T.bgAlt,
+                      border: `1px solid ${on ? T.accent : T.border}`,
+                      color: on ? T.text : T.textDim,
+                    }}
+                  >
+                    <span style={{
+                      width: 14, height: 14, borderRadius: 4, flexShrink: 0,
+                      display: "grid", placeItems: "center", fontSize: 10,
+                      background: on ? T.accent : "transparent",
+                      border: `1px solid ${on ? T.accent : T.borderHi}`,
+                      color: "#07080B", fontWeight: 800,
+                    }}>{on ? "✓" : ""}</span>
+                    {p.label}
+                    {on && after !== null && (
+                      <span style={{ fontFamily: font.mono, fontSize: 11.5,
+                                     color: T.textFaint }}>
+                        {p.price}→{after}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
           <Field label="Note" hint="Only you see this.">
             <Input value={form.note}
                    onChange={(e) => setForm(f => ({ ...f, note: e.target.value }))}
@@ -108,11 +160,9 @@ export default function AdminDiscounts() {
 
           {form.percent_off && Number(form.percent_off) > 0 && Number(form.percent_off) <= 100 && (
             <div style={{ fontSize: 13, color: T.textDim }}>
-              Plus becomes{" "}
-              <strong style={{ color: T.text, fontFamily: font.mono }}>
-                {Math.round(399 * (1 - Number(form.percent_off) / 100))} EGP
-              </strong>{" "}
-              per month, down from 399.
+              {form.appliesTo.length === 0
+                ? "Applies to every plan."
+                : `Applies to ${form.appliesTo.length} of 3 plans.`}
             </div>
           )}
 
@@ -157,9 +207,17 @@ export default function AdminDiscounts() {
                   <span style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 13.5 }}>
                     {d.code}
                   </span>
-                  <Badge color={d.redeemable ? T.accent : T.textFaint}>
-                    {d.percent_off}%
-                  </Badge>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <Badge color={d.redeemable ? T.accent : T.textFaint}>
+                      {d.percent_off}%
+                    </Badge>
+                    <span style={{ fontSize: 10.5, color: T.textFaint }}>
+                      {Array.isArray(d.applies_to) && d.applies_to.length
+                        ? d.applies_to.map(k => ({ monthly:"1mo", quarterly:"3mo",
+                                                   biannual:"6mo" }[k] || k)).join(" ")
+                        : "all plans"}
+                    </span>
+                  </span>
                   <Uses used={d.used_count} max={d.max_uses} />
                   <Expiry at={d.expires_at} active={d.active} redeemable={d.redeemable}
                           exhausted={d.used_count >= d.max_uses} />

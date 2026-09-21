@@ -76,7 +76,9 @@ function Shell() {
 
 function GlobalUpgradeGate() {
   const { open, hide } = useUpgrade();
-  return <UpgradeGate open={open} onClose={hide} onUpgrade={hide} />;
+  // No onUpgrade handler: checkout now opens inside the gate itself, so
+  // closing here would dismiss the panel the moment the user commits.
+  return <UpgradeGate open={open} onClose={hide} />;
 }
 
 function HomeRoute() {

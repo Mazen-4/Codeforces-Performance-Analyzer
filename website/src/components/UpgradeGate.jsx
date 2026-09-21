@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { T, font } from "../lib/theme.js";
 import { Button, Badge } from "./ui.jsx";
+import Checkout from "./Checkout.jsx";
 import Icon from "./Icon.jsx";
 
 const PLUS_PRICE = 399;
@@ -44,6 +45,7 @@ export function markUpgradeSeen() {
 export default function UpgradeGate({ open, onClose, onUpgrade }) {
   const pct = unlockPercent();
   const [shown, setShown] = useState(0);
+  const [buying, setBuying] = useState(false);
 
   // Count the headline percentage up once the panel is on screen.
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function UpgradeGate({ open, onClose, onUpgrade }) {
     return () => cancelAnimationFrame(raf);
   }, [open, pct]);
 
-  function close() { markUpgradeSeen(); onClose?.(); }
+  function close() { markUpgradeSeen(); setBuying(false); onClose?.(); }
 
   return (
     <AnimatePresence>
@@ -89,6 +91,18 @@ export default function UpgradeGate({ open, onClose, onUpgrade }) {
           >
             <Glow />
 
+            {buying ? (
+              <div style={{ position: "relative", padding: 20 }}>
+                <Checkout onDone={() => { setTimeout(close, 2400); }} />
+                <button onClick={() => setBuying(false)} style={{
+                  display: "block", width: "100%", marginTop: 12,
+                  background: "transparent", border: "none", cursor: "pointer",
+                  fontFamily: font.sans, fontSize: 12.5, color: T.textFaint,
+                }}>
+                  Back to what Plus includes
+                </button>
+              </div>
+            ) : (
             <div style={{ position: "relative", padding: "30px 30px 26px",
                           textAlign: "center" }}>
               <Badge color={T.violet}>Plus</Badge>
@@ -126,8 +140,9 @@ export default function UpgradeGate({ open, onClose, onUpgrade }) {
                 ))}
               </div>
 
-              <Button size="lg" style={{ width: "100%" }} onClick={() => { markUpgradeSeen(); onUpgrade?.(); }}>
-                Unlock everything — {PLUS_PRICE} EGP / month
+              <Button size="lg" style={{ width: "100%" }}
+                      onClick={() => { markUpgradeSeen(); setBuying(true); onUpgrade?.(); }}>
+                Unlock everything — from {PLUS_PRICE} EGP / month
               </Button>
 
               <button
@@ -142,6 +157,7 @@ export default function UpgradeGate({ open, onClose, onUpgrade }) {
                 Continue with 12 of 50 problems, no peer view and no filters
               </button>
             </div>
+            )}
           </m.div>
         </m.div>
       )}

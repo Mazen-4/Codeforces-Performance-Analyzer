@@ -48,6 +48,12 @@ export const api = {
   mySearches: ()   => request("/api/me/searches"),
   mlVersion: ()    => request("/api/ml/version"),
   siteStats: ()    => request("/api/stats"),
+  paymentConfig: () => request("/api/payments/config"),
+  submitInstapay: (b) => request("/api/payments/instapay", { method: "POST", body: b }),
+  myPayments: ()   => request("/api/payments/mine"),
+  adminPayments: (status) => request(`/api/admin/payments?status=${status || "pending"}`),
+  adminReviewPayment: (id, action, note) =>
+    request(`/api/admin/payments/${id}/${action}`, { method: "POST", body: { note } }),
   coachConfig: ()  => request("/api/coach/config"),
   coach: (body)    => request("/api/coach", { method: "POST", body }),
   adminCoach: ()   => request("/api/admin/coach"),

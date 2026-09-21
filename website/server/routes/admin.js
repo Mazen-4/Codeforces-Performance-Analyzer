@@ -248,6 +248,9 @@ const discountSchema = z.object({
   max_uses: z.coerce.number().int().min(1).max(1000000),
   expires_at: z.string().min(1),
   note: z.string().trim().max(200).optional().nullable(),
+  // Which plans the code is valid on. Omitted or empty means all plans.
+  applies_to: z.array(z.enum(["monthly", "quarterly", "biannual"]))
+    .optional().nullable(),
 });
 
 router.get("/discounts", async (_req, res) => {
@@ -274,6 +277,7 @@ router.post("/discounts", async (req, res) => {
     return res.status(400).json({ error: parsed.error.issues[0].message });
   }
   const { code, percent_off, max_uses, expires_at, note } = parsed.data;
+  const appliesTo = parsed.data.applies_to?.length ? parsed.data.applies_to : null;
 
   const expiry = new Date(expires_at);
   if (Number.isNaN(expiry.getTime())) {
@@ -286,11 +290,12 @@ router.post("/discounts", async (req, res) => {
   try {
     const { rows } = await query(
       `INSERT INTO discount_codes
-         (code, code_upper, percent_off, max_uses, expires_at, note, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (code, code_upper, percent_off, max_uses, expires_at, note,
+          created_by, applies_to)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [code, code.toUpperCase(), percent_off, max_uses, expiry.toISOString(),
-       note || null, req.user.id]);
+       note || null, req.user.id, appliesTo]);
     res.status(201).json({ discount: rows[0] });
   } catch (err) {
     if (err.code === "23505") {

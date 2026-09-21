@@ -15,6 +15,14 @@ const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
 const CURRENCY = String(process.env.INSTAPAY_CURRENCY || "EGP").toUpperCase();
 const HANDLE = String(process.env.INSTAPAY_HANDLE || "").trim();
 
+/** A discount with no plan list covers everything; otherwise only its list. */
+function discountAppliesTo(discount, planKey) {
+  if (!discount?.percent_off) return false;
+  const list = discount.applies_to;
+  if (!Array.isArray(list) || list.length === 0) return true;
+  return list.includes(planKey);
+}
+
 function requireUser(req, res) {
   if (!req.user) {
     res.status(401).json({ error: "Sign in to upgrade" });
@@ -30,13 +38,19 @@ router.get("/config", async (req, res) => {
     if (req.user) {
       // A discount the user already claimed applies to whatever they buy next.
       const { rows } = await query(
-        `SELECT r.percent_off, d.code
+        `SELECT r.percent_off, d.code, d.applies_to
            FROM discount_redemptions r
            JOIN discount_codes d ON d.id = r.code_id
           WHERE r.account_id = $1
           ORDER BY r.redeemed_at DESC
           LIMIT 1`, [req.user.id]);
-      if (rows.length) claimed = { code: rows[0].code, percent_off: rows[0].percent_off };
+      if (rows.length) {
+        claimed = {
+          code: rows[0].code,
+          percent_off: rows[0].percent_off,
+          applies_to: rows[0].applies_to,   // null = every plan
+        };
+      }
     }
   } catch { /* the page works without it */ }
 
@@ -45,11 +59,16 @@ router.get("/config", async (req, res) => {
     handle: HANDLE || null,
     currency: CURRENCY,
     discount: claimed,
-    plans: Object.values(PLANS).map(p => ({
-      ...p,
-      price_after_discount: priceFor(p.key, claimed?.percent_off || 0),
-      per_month: Math.round(priceFor(p.key, claimed?.percent_off || 0) / p.months),
-    })),
+    plans: Object.values(PLANS).map(p => {
+      const pct = discountAppliesTo(claimed, p.key) ? claimed.percent_off : 0;
+      const price = priceFor(p.key, pct);
+      return {
+        ...p,
+        price_after_discount: price,
+        per_month: Math.round(price / p.months),
+        discounted: pct > 0,
+      };
+    }),
   });
 });
 
@@ -93,11 +112,20 @@ router.post("/instapay", async (req, res) => {
   let percentOff = 0, discountId = null;
   try {
     const { rows } = await query(
-      `SELECT r.percent_off, r.code_id
+      `SELECT r.percent_off, r.code_id, d.applies_to
          FROM discount_redemptions r
+         JOIN discount_codes d ON d.id = r.code_id
         WHERE r.account_id = $1
         ORDER BY r.redeemed_at DESC LIMIT 1`, [req.user.id]);
-    if (rows.length) { percentOff = rows[0].percent_off; discountId = rows[0].code_id; }
+    if (rows.length) {
+      const claimed = { percent_off: rows[0].percent_off, applies_to: rows[0].applies_to };
+      // Scoped codes only reduce the plans they name. A user holding a
+      // 6-month code cannot pay the discounted figure for a 1-month term.
+      if (discountAppliesTo(claimed, planKey)) {
+        percentOff = rows[0].percent_off;
+        discountId = rows[0].code_id;
+      }
+    }
   } catch { /* no discount */ }
 
   const expectedAmount = priceFor(planKey, percentOff);

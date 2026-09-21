@@ -200,3 +200,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_pending ON payments(status) WHERE status
 
 -- When Plus lapses. NULL means the account has never had it.
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS plus_expires_at TIMESTAMPTZ;
+
+-- Which plans a discount code applies to. NULL means every plan, so codes
+-- created before this column existed keep working unchanged.
+ALTER TABLE discount_codes ADD COLUMN IF NOT EXISTS applies_to TEXT[];
