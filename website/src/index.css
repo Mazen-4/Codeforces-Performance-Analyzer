@@ -38,3 +38,31 @@ button { font-family: inherit; }
     transition-duration: .01ms !important;
   }
 }
+
+/* AI Coach plan — the model emits a fixed div/ul structure, styled here so the
+   output matches the app rather than arriving as unstyled HTML. */
+.coach-plan .day {
+  padding: 14px 16px;
+  margin-bottom: 9px;
+  border-radius: 10px;
+  background: #0B0D12;
+  border: 1px solid #1E232C;
+}
+.coach-plan .day-label {
+  display: inline-block;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #A97BFF;
+  margin-bottom: 4px;
+}
+.coach-plan .day strong { color: #F2F5F9; font-size: 14.5px; }
+.coach-plan ul { margin: 9px 0 0; padding-left: 18px; }
+.coach-plan li {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #98A2B3;
+  margin-bottom: 3px;
+}

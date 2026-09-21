@@ -339,3 +339,56 @@ router.delete("/discounts/:id", async (req, res) => {
     res.status(500).json({ error: "Could not delete that code." });
   }
 });
+
+/* ── AI Coach settings ───────────────────────────────────────────────────── */
+
+const COACH_MODEL_CHOICES = {
+  "claude-opus-5":   { label: "Opus 5",   note: "Most capable. Around 2¢ per plan." },
+  "claude-sonnet-5": { label: "Sonnet 5", note: "Cheaper and faster. Around 1¢ per plan." },
+};
+
+router.get("/coach", async (_req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT value, updated_at FROM app_settings WHERE key = 'coach_model'`);
+    const stored = rows[0]?.value;
+    const model = COACH_MODEL_CHOICES[stored] ? stored : "claude-opus-5";
+    const { rows: usage } = await query(`
+      SELECT count(*)::int AS total,
+             count(*) FILTER (WHERE used_at > now() - interval '30 days')::int AS last_30d
+        FROM coach_uses`);
+    res.json({
+      model,
+      updated_at: rows[0]?.updated_at ?? null,
+      // The key lives in the environment; we report only whether it is set.
+      key_configured: Boolean(process.env.ANTHROPIC_API_KEY),
+      choices: Object.entries(COACH_MODEL_CHOICES)
+        .map(([id, m]) => ({ id, ...m })),
+      plans_generated: usage[0].total,
+      plans_last_30d: usage[0].last_30d,
+      free_trial_plans: 2,
+    });
+  } catch (err) {
+    console.error("coach settings failed:", err.message);
+    res.status(500).json({ error: "Could not load AI Coach settings." });
+  }
+});
+
+router.put("/coach", async (req, res) => {
+  const model = String(req.body?.model || "");
+  if (!COACH_MODEL_CHOICES[model]) {
+    return res.status(400).json({ error: "Unknown model." });
+  }
+  try {
+    await query(
+      `INSERT INTO app_settings (key, value, updated_by, updated_at)
+       VALUES ('coach_model', $1::jsonb, $2, now())
+       ON CONFLICT (key) DO UPDATE
+         SET value = $1::jsonb, updated_by = $2, updated_at = now()`,
+      [JSON.stringify(model), req.user.id]);
+    res.json({ model });
+  } catch (err) {
+    console.error("coach model update failed:", err.message);
+    res.status(500).json({ error: "Could not save that." });
+  }
+});

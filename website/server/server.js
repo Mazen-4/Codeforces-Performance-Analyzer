@@ -3,6 +3,7 @@ import fetch from "node-fetch";
 import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -267,16 +268,82 @@ app.get("/api/cf/:handle", async (req, res) => {
   }
 });
 
-/* ───────────── Claude Coaching Plan ───────────── */
+/* ───────────── AI Coach (Claude) ───────────── */
+
+// Models an admin may select. Restricting to a list means a typo in the admin
+// UI cannot point production at a model that does not exist.
+const COACH_MODELS = {
+  "claude-opus-5":   { label: "Opus 5",   note: "Most capable. ~2¢ per plan." },
+  "claude-sonnet-5": { label: "Sonnet 5", note: "Cheaper and faster. ~1¢ per plan." },
+};
+const DEFAULT_COACH_MODEL = "claude-opus-5";
+
+// How many plans a free account may generate before Plus is required.
+const FREE_COACH_PLANS = 2;
+
+// Cached so a plan request does not hit the database first. Invalidated on
+// write, so an admin change takes effect on the next request.
+// 60s TTL rather than an explicit invalidation hook: an admin switching the
+// model is rare, and a minute's lag is not worth coupling the two modules.
+let _coachModelCache = null;
+async function getCoachModel() {
+  if (_coachModelCache && Date.now() - _coachModelCache.at < 60_000) {
+    return _coachModelCache.model;
+  }
+  let model = process.env.COACH_MODEL || DEFAULT_COACH_MODEL;
+  try {
+    if (ACCOUNTS_ENABLED) {
+      const { rows } = await query(
+        `SELECT value FROM app_settings WHERE key = 'coach_model'`);
+      if (rows.length && COACH_MODELS[rows[0].value]) model = rows[0].value;
+    }
+  } catch { /* fall back to the default rather than failing the request */ }
+  if (!COACH_MODELS[model]) model = DEFAULT_COACH_MODEL;
+  _coachModelCache = { at: Date.now(), model };
+  return model;
+}
+app.get("/api/coach/config", async (req, res) => {
+  const model = await getCoachModel();
+  res.json({
+    available: Boolean(process.env.ANTHROPIC_API_KEY),
+    model,
+    label: COACH_MODELS[model]?.label ?? model,
+  });
+});
 
 app.post("/api/coach", async (req, res) => {
   const { handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact } = req.body;
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({
+      error: "The AI Coach is not configured yet.", code: "NO_KEY",
+    });
+  }
+  // Entitlement: Plus gets the coach; Free gets a limited trial. Enforced here
+  // rather than only in the UI, because the endpoint is reachable directly.
+  if (ACCOUNTS_ENABLED) {
+    if (!req.user) {
+      return res.status(401).json({ error: "Sign in to use the AI Coach" });
+    }
+    if (req.user.plan !== "pro") {
+      try {
+        const { rows } = await query(
+          `SELECT count(*)::int AS n FROM coach_uses WHERE account_id = $1`,
+          [req.user.id]);
+        if (rows[0].n >= FREE_COACH_PLANS) {
+          return res.status(402).json({
+            error: `Your free trial of the AI Coach is used up (${FREE_COACH_PLANS} plans). `
+                 + "Plus includes it in full.",
+            code: "TRIAL_USED",
+          });
+        }
+      } catch { /* never block on the counter failing */ }
+    }
+  }
+
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash"
-        });
+        const coachModel = await getCoachModel();
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
         // Weak tags: peer-benchmarked strength + solve counts
         const weakSection = (weakTags || [])
@@ -347,15 +414,53 @@ PLAN RULES — follow every one strictly:
 Format each day exactly like this — nothing else:
 <div class="day"><span class="day-label">Day N</span> – <strong>Topic</strong><ul><li>Difficulty: XXXX–YYYY</li><li>Problems: X problems (include IDs from the recommended list where available, e.g. 1234_A, 1234_B)</li><li>Time: Xhr</li><li>Focus: one concrete micro-skill to drill</li><li>Why: one sentence explaining why the model flagged this tag for this user</li></ul></div>`;
 
-        const result = await model.generateContent(prompt);
+        const message = await anthropic.messages.create({
+            model: coachModel,
+            max_tokens: 4000,
+            // The plan is a judgement task over ML signals, so let the model
+            // think; medium effort keeps the cost near a cent per plan.
+            thinking: { type: "adaptive" },
+            output_config: { effort: "medium" },
+            messages: [{ role: "user", content: prompt }],
+        });
 
-        const plan = result.response.text(); // ✅ THIS IS YOUR FINAL STRING
+        if (message.stop_reason === "refusal") {
+            console.error("coach refused:", message.stop_details?.category);
+            return res.status(502).json({ error: "Could not generate a plan. Try again." });
+        }
 
-        res.json({ plan });
+        const plan = message.content
+            .filter(b => b.type === "text").map(b => b.text).join("").trim();
+
+        if (!plan) {
+            return res.status(502).json({ error: "The coach returned an empty plan." });
+        }
+
+        // Count the use only once a plan actually came back, so a failure does
+        // not burn someone's trial.
+        if (ACCOUNTS_ENABLED && req.user && req.user.plan !== "pro") {
+            query(`INSERT INTO coach_uses (account_id, model) VALUES ($1, $2)`,
+                  [req.user.id, coachModel])
+              .catch(e => console.error("coach_uses insert failed:", e.message));
+        }
+
+        res.json({
+            plan,
+            model: coachModel,
+            usage: {
+                input_tokens: message.usage?.input_tokens,
+                output_tokens: message.usage?.output_tokens,
+            },
+        });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Gemini failed" });
+        console.error("coach failed:", err.message);
+        const status = err?.status === 401 ? 503 : 502;
+        res.status(status).json({
+            error: err?.status === 401
+                ? "The AI Coach key is not valid."
+                : "Could not generate a plan. Try again.",
+        });
     }
 });
 

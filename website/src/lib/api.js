@@ -48,6 +48,11 @@ export const api = {
   mySearches: ()   => request("/api/me/searches"),
   mlVersion: ()    => request("/api/ml/version"),
   siteStats: ()    => request("/api/stats"),
+  coachConfig: ()  => request("/api/coach/config"),
+  coach: (body)    => request("/api/coach", { method: "POST", body }),
+  adminCoach: ()   => request("/api/admin/coach"),
+  adminSetCoachModel: (model) =>
+    request("/api/admin/coach", { method: "PUT", body: { model } }),
   checkDiscount:  (c) => request(`/api/discounts/${encodeURIComponent(c)}`),
   redeemDiscount: (c) => request(`/api/discounts/${encodeURIComponent(c)}/redeem`, { method: "POST" }),
   adminDiscounts:      ()   => request("/api/admin/discounts"),

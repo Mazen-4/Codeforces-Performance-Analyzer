@@ -129,3 +129,25 @@ CREATE TABLE IF NOT EXISTS discount_redemptions (
 
 CREATE INDEX IF NOT EXISTS idx_redemptions_account
     ON discount_redemptions(account_id);
+
+
+-- ─── App settings ───────────────────────────────────────────────────────────
+-- Small key/value store for things an admin can change without a redeploy,
+-- such as which Claude model the AI Coach runs on.
+CREATE TABLE IF NOT EXISTS app_settings (
+    key        TEXT PRIMARY KEY,
+    value      JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by UUID REFERENCES accounts(id) ON DELETE SET NULL
+);
+
+
+-- One row per AI Coach plan generated, used to meter the free trial.
+CREATE TABLE IF NOT EXISTS coach_uses (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    model      TEXT,
+    used_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_coach_uses_account ON coach_uses(account_id);

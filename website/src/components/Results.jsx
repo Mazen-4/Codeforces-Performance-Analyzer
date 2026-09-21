@@ -10,6 +10,7 @@ import { tagInfo, METRICS, weakestHeadline } from "../lib/copy.js";
 import { Card, Badge, Info, fadeUp } from "./ui.jsx";
 import Problems from "./Problems.jsx";
 import Peers from "./Peers.jsx";
+import Coach from "./Coach.jsx";
 import { IconTile } from "./Icon.jsx";
 
 /* Normalize whatever the pipeline returns into a flat [{key,name,score}] list.
@@ -75,6 +76,8 @@ export default function Results({ data, handle, userRating, isPro, onUpgrade }) 
         <Problems problems={problems} userRating={userRating}
                   isPro={isPro} onUpgrade={onUpgrade} />
       )}
+
+      <Coach data={data} handle={handle} isPro={isPro} onUpgrade={onUpgrade} />
 
       <Peers peers={data?.peers} isPro={isPro} onUpgrade={onUpgrade} />
     </div>
