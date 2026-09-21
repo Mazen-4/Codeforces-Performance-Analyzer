@@ -11,6 +11,12 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
+// How much over the plan price still counts as paying it. Rounding up to the
+// nearest note is ordinary behaviour, and refusing it would reject genuine
+// payers over a single pound. The surplus is not credited -- it buys the same
+// term -- which is why the window is small.
+export const OVERPAY_TOLERANCE = 5;   // EGP
+
 const EXTRACTION_PROMPT = `You are analyzing a screenshot of an InstaPay (Egyptian instant payment) transaction confirmation.
 
 Extract the following fields as JSON:
@@ -141,18 +147,37 @@ export function runVerificationChecks({
   });
   if (!isInstaPay) reasons.push("This does not look like an InstaPay confirmation screenshot.");
 
-  const got = Number(extracted?.amount);
-  // Half a pound of tolerance absorbs rounding on the receipt, nothing more.
-  const amountMatches = Number.isFinite(got) && Number.isFinite(expectedAmount)
-    && Math.abs(got - expectedAmount) < 0.5;
+  // Number(null) is 0, which would be reported as "you sent 0 EGP" when in
+  // fact nothing could be read off the receipt. Keep the two cases apart.
+  const rawAmount = extracted?.amount;
+  const got = (rawAmount === null || rawAmount === undefined || rawAmount === "")
+    ? NaN : Number(rawAmount);
+  // Asymmetric on purpose. People round up -- sending 1100 for a 1099 plan is
+  // normal and must not be turned away -- so a small overpayment passes. Under
+  // the price it stays strict apart from half a pound of receipt rounding,
+  // because accepting less than the price is simply underpaying.
+  const over = Number.isFinite(got) && Number.isFinite(expectedAmount)
+    ? got - expectedAmount : NaN;
+  const amountMatches = Number.isFinite(over)
+    && over <= OVERPAY_TOLERANCE && over >= -0.5;
   checks.push({
     name: "amountMatchesPlanPrice", passed: amountMatches,
-    detail: amountMatches
-      ? `Amount ${got} matches ${expectedAmount}`
-      : `Amount ${Number.isFinite(got) ? got : "unreadable"} does not match ${expectedAmount}`,
+    detail: !Number.isFinite(over)
+      ? `Amount unreadable, expected ${expectedAmount}`
+      : amountMatches
+        ? (over > 0.5 ? `Amount ${got} covers ${expectedAmount} (+${over.toFixed(2)} over)`
+                      : `Amount ${got} matches ${expectedAmount}`)
+        : `Amount ${got} does not match ${expectedAmount}`,
   });
   if (!amountMatches) {
-    reasons.push(`The amount must be exactly ${expectedAmount} ${expectedCurrency || "EGP"} for this plan.`);
+    const cur = expectedCurrency || "EGP";
+    reasons.push(
+      !Number.isFinite(over)
+        ? `We could not read the amount on the receipt. It must be ${expectedAmount} ${cur} for this plan.`
+        : over < 0
+          ? `The transfer was ${got} ${cur}, which is less than the ${expectedAmount} ${cur} this plan costs.`
+          : `The transfer was ${got} ${cur}, more than ${OVERPAY_TOLERANCE} ${cur} above the ${expectedAmount} ${cur} price. Send the exact amount so it can be matched automatically.`
+    );
   }
 
   const currencyMatches = !expectedCurrency || !extracted?.currency

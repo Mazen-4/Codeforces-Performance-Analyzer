@@ -204,3 +204,25 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS plus_expires_at TIMESTAMPTZ;
 -- Which plans a discount code applies to. NULL means every plan, so codes
 -- created before this column existed keep working unchanged.
 ALTER TABLE discount_codes ADD COLUMN IF NOT EXISTS applies_to TEXT[];
+
+-- ── handle-change and cross-handle analysis limits ──────────────────────────
+-- A Codeforces handle may only be relinked once every 6 months. Without this
+-- an account could re-point itself at a new handle daily and use the per-handle
+-- analysis quota as an unlimited pass. NULL means "never changed", so existing
+-- accounts get their first change immediately rather than being locked out.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS cf_handle_changed_at TIMESTAMPTZ;
+
+-- Analysing a handle other than the linked one is metered: once every 3 months
+-- on free, once a week on Plus. Stored on the account (not derived from
+-- `searches`) so the allowance survives history pruning and so the window is
+-- anchored to the grant, not to a row that may be deleted.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS other_handle_run_at TIMESTAMPTZ;
+
+-- ── one transfer per account per day ────────────────────────────────────────
+-- The route checks a rolling 24h window before spending money on verification;
+-- this index is the guard that survives two concurrent submissions, which the
+-- check alone cannot stop. It is per calendar day (UTC) because a unique index
+-- needs a fixed expression -- so the two rules differ slightly at the boundary
+-- and the stricter one wins, which is the safe direction.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_per_day
+    ON payments (account_id, (((created_at AT TIME ZONE 'UTC'))::date));

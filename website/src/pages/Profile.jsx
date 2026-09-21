@@ -4,6 +4,7 @@ import { useAuth } from "../lib/auth.jsx";
 import DiscountClaim from "../components/DiscountClaim.jsx";
 import { api } from "../lib/api.js";
 import { Button, Field, Input, Card, Badge, Toast } from "../components/ui.jsx";
+import Icon from "../components/Icon.jsx";
 
 export default function Profile() {
   const { user, setUser } = useAuth();
@@ -13,6 +14,9 @@ export default function Profile() {
     institution: user?.institution || "", bio: user?.bio || "",
   });
   const [pw, setPw] = useState({ current: "", next: "" });
+  // Null when the handle may be changed now (and for admins, who are exempt).
+  const hc = user?.limits?.handle_change;
+  const handleLock = hc && !hc.allowed ? hc : null;
   const [busy, setBusy] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
   const [toast, setToast] = useState(null);
@@ -72,9 +76,36 @@ export default function Profile() {
         </div>
 
         <form onSubmit={save}>
-          <Field label="Codeforces handle" required>
-            <Input value={form.cf_handle} onChange={set("cf_handle")} required />
+          <Field
+            label="Codeforces handle"
+            required
+            hint={handleLock
+              ? `Locked until ${new Date(handleLock.next_at).toLocaleDateString()}`
+              : "Can be changed once every 6 months"}
+          >
+            <Input value={form.cf_handle} onChange={set("cf_handle")} required
+                   disabled={Boolean(handleLock)} />
           </Field>
+          {handleLock && (
+            <div style={{
+              display: "flex", gap: 10, alignItems: "flex-start",
+              margin: "-6px 0 18px", padding: "11px 13px",
+              borderRadius: 9, background: T.bgAlt,
+              border: `1px solid ${T.border}`,
+            }}>
+              <span style={{ color: T.textFaint, marginTop: 1, display: "flex" }}>
+                <Icon name="lock" size={14} strokeWidth={1.8} />
+              </span>
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6,
+                          color: T.textFaint }}>
+                A handle can only be relinked once every 6 months. Yours is
+                available again in {handleLock.days_remaining} days. To analyse
+                a different handle without relinking, use{" "}
+                <strong style={{ color: T.textDim }}>Analyse another handle</strong>{" "}
+                on the dashboard.
+              </p>
+            </div>
+          )}
           <div style={{ display: "grid", gap: 0,
                         gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
                         columnGap: 16 }}>

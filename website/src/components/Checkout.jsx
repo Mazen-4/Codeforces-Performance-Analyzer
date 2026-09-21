@@ -4,6 +4,7 @@ import { T, font } from "../lib/theme.js";
 import { api } from "../lib/api.js";
 import { Card, Button, Badge } from "./ui.jsx";
 import Icon, { IconTile } from "./Icon.jsx";
+import { ReportIssueButton } from "./Footer.jsx";
 
 /** InstaPay checkout: pick a term, transfer, upload the receipt.
  *
@@ -97,8 +98,10 @@ export default function Checkout({ onDone }) {
           <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
             {cfg.plans.map((p) => {
               const active = p.key === plan;
-              const saving = p.months > 1
-                ? Math.round((1 - p.per_month / cfg.plans[0].per_month) * 100) : 0;
+              // The server sends both numbers, so the strike-through can never
+              // disagree with what is actually charged.
+              const saving = p.saving ?? 0;
+              const savingPct = p.saving_percent ?? 0;
               return (
                 <button
                   key={p.key} onClick={() => setPlan(p.key)}
@@ -119,21 +122,33 @@ export default function Checkout({ onDone }) {
                                               background: T.accent }} />}
                   </span>
                   <span style={{ flex: 1 }}>
-                    <span style={{ display: "block", fontSize: 14.5, fontWeight: 650 }}>
-                      {p.label}
+                    <span style={{ display: "flex", alignItems: "center", gap: 8,
+                                   flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 650 }}>
+                        {p.label}
+                      </span>
+                      {saving > 0 && (
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
+                          padding: "2.5px 7px", borderRadius: 999,
+                          color: T.good, background: `${T.good}1a`,
+                          border: `1px solid ${T.good}40`,
+                        }}>
+                          Save {saving} EGP · {savingPct}%
+                        </span>
+                      )}
                     </span>
                     <span style={{ display: "block", fontSize: 12.5,
-                                   color: T.textFaint, marginTop: 3 }}>
+                                   color: T.textFaint, marginTop: 4 }}>
                       {p.per_month} EGP / month
-                      {saving > 0 && <> · save {saving}%</>}
                     </span>
                   </span>
                   <span style={{ textAlign: "right" }}>
-                    {p.price_after_discount !== p.price && (
+                    {saving > 0 && (
                       <span style={{ display: "block", fontFamily: font.mono,
-                                     fontSize: 12, color: T.textFaint,
+                                     fontSize: 12.5, color: T.textFaint,
                                      textDecoration: "line-through" }}>
-                        {p.price}
+                        {p.list_price}
                       </span>
                     )}
                     <span style={{ fontFamily: font.mono, fontSize: 19, fontWeight: 800 }}>
@@ -311,8 +326,12 @@ function Outcome({ result, onRetry }) {
       body: `${result.months} month${result.months === 1 ? "" : "s"} added to your account. Everything is unlocked now.` },
     pending: { icon: "clock", tone: T.warn, title: "Sent for review",
       body: "We could not confirm every detail automatically, so a human will check it. You'll have Plus as soon as it's approved — usually within a day." },
-    rejected: { icon: "cross", tone: T.risk, title: "We couldn't accept that",
-      body: null },
+    // A rejection is never final: automatic checks read a screenshot with a
+    // model, and a model can misread a digit. The title says what happened and
+    // the body says what happens next, so nobody thinks their money is gone.
+    rejected: { icon: "alert", tone: T.warn,
+      title: "We couldn't verify that automatically",
+      body: "Your transfer has not been lost. Here is what did not match — a human will review it and approve it manually if the payment is genuine." },
   };
   const s = map[result.status] || map.pending;
 
@@ -338,7 +357,7 @@ function Outcome({ result, onRetry }) {
       )}
 
       {result.status === "rejected" && (
-        <div style={{ display: "grid", gap: 8, margin: "0 auto", maxWidth: 400,
+        <div style={{ display: "grid", gap: 8, margin: "16px auto 0", maxWidth: 400,
                       textAlign: "left" }}>
           {(result.reasons || []).map((r) => (
             <div key={r} style={{ display: "flex", gap: 10, alignItems: "flex-start",
@@ -354,11 +373,21 @@ function Outcome({ result, onRetry }) {
         </div>
       )}
 
+      {result.status === "rejected" && (
+        <p style={{ color: T.textFaint, fontSize: 12.5, lineHeight: 1.6,
+                    margin: "14px auto 0", maxWidth: 400 }}>
+          Waiting for manual approval. If this looks wrong, report it and
+          include the transaction reference.
+        </p>
+      )}
+
       {result.status !== "approved" && (
-        <div style={{ marginTop: 20 }}>
+        <div style={{ marginTop: 20, display: "flex", gap: 10,
+                      justifyContent: "center", flexWrap: "wrap" }}>
           <Button variant="subtle" onClick={onRetry}>
             {result.status === "rejected" ? "Try again" : "Done"}
           </Button>
+          {result.status === "rejected" && <ReportIssueButton />}
         </div>
       )}
     </Card>

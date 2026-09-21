@@ -6,6 +6,7 @@ import Logo from "./components/Logo.jsx";
 import Icon from "./components/Icon.jsx";
 import { UpgradeProvider, useUpgrade } from "./lib/upgrade.jsx";
 import UpgradeGate from "./components/UpgradeGate.jsx";
+import Footer from "./components/Footer.jsx";
 import { Button, Spinner } from "./components/ui.jsx";
 import { lazy, Suspense } from "react";
 import Landing from "./pages/Landing.jsx";
@@ -56,8 +57,10 @@ function Shell() {
   }
   return (
     <div style={{ minHeight: "100vh", background: T.bg, color: T.text,
-                  fontFamily: font.sans }}>
+                  fontFamily: font.sans,
+                  display: "flex", flexDirection: "column" }}>
       <Nav />
+      <div style={{ flex: 1 }}>
       <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<HomeRoute />} />
@@ -69,6 +72,8 @@ function Shell() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      </div>
+      <Footer />
       <GlobalUpgradeGate />
     </div>
   );

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { m, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
 import { T, font, band } from "../lib/theme.js";
 import { useAuth } from "../lib/auth.jsx";
 import { api } from "../lib/api.js";
@@ -23,7 +22,7 @@ const STEPS = [
 ];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, refresh: refreshUser } = useAuth();
   const [handle, setHandle] = useState(user?.cf_handle || "");
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -117,8 +116,16 @@ export default function Dashboard() {
 
   async function run(e) {
     e?.preventDefault();
-    const h = handle.trim();
+    return runHandle(handle);
+  }
+
+  /** Analyse a specific handle. Split out from the form submit so the
+   *  "analyse my profile" button and the other-handle form can share it
+   *  without one of them having to fake an event. */
+  async function runHandle(raw) {
+    const h = String(raw || "").trim();
     if (!h) return;
+    if (h.toLowerCase() !== handle.trim().toLowerCase()) setHandle(h);
     if (clockBad) {
       setError("Your device clock is wrong. Fix the date and time, then try again.");
       return;
@@ -139,6 +146,11 @@ export default function Dashboard() {
       setLastRunId(result.run_id ?? null);
       setCompareWith(null);
       loadHistory();
+      // A run against another handle spends the allowance; refresh the user so
+      // the countdown in the panel reflects it immediately.
+      if (h.toLowerCase() !== String(user?.cf_handle || "").toLowerCase()) {
+        refreshUser?.();
+      }
     } catch (err) {
       if (err.name !== "AbortError") {
         setError(
@@ -218,6 +230,7 @@ export default function Dashboard() {
             </div>
           </>
         ) : (
+          <>
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap",
                         alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
@@ -231,15 +244,22 @@ export default function Dashboard() {
                 {user?.cf_handle}
               </div>
               <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 7 }}>
-                Analysing someone else? Change your handle on the{" "}
-                <Link to="/profile" style={{ color: T.accent }}>profile page</Link>.
+                Unlimited runs on your own handle.
               </div>
               </div>
             </div>
-            <Button onClick={run} loading={busy} disabled={busy || clockBad} size="lg">
+            <Button onClick={() => runHandle(user?.cf_handle)} loading={busy}
+                    disabled={busy || clockBad} size="lg">
               {busy ? "Analysing" : "Analyse my profile"}
             </Button>
           </div>
+          <OtherHandle
+            limits={user?.limits?.other_handle}
+            busy={busy}
+            clockBad={clockBad}
+            onRun={runHandle}
+          />
+          </>
         )}
       </Card>
 
@@ -649,5 +669,117 @@ function FirstRunHint() {
         ))}
       </div>
     </Card>
+  );
+}
+
+/** Analysing a handle that is not the linked one. Metered: once every 3 months
+ *  on free, once a week on Plus. The remaining wait is shown up front rather
+ *  than only on refusal, so nobody types a handle and then learns it is
+ *  locked. */
+function OtherHandle({ limits, busy, clockBad, onRun }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const { show } = useUpgrade();
+
+  // The server is the authority. Absent limits (admins) mean no meter.
+  if (!limits) return null;
+  const locked = !limits.allowed;
+  const isPlus = limits.plan === "pro";
+  const cadence = isPlus ? "once a week" : "once every 3 months";
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 16,
+                  borderTop: `1px solid ${T.border}` }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 9, width: "100%",
+          background: "none", border: "none", padding: 0, cursor: "pointer",
+          fontFamily: font.sans, color: T.textDim, textAlign: "left",
+        }}
+      >
+        <span style={{ color: locked ? T.textFaint : T.accent, display: "flex" }}>
+          <Icon name={locked ? "lock" : "search"} size={15} strokeWidth={1.8} />
+        </span>
+        <span style={{ fontSize: 13.5, fontWeight: 620, color: T.text }}>
+          Analyse another handle
+        </span>
+        <span style={{ fontSize: 12, color: T.textFaint }}>
+          {locked
+            ? `available ${limits.days_remaining <= 1 ? "tomorrow"
+                : `in ${limits.days_remaining} days`}`
+            : `${cadence} — available now`}
+        </span>
+        <span style={{ marginLeft: "auto", color: T.textFaint, display: "flex",
+                       transform: open ? "rotate(180deg)" : "none",
+                       transition: "transform .18s" }}>
+          <Icon name="chevron" size={15} />
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <m.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            style={{ overflow: "hidden" }}
+          >
+            <div style={{ paddingTop: 14 }}>
+              {locked ? (
+                <div style={{ fontSize: 13, color: T.textDim, lineHeight: 1.65 }}>
+                  You have used this month&rsquo;s allowance. Runs on your own
+                  handle are still unlimited.
+                  {!isPlus && (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={show}
+                        style={{
+                          background: "none", border: "none", padding: 0,
+                          cursor: "pointer", font: "inherit",
+                          color: T.accent, fontWeight: 650,
+                        }}
+                      >
+                        Plus raises this to once a week.
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); onRun(value); }}
+                    style={{ display: "flex", gap: 11, flexWrap: "wrap" }}
+                  >
+                    <Input
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      placeholder="Codeforces handle"
+                      style={{ flex: 1, minWidth: 200 }}
+                      disabled={busy}
+                      aria-label="Another Codeforces handle"
+                    />
+                    <Button type="submit" loading={busy}
+                            disabled={busy || !value.trim() || clockBad}>
+                      Analyse
+                    </Button>
+                  </form>
+                  <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 9,
+                                lineHeight: 1.6 }}>
+                    This uses your one run per {isPlus ? "week" : "3 months"}.
+                    {!isPlus && " Plus raises it to one per week."}
+                  </div>
+                </>
+              )}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

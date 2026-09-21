@@ -63,7 +63,11 @@ export async function currentUser(req) {
     const { rows } = await query(
       `SELECT a.id, a.email, a.cf_handle, a.role, a.plan, a.status,
               a.full_name, a.phone, a.country, a.institution, a.bio,
-              a.created_at, a.last_login_at
+              a.created_at, a.last_login_at,
+              -- The quota columns must be here: the window helpers read them
+              -- off req.user, and a missing column silently reads as "never
+              -- used", which grants an unlimited allowance.
+              a.plus_expires_at, a.cf_handle_changed_at, a.other_handle_run_at
          FROM sessions s
          JOIN accounts a ON a.id = s.account_id
         WHERE s.token_hash = $1 AND s.expires_at > now()`,

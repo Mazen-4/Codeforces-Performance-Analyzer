@@ -62,11 +62,19 @@ router.get("/config", async (req, res) => {
     plans: Object.values(PLANS).map(p => {
       const pct = discountAppliesTo(claimed, p.key) ? claimed.percent_off : 0;
       const price = priceFor(p.key, pct);
+      // What the same term would cost at the monthly rate. This is the term
+      // discount, which exists whether or not a coupon was claimed — sent from
+      // here so the price shown and the price charged come from one source.
+      const listPrice = PLANS.monthly.price * p.months;
       return {
         ...p,
         price_after_discount: price,
         per_month: Math.round(price / p.months),
         discounted: pct > 0,
+        list_price: listPrice,
+        saving: Math.max(0, listPrice - price),
+        saving_percent: listPrice > 0
+          ? Math.round((1 - price / listPrice) * 100) : 0,
       };
     }),
   });
@@ -103,6 +111,34 @@ router.post("/instapay", async (req, res) => {
     if (rows.length) {
       return res.status(409).json({
         error: "You already have a payment awaiting review.", code: "PENDING_EXISTS",
+      });
+    }
+  } catch { /* fall through rather than block a genuine payment */ }
+
+  // At most one transfer per account per day. The pending check above only
+  // holds while a submission is unreviewed, so a rejection would otherwise
+  // free the slot at once and let someone retry screenshots all day until one
+  // slipped past verification. Rejected attempts count against the cap for
+  // exactly that reason. Verification reads an image with a model, so each
+  // attempt also costs money.
+  //
+  // A rolling 24h window, not a calendar day: "one per day" should not reset
+  // at midnight and hand out two in ten minutes.
+  try {
+    const { rows } = await query(
+      `SELECT created_at FROM payments
+        WHERE account_id = $1 AND created_at > now() - interval '24 hours'
+        ORDER BY created_at DESC LIMIT 1`, [req.user.id]);
+    if (rows.length) {
+      const nextAt = new Date(new Date(rows[0].created_at).getTime() + 86_400_000);
+      const hours = Math.max(1, Math.ceil((nextAt - Date.now()) / 3_600_000));
+      return res.status(429).json({
+        error: `You can only submit one transfer per day. Try again in `
+             + `${hours} hour${hours === 1 ? "" : "s"}.`
+             + ` If your last payment was rejected by mistake, reply on the`
+             + ` feedback page and it will be reviewed manually.`,
+        code: "DAILY_LIMIT",
+        next_at: nextAt.toISOString(),
       });
     }
   } catch { /* fall through rather than block a genuine payment */ }
@@ -206,6 +242,15 @@ router.post("/instapay", async (req, res) => {
     });
   } catch (err) {
     if (err.code === "23505") {
+      // Two unique indexes can raise this. Name them apart, or a user who hit
+      // the daily cap would be told their transaction was already used --
+      // which is false, and would send them chasing a refund.
+      if (err.constraint === "idx_payments_one_per_day") {
+        return res.status(429).json({
+          error: "You can only submit one transfer per day. Try again tomorrow.",
+          code: "DAILY_LIMIT",
+        });
+      }
       return res.json({
         status: "rejected",
         reasons: ["This InstaPay transaction has already been used."],

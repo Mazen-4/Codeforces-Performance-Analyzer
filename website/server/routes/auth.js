@@ -9,6 +9,9 @@ import {
   createSession, destroySession, requireAuth, clientIp,
   recentFailures, recordAttempt,
 } from "../middleware/auth.js";
+import {
+  handleChangeWindow, otherHandleWindow, waitMessage,
+} from "../services/quotas.js";
 
 const router = express.Router();
 
@@ -44,6 +47,13 @@ const publicUser = (u) => ({
   id: u.id, email: u.email, cf_handle: u.cf_handle, role: u.role,
   plan: u.plan, full_name: u.full_name, phone: u.phone, country: u.country,
   institution: u.institution, bio: u.bio, created_at: u.created_at,
+  plus_expires_at: u.plus_expires_at ?? null,
+  // Admins are exempt from both limits, so the client is told as much rather
+  // than being shown a countdown that does not apply to them.
+  limits: u.role === "admin" ? null : {
+    handle_change: handleChangeWindow(u),
+    other_handle:  otherHandleWindow(u),
+  },
 });
 
 /** Confirm the handle exists on Codeforces, so a typo is caught at sign-up. */
@@ -171,12 +181,34 @@ router.patch("/me", requireAuth, async (req, res) => {
   }
   const fields = parsed.data;
 
-  if (fields.cf_handle && fields.cf_handle !== req.user.cf_handle) {
+  const changingHandle =
+    fields.cf_handle &&
+    fields.cf_handle.toLowerCase() !== String(req.user.cf_handle).toLowerCase();
+
+  if (changingHandle) {
+    // A handle may be relinked once every 6 months. Admins are exempt: they
+    // manage accounts and must be able to correct a wrong handle.
+    if (req.user.role !== "admin") {
+      const w = handleChangeWindow(req.user);
+      if (!w.allowed) {
+        return res.status(429).json({
+          error: `Your Codeforces handle can only be changed once every `
+               + `6 months. You can change it again ${waitMessage(w.days_remaining)}.`,
+          code: "HANDLE_CHANGE_LOCKED",
+          next_at: w.next_at,
+          days_remaining: w.days_remaining,
+        });
+      }
+    }
     if (!(await codeforcesHandleExists(fields.cf_handle))) {
       return res.status(400).json({
         error: `Codeforces has no user named "${fields.cf_handle}".`,
       });
     }
+  } else if (fields.cf_handle) {
+    // Same handle, possibly different capitalisation. Saving it must not
+    // consume the 6-month allowance, so drop it from the update entirely.
+    delete fields.cf_handle;
   }
 
   const keys = Object.keys(fields).filter((k) => fields[k] !== undefined);
@@ -184,9 +216,13 @@ router.patch("/me", requireAuth, async (req, res) => {
 
   const sets = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");
   const values = keys.map((k) => (fields[k] === "" ? null : fields[k]));
+  // One statement: the new handle and the spent allowance land together, so a
+  // failure between them cannot leave a free extra change.
+  const stamp = changingHandle && req.user.role !== "admin"
+    ? ", cf_handle_changed_at = now()" : "";
   try {
     const { rows } = await query(
-      `UPDATE accounts SET ${sets}, updated_at = now()
+      `UPDATE accounts SET ${sets}, updated_at = now()${stamp}
         WHERE id = $1 RETURNING *`,
       [req.user.id, ...values]
     );

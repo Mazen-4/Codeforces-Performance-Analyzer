@@ -16,6 +16,9 @@ import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 import paymentRoutes from "./routes/payments.js";
+import {
+  otherHandleWindow, waitMessage, OTHER_HANDLE_DAYS,
+} from "./services/quotas.js";
 
 dotenv.config();
 
@@ -636,18 +639,53 @@ app.get("/api/ml/analyze/:handle", requireAccurateClock, async (req, res) => {
   let { handle } = req.params;
   const startedAt = Date.now();
 
-  // A signed-in user may only analyse the handle linked to their account.
-  // Admins may analyse anyone. Enforced here rather than only in the UI,
-  // because the endpoint is reachable directly.
+  // Analysing the linked handle is unlimited. Analysing someone else's is
+  // metered — once every 3 months on free, once a week on Plus — because each
+  // run costs real compute and an unmetered version is a free public API.
+  // Admins are exempt. Enforced here, not only in the UI, because the endpoint
+  // is reachable directly.
+  let spendOtherHandleRun = false;
   if (ACCOUNTS_ENABLED && req.user && req.user.role !== "admin") {
     if (handle.toLowerCase() !== String(req.user.cf_handle).toLowerCase()) {
-      return res.status(403).json({
-        error: "You can only analyse the Codeforces handle linked to your "
-             + "account. Change it on your profile page.",
+      const w = otherHandleWindow(req.user);
+      if (!w.allowed) {
+        const upsell = w.plan === "pro" ? "" :
+          " Plus raises this to once a week.";
+        return res.status(429).json({
+          error: `Analysing a handle other than your own is limited to once `
+               + `every ${w.plan === "pro" ? "week" : "3 months"}. `
+               + `You can run another ${waitMessage(w.days_remaining)}.${upsell}`,
+          code: "OTHER_HANDLE_LOCKED",
+          next_at: w.next_at,
+          days_remaining: w.days_remaining,
+          plan: w.plan,
+        });
+      }
+      spendOtherHandleRun = true;
+    } else {
+      // Use the stored spelling so history rows stay consistent.
+      handle = req.user.cf_handle;
+    }
+  }
+
+  // Claim the allowance BEFORE running the model. Doing it afterwards would
+  // let two concurrent requests both pass the check above and both run. The
+  // condition repeats the window inside the UPDATE, so exactly one of them
+  // wins; the loser is refused without spending any compute.
+  if (spendOtherHandleRun) {
+    const days = OTHER_HANDLE_DAYS[otherHandleWindow(req.user).plan];
+    const claim = await query(
+      `UPDATE accounts SET other_handle_run_at = now()
+        WHERE id = $1
+          AND (other_handle_run_at IS NULL
+               OR other_handle_run_at < now() - ($2 || ' days')::interval)
+        RETURNING id`, [req.user.id, String(days)]);
+    if (!claim.rowCount) {
+      return res.status(429).json({
+        error: "Another analysis just used this allowance.",
+        code: "OTHER_HANDLE_LOCKED",
       });
     }
-    // Use the stored spelling so history rows stay consistent.
-    handle = req.user.cf_handle;
   }
 
   const script = `
