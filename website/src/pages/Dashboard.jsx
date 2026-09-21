@@ -8,6 +8,7 @@ import { Button, Input, Card, Spinner, Badge, Toast } from "../components/ui.jsx
 import Results from "../components/Results.jsx";
 import Compare from "../components/Compare.jsx";
 import ClockWarning, { useClockCheck } from "../components/ClockWarning.jsx";
+import UpgradeGate, { shouldShowUpgrade } from "../components/UpgradeGate.jsx";
 import { tagInfo } from "../lib/copy.js";
 
 // Shown while the pipeline runs. Deliberately about the user's data, not about
@@ -31,6 +32,16 @@ export default function Dashboard() {
   // id of the search row created by the run currently on screen
   const [lastRunId, setLastRunId] = useState(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  // The post-login Plus screen, shown to free accounts at most once a week.
+  const [gateOpen, setGateOpen] = useState(false);
+  useEffect(() => {
+    if (shouldShowUpgrade(user)) {
+      // A beat after the dashboard paints, so it arrives as a moment rather
+      // than blocking the page the user asked for.
+      const t = setTimeout(() => setGateOpen(true), 700);
+      return () => clearTimeout(t);
+    }
+  }, [user]);
   // Set when the view is a stored run rather than a fresh one.
   const [viewingSaved, setViewingSaved] = useState(null);
   const [loadingSaved, setLoadingSaved] = useState(null);
@@ -380,6 +391,12 @@ export default function Dashboard() {
           </m.div>
         )}
       </AnimatePresence>
+
+      <UpgradeGate
+        open={gateOpen}
+        onClose={() => setGateOpen(false)}
+        onUpgrade={() => { setGateOpen(false); setShowUpgrade(true); }}
+      />
 
       <AnimatePresence>
         {showUpgrade && (
