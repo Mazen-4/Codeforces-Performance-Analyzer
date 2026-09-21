@@ -162,9 +162,35 @@ class FeatureEngineer:
     def __init__(self):
         self._pivot: Optional[pd.DataFrame] = None
 
+    @staticmethod
+    def _read_tag_strengths() -> pd.DataFrame:
+        """Load every user's tag strengths, from Postgres when configured.
+
+        This is the KNN reference set, so unlike the per-request readers in
+        main.py it genuinely needs the whole table. The web container no longer
+        ships the CSV (the dataset is ~1.5 GB and lives in the database), so
+        falling back to the file only works for local runs and training.
+        """
+        try:
+            from scripts.db.connection import get_engine, use_postgres
+        except ImportError:
+            use_postgres = lambda: False   # noqa: E731
+
+        if use_postgres():
+            from sqlalchemy import text
+            with get_engine().connect() as conn:
+                return pd.read_sql(text("SELECT * FROM user_tag_strengths"), conn)
+
+        if not os.path.exists(TAG_STRENGTHS_CSV):
+            raise RuntimeError(
+                "No tag-strength data available: DATABASE_URL is not set and "
+                f"{TAG_STRENGTHS_CSV} is missing."
+            )
+        return pd.read_csv(TAG_STRENGTHS_CSV)
+
     def _load_pivot(self) -> pd.DataFrame:
         if self._pivot is None:
-            df = pd.read_csv(TAG_STRENGTHS_CSV)
+            df = self._read_tag_strengths()
 
             # Tag-level features: 4 × 20 = 80 columns
             frames = []

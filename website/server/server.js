@@ -90,6 +90,23 @@ const TAG_STRENGTHS_CSV = path.join(PROJECT_ROOT, "ML", "dataset", "06_user_tag_
 let _trainingUsersCache = null; // { mtimeMs, count }
 
 async function countTrainingUsers() {
+  // Prefer the database: the web container no longer ships the dataset CSV,
+  // because it is ~1.5 GB and now lives in Postgres.
+  if (ACCOUNTS_ENABLED) {
+    try {
+      if (_trainingUsersCache?.fromDb
+          && Date.now() - _trainingUsersCache.at < 6 * 60 * 60 * 1000) {
+        return _trainingUsersCache.count;
+      }
+      const { rows } = await query(
+        `SELECT count(DISTINCT handle)::int AS n FROM user_tag_strengths`);
+      _trainingUsersCache = { fromDb: true, at: Date.now(), count: rows[0].n };
+      return rows[0].n;
+    } catch (err) {
+      console.error("training_users from db failed:", err.message);
+      // fall through to the CSV, which local runs still have
+    }
+  }
   if (!existsSync(TAG_STRENGTHS_CSV)) return null;
   const mtimeMs = statSync(TAG_STRENGTHS_CSV).mtimeMs;
   if (_trainingUsersCache && _trainingUsersCache.mtimeMs === mtimeMs) {
