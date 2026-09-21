@@ -7,7 +7,7 @@
 set -euo pipefail
 
 PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
-GH_REPO="${GH_REPO:-Mazen-4/Codeforces-Performance-Analyzer}"
+GH_REPO="${GH_REPO:-okhalifa-official/Codeforces-Performance-Analyzer}"
 
 echo "=== CF Analyzer — Render build ==="
 echo "Project root: $PROJECT_ROOT"

@@ -6,13 +6,13 @@
 #   ./scripts/fetch_latest_release.sh
 #
 # Env vars:
-#   GH_REPO     - GitHub repo (default: Mazen-4/Codeforces-Performance-Analyzer)
+#   GH_REPO     - GitHub repo (default: okhalifa-official/Codeforces-Performance-Analyzer)
 #   DATA_DIR    - where to extract files (default: current dir, so ML/dataset & ML/models)
 #   GH_TOKEN    - optional, for private repos
 
 set -euo pipefail
 
-GH_REPO="${GH_REPO:-Mazen-4/Codeforces-Performance-Analyzer}"
+GH_REPO="${GH_REPO:-okhalifa-official/Codeforces-Performance-Analyzer}"
 DATA_DIR="${DATA_DIR:-$(pwd)}"
 DATASET_DIR="$DATA_DIR/ML/dataset"
 MODELS_DIR="$DATA_DIR/ML/models"
@@ -31,11 +31,16 @@ if [ -n "${GH_TOKEN:-}" ]; then
   AUTH_HEADER="Authorization: Bearer $GH_TOKEN"
 fi
 
-LATEST_TAG=$(curl -sf \
+LATEST_TAG=$(curl -sfL \
   ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
   "$API_URL" | python3 -c "
 import sys, json
 releases = json.load(sys.stdin)
+if not isinstance(releases, list):
+    # A moved repository answers with {'message': 'Moved Permanently', ...}.
+    msg = releases.get('message', releases) if isinstance(releases, dict) else releases
+    sys.stderr.write('GitHub API did not return a release list: %s\n' % msg)
+    sys.exit(1)
 # Pick the most recent release that has dataset and model assets
 for r in releases:
     assets = [a['name'] for a in r.get('assets', [])]
