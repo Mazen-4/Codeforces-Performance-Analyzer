@@ -9,6 +9,7 @@ import { T, band, font } from "../lib/theme.js";
 import { tagInfo, METRICS, weakestHeadline } from "../lib/copy.js";
 import { Card, Badge, Info, fadeUp } from "./ui.jsx";
 import Problems from "./Problems.jsx";
+import Peers from "./Peers.jsx";
 
 /* Normalize whatever the pipeline returns into a flat [{key,name,score}] list.
    The backend has carried a few shapes over time, so be forgiving here. */
@@ -58,6 +59,8 @@ export default function Results({ data, handle, userRating, isPro, onUpgrade }) 
         <Problems problems={problems} userRating={userRating}
                   isPro={isPro} onUpgrade={onUpgrade} />
       )}
+
+      <Peers peers={data?.peers} isPro={isPro} onUpgrade={onUpgrade} />
     </div>
   );
 }

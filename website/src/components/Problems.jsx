@@ -6,6 +6,7 @@ import { Card, Badge, Info, Button } from "./ui.jsx";
 import {
   normalize, withLabels, selectHeadline, applyFilters, availableTopics, SORTS,
 } from "../lib/problems.js";
+import { Dropdown, RangeField, ClearChip } from "./Controls.jsx";
 
 const TONE = {
   priority: T.accent,
@@ -156,7 +157,7 @@ function Controls({ isPro, onUpgrade, sort, setSort, topic, setTopic, topics,
     return (
       <button onClick={onUpgrade} style={{
         display: "flex", alignItems: "center", gap: 7, cursor: "pointer",
-        padding: "7px 13px", borderRadius: 9, fontFamily: font.sans,
+        padding: "9px 13px", borderRadius: T.radiusSm, fontFamily: font.sans,
         fontSize: 12.5, fontWeight: 600, color: T.textDim,
         background: "transparent", border: `1px dashed ${T.borderHi}`,
       }}>
@@ -165,50 +166,29 @@ function Controls({ isPro, onUpgrade, sort, setSort, topic, setTopic, topics,
     );
   }
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Select value={sort} onChange={(e) => setSort(e.target.value)}
-              aria-label="Sort problems">
-        {Object.entries(SORTS).map(([k, v]) => (
-          <option key={k} value={k}>{v.label}</option>
-        ))}
-      </Select>
-      <Select value={topic} onChange={(e) => setTopic(e.target.value)}
-              aria-label="Filter by topic">
-        <option value="">All topics</option>
-        {topics.map((t) => (
-          <option key={t.key} value={t.key}>{t.name} ({t.count})</option>
-        ))}
-      </Select>
-      <RatingInput value={range.min} placeholder="Min"
-                   onChange={(v) => setRange((r) => ({ ...r, min: v }))} />
-      <RatingInput value={range.max} placeholder="Max"
-                   onChange={(v) => setRange((r) => ({ ...r, max: v }))} />
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <Dropdown
+        label="Sort problems" value={sort} onChange={setSort} minWidth={158}
+        options={Object.entries(SORTS).map(([k, v]) => ({ value: k, label: v.label }))}
+      />
+      <Dropdown
+        label="Filter by topic" value={topic} onChange={setTopic} minWidth={166}
+        options={[
+          { value: "", label: "All topics" },
+          ...topics.map((t) => ({ value: t.key, label: t.name, hint: t.count })),
+        ]}
+      />
+      <RangeField
+        min={range.min} max={range.max}
+        onChange={setRange}
+        presets={[
+          { label: "Below my level", min: "", max: "1200" },
+          { label: "Around my level", min: "1200", max: "1800" },
+          { label: "Above my level", min: "1800", max: "" },
+          { label: "Any rating", min: "", max: "" },
+        ]}
+      />
     </div>
-  );
-}
-
-function Select({ children, ...props }) {
-  return (
-    <select {...props} style={{
-      padding: "7px 10px", borderRadius: 8, fontSize: 12.5,
-      background: T.bgAlt, color: T.text, fontFamily: font.sans,
-      border: `1px solid ${T.border}`, outline: "none", cursor: "pointer",
-    }}>{children}</select>
-  );
-}
-
-function RatingInput({ value, onChange, placeholder }) {
-  return (
-    <input
-      type="number" inputMode="numeric" value={value} placeholder={placeholder}
-      aria-label={`${placeholder} rating`}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        width: 74, padding: "7px 9px", borderRadius: 8, fontSize: 12.5,
-        background: T.bgAlt, color: T.text, fontFamily: font.sans,
-        border: `1px solid ${T.border}`, outline: "none",
-      }}
-    />
   );
 }
 

@@ -86,6 +86,32 @@ def _load_submissions_pg(handles: set | None) -> pd.DataFrame:
     return df
 
 
+def _load_peer_ratings(handles: set) -> dict:
+    """cf_rating for the given handles, where the profiles table has one.
+
+    Only ~10% of reference users carry a profile row, so a missing handle is
+    normal and maps to None rather than 0 (which would read as "unrated").
+    """
+    if not handles:
+        return {}
+    try:
+        if use_postgres():
+            from sqlalchemy import text
+            sql = text("SELECT handle, cf_rating FROM user_profiles "
+                       "WHERE handle = ANY(:handles)")
+            with get_engine().connect() as conn:
+                rows = conn.execute(sql, {"handles": list(handles)}).fetchall()
+            return {r[0]: (int(r[1]) if r[1] and r[1] > 0 else None) for r in rows}
+        if os.path.exists(PROFILES_CSV):
+            df = pd.read_csv(PROFILES_CSV, usecols=["handle", "cf_rating"])
+            df = df[df["handle"].isin(handles)]
+            return {r.handle: (int(r.cf_rating) if r.cf_rating > 0 else None)
+                    for r in df.itertuples()}
+    except Exception:
+        pass
+    return {}
+
+
 def _load_tag_strengths(handles: set | None = None) -> pd.DataFrame:
     """Load 06_user_tag_strengths rows, from Postgres when configured.
 
@@ -218,6 +244,7 @@ def main(user_handle: str, verbose: bool = True) -> dict:
         "recommended_problems": [],
         "tag_impact": [],
         "problem_attempts": [],
+        "peers": [],
         "profiling": None,
     }
 
@@ -355,6 +382,7 @@ def main(user_handle: str, verbose: bool = True) -> dict:
                 ]
             )
             neighbor_dicts.append({"weight": weight, "solved_problems": solved})
+            n["solved_count"] = len(solved)
 
         if verbose:
             print(f"[OK] Loaded submissions for {len(neighbor_handles)} neighbors, "
@@ -511,6 +539,28 @@ def main(user_handle: str, verbose: bool = True) -> dict:
         result["tag_impact"]           = tag_impact
         result["problem_attempts"]     = problem_attempts
         result["profiling"]            = profiling_summary
+
+        # Top 10 nearest neighbours, for the Pro "who you were compared with"
+        # panel. Ratings exist for only ~10% of reference users, so the field
+        # is left null rather than guessed when it is unknown.
+        try:
+            top_peers = sorted(
+                inference_result["neighbors"], key=lambda n: n["rank"]
+            )[:10]
+            peer_ratings = _load_peer_ratings({p["user_handle"] for p in top_peers})
+            result["peers"] = [
+                {
+                    "rank":       p["rank"],
+                    "handle":     p["user_handle"],
+                    "similarity": round(float(p["display_similarity"]), 1),
+                    "solved":     int(p.get("solved_count") or 0),
+                    "rating":     peer_ratings.get(p["user_handle"]),
+                }
+                for p in top_peers
+            ]
+        except Exception as peer_err:   # never fail an analysis over this panel
+            if verbose:
+                print(f"[WARN] could not build peer list: {peer_err}")
 
     except Exception as e:
         result["error"] = str(e)
