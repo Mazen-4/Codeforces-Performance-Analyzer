@@ -58,10 +58,61 @@ class KNNModel:
             target_features = target_features.reshape(1, -1)
         target_vector = target_features[0]
         distances = _compute_distances(self.feature_matrix, target_vector, self.metric)
+        distances = self._apply_profile_penalty(distances)
         self._all_distances = distances  # full dataset distances from target
         indices = np.argsort(distances)
         k = min(self.k, len(distances))
         return distances[indices][:k], indices[:k]
+
+    # Peers must be comparable in scale, not only in shape. The 82-dim vector
+    # is mostly per-tag rates, and volume_score saturates at 50 solves per tag,
+    # so a 30-solve account and a 400-solve account can look almost identical.
+    # These penalties push the search toward users of similar size.
+    VOLUME_PENALTY_WEIGHT = 1.0   # solve-count mismatch, log-ratio
+    RATING_PENALTY_WEIGHT = 0.5   # rating mismatch, per 400 points
+
+    def set_profile_context(self, solved_counts=None, ratings=None,
+                            target_solved=0, target_rating=0):
+        """Supply per-user scale data so distances can be penalised.
+
+        solved_counts / ratings are arrays aligned with feature_matrix rows.
+        Either may be omitted; a missing value for a user disables that
+        penalty for them rather than guessing.
+        """
+        self._solved_counts = solved_counts
+        self._ratings       = ratings
+        self._target_solved = int(target_solved or 0)
+        self._target_rating = int(target_rating or 0)
+
+    def _apply_profile_penalty(self, distances: np.ndarray) -> np.ndarray:
+        solved = getattr(self, "_solved_counts", None)
+        ratings = getattr(self, "_ratings", None)
+        if solved is None and ratings is None:
+            return distances
+
+        out = distances.astype(np.float64, copy=True)
+
+        if solved is not None and self._target_solved > 0:
+            sv = np.asarray(solved, dtype=np.float64)
+            # Log-ratio: 2x and 0.5x are penalised equally, and the penalty
+            # grows slowly, so a well-matched profile can still outrank a
+            # slightly closer solve count.
+            ratio = np.maximum(sv, 1.0) / max(self._target_solved, 1)
+            pen = np.abs(np.log(ratio))
+            # Unknown solve count: treat as very different rather than free.
+            pen = np.where(sv > 0, pen, 3.0)
+            out += self.VOLUME_PENALTY_WEIGHT * pen
+
+        if ratings is not None and self._target_rating > 0:
+            rv = np.asarray(ratings, dtype=np.float64)
+            # One Codeforces division is ~400 points. Unknown rating carries
+            # no penalty: only ~10% of reference users have one recorded, and
+            # excluding the rest would gut the candidate pool.
+            pen = np.abs(rv - self._target_rating) / 400.0
+            pen = np.where(rv > 0, pen, 0.0)
+            out += self.RATING_PENALTY_WEIGHT * pen
+
+        return out
     
     def get_neighbors_info(
         self,
@@ -104,6 +155,11 @@ class ModelInference:
     def __init__(self, k: int = K_NEIGHBORS):
         self.k = k
         self.model = KNNModel(k=k, metric=KNN_METRIC)
+
+    def set_profile_context(self, **kwargs):
+        """Forward scale context to the underlying KNN model."""
+        self.model.set_profile_context(**kwargs)
+
     
     def perform_inference(self, engineered_data: Dict[str, Any]) -> Dict[str, Any]:
         target_user = engineered_data["target_user"]

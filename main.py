@@ -86,6 +86,47 @@ def _load_submissions_pg(handles: set | None) -> pd.DataFrame:
     return df
 
 
+def _load_peer_scale(handles: list) -> tuple:
+    """Solve counts and ratings for the reference users, in handle order.
+
+    Solve counts exist for ~99.6% of reference users; ratings for only ~10%,
+    because user_profiles is sparse. A missing value is returned as 0 and the
+    caller disables that penalty for the user rather than guessing.
+    """
+    solved_map, rating_map = {}, {}
+    try:
+        if use_postgres():
+            from sqlalchemy import text
+            with get_engine().connect() as conn:
+                solved_map = dict(conn.execute(text(
+                    "SELECT handle, count(DISTINCT problem_id) FROM submissions "
+                    "WHERE is_ac = 1 GROUP BY handle")).fetchall())
+                rating_map = dict(conn.execute(text(
+                    "SELECT handle, cf_rating FROM user_profiles "
+                    "WHERE cf_rating > 0")).fetchall())
+        else:
+            if os.path.exists(SUBMISSIONS_CSV):
+                counts = {}
+                for chunk in pd.read_csv(SUBMISSIONS_CSV,
+                                         usecols=["handle", "problem_id", "is_ac"],
+                                         chunksize=200_000):
+                    ac = chunk[chunk["is_ac"] == 1]
+                    for h, g in ac.groupby("handle")["problem_id"]:
+                        counts.setdefault(h, set()).update(g)
+                solved_map = {h: len(v) for h, v in counts.items()}
+            if os.path.exists(PROFILES_CSV):
+                df = pd.read_csv(PROFILES_CSV, usecols=["handle", "cf_rating"])
+                rating_map = {r.handle: int(r.cf_rating)
+                              for r in df.itertuples() if r.cf_rating > 0}
+    except Exception:
+        return None, None
+
+    import numpy as _np
+    solved = _np.array([solved_map.get(h, 0) for h in handles], dtype=_np.float64)
+    ratings = _np.array([rating_map.get(h, 0) for h in handles], dtype=_np.float64)
+    return solved, ratings
+
+
 def _load_peer_ratings(handles: set) -> dict:
     """cf_rating for the given handles, where the profiles table has one.
 
@@ -302,6 +343,30 @@ def main(user_handle: str, verbose: bool = True) -> dict:
             })
 
             model = ModelInference(k=config.K_NEIGHBORS)
+
+            # Scale context: peers should be comparable in size, not only in
+            # shape. Without this the search drifts toward sparse accounts,
+            # because volume_score saturates at 50 solves per tag.
+            try:
+                target_solved = int(
+                    pd.DataFrame(target_submission_rows)
+                      .query("is_ac == 1")["problem_id"].nunique()
+                ) if target_submission_rows else 0
+                solved_arr, ratings_arr = _load_peer_scale(
+                    list(engineered["dataset_handles"]))
+                if solved_arr is not None:
+                    model.set_profile_context(
+                        solved_counts=solved_arr, ratings=ratings_arr,
+                        target_solved=target_solved, target_rating=cf_rating,
+                    )
+                    if verbose:
+                        known = int((ratings_arr > 0).sum())
+                        print(f"[OK] Scale context: you solved {target_solved}; "
+                              f"ratings known for {known}/{len(ratings_arr)} peers")
+            except Exception as ctx_err:
+                if verbose:
+                    print(f"[WARN] scale context unavailable: {ctx_err}")
+
             inference_result = model.perform_inference(engineered)
 
         if verbose:
