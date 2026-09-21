@@ -7,6 +7,7 @@ import { Button, Card, Badge } from "../components/ui.jsx";
 import DiscountClaim from "../components/DiscountClaim.jsx";
 import Aurora from "../components/Aurora.jsx";
 import Icon, { IconTile } from "../components/Icon.jsx";
+import { LogoMark } from "../components/Logo.jsx";
 
 const PLUS_PRICE = 399;          // EGP per month
 
@@ -70,7 +71,7 @@ function Hero({ trainingUsers }) {
           style={{ display: "flex", alignItems: "center", gap: 11,
                    justifyContent: "center", marginBottom: 20 }}
         >
-          <BrandMark />
+          <LogoMark size={30} id="hero" />
           <span style={{
             fontSize: "clamp(13px, 1.8vw, 15px)", fontWeight: 650,
             letterSpacing: 2.4, textTransform: "uppercase", color: T.textDim,
@@ -697,16 +698,3 @@ function Disclaimer() {
   );
 }
 
-/** Wordmark badge: the radar shape from the product, so the hero reads as
- *  the app rather than as generic marketing. */
-function BrandMark() {
-  return (
-    <span style={{
-      width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-      display: "grid", placeItems: "center",
-      background: `linear-gradient(135deg, ${T.accent}, ${T.violet})`,
-    }}>
-      <Icon name="radar" size={16} color="#0B0D12" strokeWidth={2.1} />
-    </span>
-  );
-}

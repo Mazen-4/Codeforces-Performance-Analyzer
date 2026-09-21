@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react
 import { m, LazyMotion, domAnimation } from "framer-motion";
 import { AuthProvider, useAuth } from "./lib/auth.jsx";
 import { T, font } from "./lib/theme.js";
+import Logo from "./components/Logo.jsx";
 import { Button, Spinner } from "./components/ui.jsx";
 import { lazy, Suspense } from "react";
 import Landing from "./pages/Landing.jsx";
@@ -127,15 +128,9 @@ function Nav() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         gap: 16,
       }}>
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10,
+        <Link to="/" style={{ display: "flex", alignItems: "center",
                               textDecoration: "none", color: T.text }}>
-          <div style={{
-            width: 27, height: 27, borderRadius: 8,
-            background: `linear-gradient(135deg, ${T.accent}, ${T.violet})`,
-          }} />
-          <span style={{ fontWeight: 750, fontSize: 15.5, letterSpacing: -0.3 }}>
-            Codeforces Analyzer
-          </span>
+          <Logo size={28} textSize={16} />
         </Link>
 
         <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
