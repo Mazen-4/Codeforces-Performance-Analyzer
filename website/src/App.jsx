@@ -3,11 +3,25 @@ import { m, LazyMotion, domAnimation } from "framer-motion";
 import { AuthProvider, useAuth } from "./lib/auth.jsx";
 import { T, font } from "./lib/theme.js";
 import { Button, Spinner } from "./components/ui.jsx";
+import { lazy, Suspense } from "react";
 import Landing from "./pages/Landing.jsx";
-import { Login, Signup } from "./pages/Auth.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import Profile from "./pages/Profile.jsx";
-import Admin from "./pages/Admin.jsx";
+
+// Route-level code splitting. A first-time visitor lands on the marketing page
+// and should not download the admin table, the profile forms or the results
+// view to see it. Landing stays eager because it IS the first paint.
+const Login     = lazy(() => import("./pages/Auth.jsx").then(m => ({ default: m.Login })));
+const Signup    = lazy(() => import("./pages/Auth.jsx").then(m => ({ default: m.Signup })));
+const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
+const Profile   = lazy(() => import("./pages/Profile.jsx"));
+const Admin     = lazy(() => import("./pages/Admin.jsx"));
+
+function PageFallback() {
+  return (
+    <div style={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
+      <Spinner size={22} color={T.accent} />
+    </div>
+  );
+}
 
 export default function App() {
   return (
@@ -38,6 +52,7 @@ function Shell() {
     <div style={{ minHeight: "100vh", background: T.bg, color: T.text,
                   fontFamily: font.sans }}>
       <Nav />
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<HomeRoute />} />
         <Route path="/login"  element={<GuestOnly><Login /></GuestOnly>} />
@@ -47,6 +62,7 @@ function Shell() {
         <Route path="/admin"     element={<AdminOnly><Admin /></AdminOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </div>
   );
 }
