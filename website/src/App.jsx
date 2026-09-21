@@ -3,6 +3,9 @@ import { m, LazyMotion, domAnimation } from "framer-motion";
 import { AuthProvider, useAuth } from "./lib/auth.jsx";
 import { T, font } from "./lib/theme.js";
 import Logo from "./components/Logo.jsx";
+import Icon from "./components/Icon.jsx";
+import { UpgradeProvider, useUpgrade } from "./lib/upgrade.jsx";
+import UpgradeGate from "./components/UpgradeGate.jsx";
 import { Button, Spinner } from "./components/ui.jsx";
 import { lazy, Suspense } from "react";
 import Landing from "./pages/Landing.jsx";
@@ -31,9 +34,11 @@ export default function App() {
           out of the initial bundle: it is fetched once, in parallel, instead of
           blocking first paint. */}
       <LazyMotion features={domAnimation} strict>
-        <BrowserRouter>
-          <Shell />
-        </BrowserRouter>
+        <UpgradeProvider>
+          <BrowserRouter>
+            <Shell />
+          </BrowserRouter>
+        </UpgradeProvider>
       </LazyMotion>
     </AuthProvider>
   );
@@ -64,8 +69,14 @@ function Shell() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      <GlobalUpgradeGate />
     </div>
   );
+}
+
+function GlobalUpgradeGate() {
+  const { open, hide } = useUpgrade();
+  return <UpgradeGate open={open} onClose={hide} onUpgrade={hide} />;
 }
 
 function HomeRoute() {
@@ -139,6 +150,7 @@ function Nav() {
               {link("/dashboard", "Analyse")}
               {isAdmin && link("/admin", "Admin")}
               {link("/profile", "Profile")}
+              {user.plan !== "pro" && <PlusButton />}
               <Button size="sm" variant="ghost" onClick={logout}
                       style={{ marginLeft: 6 }}>
                 Sign out
@@ -153,5 +165,46 @@ function Nav() {
         </nav>
       </div>
     </m.header>
+  );
+}
+
+/** Nav button opening the Plus screen. Shown only to accounts that are not
+ *  already on Plus — selling someone what they have is just noise. */
+function PlusButton() {
+  const { show } = useUpgrade();
+  return (
+    <m.button
+      onClick={show}
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.97 }}
+      aria-label="See what Plus includes"
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 7,
+        padding: "7px 13px", marginLeft: 4, borderRadius: 8,
+        cursor: "pointer", fontFamily: font.sans,
+        fontSize: 13.5, fontWeight: 650, color: T.text,
+        background: `linear-gradient(135deg, ${T.accent}26, ${T.violet}26)`,
+        border: `1px solid ${T.accent}55`,
+        position: "relative", overflow: "hidden",
+      }}
+    >
+      {/* A slow sheen, so the button reads as the one premium affordance in
+          the bar without resorting to a constant pulse. */}
+      <m.span
+        aria-hidden
+        animate={{ x: ["-130%", "180%"] }}
+        transition={{ duration: 3.4, repeat: Infinity, repeatDelay: 3.2,
+                      ease: "easeInOut" }}
+        style={{
+          position: "absolute", top: 0, bottom: 0, width: "40%",
+          background: `linear-gradient(100deg, transparent, ${T.text}1f, transparent)`,
+          pointerEvents: "none",
+        }}
+      />
+      <span style={{ color: T.violet, display: "flex" }}>
+        <Icon name="diamond" size={14} strokeWidth={1.9} />
+      </span>
+      Plus
+    </m.button>
   );
 }

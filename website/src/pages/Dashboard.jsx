@@ -8,7 +8,8 @@ import { Button, Input, Card, Spinner, Badge, Toast } from "../components/ui.jsx
 import Results from "../components/Results.jsx";
 import Compare from "../components/Compare.jsx";
 import ClockWarning, { useClockCheck } from "../components/ClockWarning.jsx";
-import UpgradeGate, { shouldShowUpgrade } from "../components/UpgradeGate.jsx";
+import { shouldShowUpgrade } from "../components/UpgradeGate.jsx";
+import { useUpgrade } from "../lib/upgrade.jsx";
 import { tagInfo } from "../lib/copy.js";
 import Icon, { IconTile } from "../components/Icon.jsx";
 
@@ -32,17 +33,16 @@ export default function Dashboard() {
   const [compareWith, setCompareWith] = useState(null);
   // id of the search row created by the run currently on screen
   const [lastRunId, setLastRunId] = useState(null);
-  const [showUpgrade, setShowUpgrade] = useState(false);
   // The post-login Plus screen, shown to free accounts at most once a week.
-  const [gateOpen, setGateOpen] = useState(false);
+  const upgrade = useUpgrade();
   useEffect(() => {
     if (shouldShowUpgrade(user)) {
       // A beat after the dashboard paints, so it arrives as a moment rather
       // than blocking the page the user asked for.
-      const t = setTimeout(() => setGateOpen(true), 700);
+      const t = setTimeout(() => upgrade.show(), 700);
       return () => clearTimeout(t);
     }
-  }, [user]);
+  }, [user, upgrade]);
   // Set when the view is a stored run rather than a fresh one.
   const [viewingSaved, setViewingSaved] = useState(null);
   const [loadingSaved, setLoadingSaved] = useState(null);
@@ -328,7 +328,7 @@ export default function Dashboard() {
                 userRating={data?.recommendation?.recommendation?.cf_rating
                          ?? data?.cf_rating ?? null}
                 isPro={user?.plan === "pro"}
-                onUpgrade={() => setShowUpgrade(true)}
+                onUpgrade={upgrade.show}
               />
             </div>
           </m.div>
@@ -386,17 +386,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <UpgradeGate
-        open={gateOpen}
-        onClose={() => setGateOpen(false)}
-        onUpgrade={() => { setGateOpen(false); setShowUpgrade(true); }}
-      />
-
-      <AnimatePresence>
-        {showUpgrade && (
-          <UpgradeNote onClose={() => setShowUpgrade(false)} />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -444,48 +433,6 @@ function CompareBar({ options, selected, onSelect }) {
 }
 
 
-/** Shown when a free account taps a Pro-only control. */
-function UpgradeNote({ onClose }) {
-  return (
-    <m.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 160, display: "grid",
-        placeItems: "center", padding: 20,
-        background: "rgba(3,4,6,.78)", backdropFilter: "blur(6px)",
-      }}
-    >
-      <m.div
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%", maxWidth: 420, background: T.surface,
-          border: `1px solid ${T.borderHi}`, borderRadius: 16, padding: 28,
-          boxShadow: "0 30px 70px rgba(0,0,0,.6)",
-        }}
-      >
-        <Badge color={T.violet}>Pro</Badge>
-        <h3 style={{ fontSize: 20, fontWeight: 750, margin: "14px 0 10px" }}>
-          The full problem list
-        </h3>
-        <p style={{ color: T.textDim, fontSize: 14.5, lineHeight: 1.7, margin: 0 }}>
-          Pro opens every recommendation, not just the top twelve, and adds
-          sorting and filtering by topic and rating so you can build a session
-          around exactly what you want to practise.
-        </p>
-        <p style={{ color: T.textFaint, fontSize: 13, lineHeight: 1.6,
-                    margin: "14px 0 22px" }}>
-          Pro is not on sale yet. This is a preview of what it will include.
-        </p>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button variant="subtle" onClick={onClose}>Got it</Button>
-        </div>
-      </m.div>
-    </m.div>
-  );
-}
 
 /* ── Landing state: stats + history ──────────────────────────────────────── */
 
