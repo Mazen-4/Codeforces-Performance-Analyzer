@@ -11,7 +11,22 @@ const { Pool } = pg;
 let pool = null;
 
 export function databaseUrl() {
-  return (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL || "").trim();
+  const priv = (process.env.DATABASE_URL || "").trim();
+  const pub  = (process.env.DATABASE_PUBLIC_URL || "").trim();
+
+  // postgres.railway.internal only resolves inside Railway's own network.
+  // `railway run` injects that private URL (and the RAILWAY_* vars) into a
+  // process running on a laptop, where it fails with ENOTFOUND — so those
+  // vars cannot be used to tell "deployed" from "local" apart.
+  //
+  // RAILWAY_PRIVATE_DOMAIN is set only in a deployed container, which makes it
+  // a reliable signal. When we are not deployed and a public URL exists,
+  // prefer it.
+  const deployed = Boolean(process.env.RAILWAY_PRIVATE_DOMAIN);
+  const privateHost = /\.railway\.internal/.test(priv);
+
+  if (privateHost && !deployed && pub) return pub;
+  return priv || pub;
 }
 
 export function dbEnabled() {
