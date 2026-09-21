@@ -15,6 +15,7 @@ import { attachUser, pruneExpired, requireAuth } from "./middleware/auth.js";
 import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
+import paymentRoutes from "./routes/payments.js";
 
 dotenv.config();
 
@@ -100,6 +101,7 @@ if (ACCOUNTS_ENABLED) {
   app.use("/api/auth/signup", authLimiter);
   app.use("/api/auth", authRoutes);
   app.use("/api/admin", adminRoutes);
+app.use("/api/payments", paymentRoutes);
 }
 
 // The ML pipeline spawns a Python process per call, so it must not be a free

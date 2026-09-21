@@ -392,3 +392,74 @@ router.put("/coach", async (req, res) => {
     res.status(500).json({ error: "Could not save that." });
   }
 });
+
+/* ── InstaPay payments ───────────────────────────────────────────────────── */
+
+router.get("/payments", async (req, res) => {
+  const status = ["pending", "approved", "rejected"].includes(req.query.status)
+    ? req.query.status : "pending";
+  try {
+    const { rows } = await query(
+      `SELECT p.id, p.plan_key, p.months, p.amount, p.currency, p.status,
+              p.instapay_reference, p.extracted, p.checks, p.auto_verdict,
+              p.reasons, p.created_at, p.reviewed_at, p.review_note,
+              a.email, a.cf_handle, a.plus_expires_at
+         FROM payments p
+         JOIN accounts a ON a.id = p.account_id
+        WHERE p.status = $1
+        ORDER BY p.created_at DESC
+        LIMIT 100`, [status]);
+    const { rows: counts } = await query(
+      `SELECT status, count(*)::int AS n FROM payments GROUP BY status`);
+    const { rows: revenue } = await query(
+      `SELECT coalesce(sum(amount),0)::numeric AS total,
+              coalesce(sum(amount) FILTER (
+                WHERE created_at > now() - interval '30 days'),0)::numeric AS last_30d
+         FROM payments WHERE status = 'approved'`);
+    res.json({
+      payments: rows,
+      counts: Object.fromEntries(counts.map(c => [c.status, c.n])),
+      revenue: {
+        total: Number(revenue[0].total),
+        last_30d: Number(revenue[0].last_30d),
+      },
+    });
+  } catch (err) {
+    console.error("list payments failed:", err.message);
+    res.status(500).json({ error: "Could not load payments." });
+  }
+});
+
+router.post("/payments/:id/:action", async (req, res) => {
+  const id = Number(req.params.id);
+  const action = req.params.action;
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "Bad id" });
+  if (!["approve", "reject"].includes(action)) {
+    return res.status(400).json({ error: "Unknown action" });
+  }
+  const note = String(req.body?.note || "").slice(0, 400) || null;
+
+  try {
+    // Only a pending payment can be decided, so a double click cannot grant
+    // two terms for one transfer.
+    const { rows } = await query(
+      `UPDATE payments
+          SET status = $2, reviewed_by = $3, reviewed_at = now(), review_note = $4
+        WHERE id = $1 AND status = 'pending'
+        RETURNING account_id, months`,
+      [id, action === "approve" ? "approved" : "rejected", req.user.id, note]);
+
+    if (!rows.length) {
+      return res.status(409).json({ error: "That payment was already reviewed." });
+    }
+
+    if (action === "approve") {
+      const { grantPlus } = await import("./payments.js");
+      await grantPlus(rows[0].account_id, rows[0].months);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("review payment failed:", err.message);
+    res.status(500).json({ error: "Could not record that decision." });
+  }
+});

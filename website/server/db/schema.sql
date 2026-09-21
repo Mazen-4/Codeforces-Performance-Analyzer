@@ -151,3 +151,52 @@ CREATE TABLE IF NOT EXISTS coach_uses (
 );
 
 CREATE INDEX IF NOT EXISTS idx_coach_uses_account ON coach_uses(account_id);
+
+
+-- ─── InstaPay subscriptions ─────────────────────────────────────────────────
+-- Plus is sold as fixed-length passes paid by InstaPay transfer. InstaPay has
+-- no recurring billing, so each verified transfer adds a term to the account's
+-- expiry rather than starting a subscription that renews itself.
+CREATE TABLE IF NOT EXISTS payments (
+    id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account_id        UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    plan_key          TEXT NOT NULL,              -- monthly | quarterly | biannual
+    months            INTEGER NOT NULL,
+    amount            NUMERIC(10,2) NOT NULL,
+    currency          TEXT NOT NULL DEFAULT 'EGP',
+    discount_code_id  BIGINT REFERENCES discount_codes(id) ON DELETE SET NULL,
+    percent_off       INTEGER,
+
+    status            TEXT NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending','approved','rejected')),
+
+    -- The reference printed on the InstaPay receipt. Unique across every
+    -- non-rejected row: one transfer can only ever buy one term.
+    instapay_reference TEXT,
+
+    -- What the verifier read off the screenshot, and how it judged it.
+    extracted         JSONB,
+    checks            JSONB,
+    auto_verdict      TEXT,                       -- verified | needs_review | rejected
+    reasons           JSONB,
+
+    screenshot_mime   TEXT,
+    screenshot_bytes  INTEGER,
+
+    reviewed_by       UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    reviewed_at       TIMESTAMPTZ,
+    review_note       TEXT,
+
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- A reference may be reused only if every previous use was rejected.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_reference_live
+    ON payments (instapay_reference)
+    WHERE instapay_reference IS NOT NULL AND status <> 'rejected';
+
+CREATE INDEX IF NOT EXISTS idx_payments_account ON payments(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_pending ON payments(status) WHERE status = 'pending';
+
+-- When Plus lapses. NULL means the account has never had it.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS plus_expires_at TIMESTAMPTZ;
