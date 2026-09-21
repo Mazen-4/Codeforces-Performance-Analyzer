@@ -25,7 +25,15 @@ function useTags(data) {
         : (v?.strength ?? v?.user_strength ?? v?.score ?? 0);
       score = Number(score) || 0;
       if (score > 0 && score <= 1.0001) score *= 100;   // 0–1 float form
-      return { key, ...tagInfo(key), score: Math.max(0, Math.min(100, score)) };
+      const attempted = typeof v === "object" ? Number(v?.attempted ?? 0) : 0;
+      const solved    = typeof v === "object" ? Number(v?.solved ?? 0) : 0;
+      return {
+        key, ...tagInfo(key),
+        score: Math.max(0, Math.min(100, score)),
+        attempted, solved,
+        // A topic you have never opened is not a weakness, it is a blank.
+        untouched: attempted === 0,
+      };
     });
     return rows.sort((a, b) => a.score - b.score);
   }, [data]);
@@ -35,7 +43,14 @@ export default function Results({ data, handle, userRating, isPro, onUpgrade }) 
   const tags = useTags(data);
   if (!tags.length) return null;
 
-  const weakest = tags.slice(0, 4);
+  // "Where to spend your next sessions" must rank real weaknesses first.
+  // Sorting on score alone always surfaced untouched advanced topics: a
+  // 1020-rated user was told to prioritise max-flow over dynamic programming
+  // purely because they had never opened it. Topics with actual attempts come
+  // first; untouched ones are offered afterwards as something new to start.
+  const attemptedTags = tags.filter((t) => !t.untouched);
+  const untouchedTags = tags.filter((t) => t.untouched);
+  const weakest = [...attemptedTags, ...untouchedTags].slice(0, 4);
   const strongest = [...tags].reverse().slice(0, 3);
   const avg = tags.reduce((s, t) => s + t.score, 0) / tags.length;
 
@@ -128,10 +143,23 @@ function FocusList({ tags }) {
             >
               <div style={{ display: "flex", justifyContent: "space-between",
                             alignItems: "baseline", marginBottom: 6, gap: 12 }}>
-                <span style={{ fontWeight: 650, fontSize: 15 }}>{t.name}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 650, fontSize: 15 }}>{t.name}</span>
+                  {t.untouched && (
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3,
+                      padding: "2px 7px", borderRadius: 999, color: T.textDim,
+                      background: T.bgAlt, border: `1px solid ${T.border}`,
+                      textTransform: "uppercase",
+                    }}>
+                      not started
+                    </span>
+                  )}
+                </span>
                 <span style={{ fontFamily: font.mono, fontSize: 13,
-                               color: b.color, fontWeight: 700 }}>
-                  {Math.round(t.score)}
+                               color: t.untouched ? T.textFaint : b.color,
+                               fontWeight: 700 }}>
+                  {t.untouched ? "—" : Math.round(t.score)}
                 </span>
               </div>
               <div style={{ height: 7, background: T.bgAlt, borderRadius: 999,
@@ -148,6 +176,11 @@ function FocusList({ tags }) {
               </div>
               <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 7,
                             lineHeight: 1.5 }}>
+                {t.untouched && (
+                  <span style={{ color: T.textDim }}>
+                    You have not attempted this yet.{" "}
+                  </span>
+                )}
                 {t.blurb}
               </div>
             </m.div>
@@ -219,7 +252,10 @@ function StrengthsRow({ tags }) {
 }
 
 function AllTopics({ tags }) {
-  const ordered = [...tags].sort((a, b) => b.score - a.score);
+  const ordered = [...tags].sort((a, b) => {
+    if (a.untouched !== b.untouched) return a.untouched ? 1 : -1;
+    return b.score - a.score;
+  });
   return (
     <Card>
       <CardTitle
@@ -243,20 +279,28 @@ function AllTopics({ tags }) {
                 background: i % 2 ? "transparent" : T.bgAlt + "80",
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 550 }}>{t.name}</span>
+              <span style={{ fontSize: 14, fontWeight: 550,
+                             color: t.untouched ? T.textDim : T.text }}>
+                {t.name}
+              </span>
               <div style={{ height: 5, background: T.bgAlt, borderRadius: 999 }}>
-                <m.div
-                  initial={{ scaleX: 0 }} animate={{ scaleX: t.score / 100 }}
-                  transition={{ duration: 0.7, delay: 0.15 + Math.min(i * 0.02, 0.3) }}
-                  style={{ height: "100%", width: "100%", background: b.color,
-                           borderRadius: 999, transformOrigin: "left center" }}
-                />
+                {!t.untouched && (
+                  <m.div
+                    initial={{ scaleX: 0 }} animate={{ scaleX: t.score / 100 }}
+                    transition={{ duration: 0.7, delay: 0.15 + Math.min(i * 0.02, 0.3) }}
+                    style={{ height: "100%", width: "100%", background: b.color,
+                             borderRadius: 999, transformOrigin: "left center" }}
+                  />
+                )}
               </div>
               <span style={{
-                fontFamily: font.mono, fontSize: 12.5, color: b.color,
+                fontFamily: font.mono, fontSize: 12.5,
+                color: t.untouched ? T.textFaint : b.color,
                 fontWeight: 700, minWidth: 58, textAlign: "right",
               }}>
-                {Math.round(t.score)} · {b.label}
+                {/* A topic never attempted has no score to report. Showing
+                    "0 · Needs work" read as a failure rather than a blank. */}
+                {t.untouched ? "not started" : `${Math.round(t.score)} · ${b.label}`}
               </span>
             </m.div>
           );
