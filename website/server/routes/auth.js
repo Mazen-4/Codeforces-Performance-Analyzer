@@ -10,7 +10,7 @@ import {
   recentFailures, recordAttempt,
 } from "../middleware/auth.js";
 import {
-  handleChangeWindow, otherHandleWindow, waitMessage,
+  handleChangeWindow, otherHandleWindow, waitMessage, OWN_HANDLE_PER_WEEK,
 } from "../services/quotas.js";
 import {
   sendWindow, recordSend, issueToken, consumeToken, recordFailedAttempt,
@@ -73,6 +73,9 @@ const publicUser = (u) => ({
   limits: u.role === "admin" ? null : {
     handle_change: handleChangeWindow(u),
     other_handle:  otherHandleWindow(u),
+    // The allowance only; how much is left needs a query, so the dashboard
+    // reads that from the analyse response instead.
+    own_handle_per_week: OWN_HANDLE_PER_WEEK[u.plan === "pro" ? "pro" : "free"],
   },
 });
 

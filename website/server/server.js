@@ -18,6 +18,7 @@ import adminRoutes from "./routes/admin.js";
 import paymentRoutes from "./routes/payments.js";
 import {
   otherHandleWindow, waitMessage, OTHER_HANDLE_DAYS,
+  ownHandleWindow, OWN_HANDLE_GAP_MS,
 } from "./services/quotas.js";
 import { resourceLinesFor } from "./services/resources.js";
 
@@ -458,6 +459,33 @@ app.post("/api/coach", async (req, res) => {
       return res.status(402).json({
         error: "The AI Coach is part of Plus.",
         code: "PLUS_ONLY",
+      });
+    }
+
+    // One plan per analysis. The lookup above already returns a stored plan
+    // rather than writing a second, but a request with no run_id would slip
+    // past it and generate unmetered -- so a run must be named, and it must
+    // be one this account owns.
+    if (!Number.isInteger(runKey) || runKey <= 0) {
+      return res.status(400).json({
+        error: "Run an analysis first — a plan is built from one.",
+        code: "RUN_REQUIRED",
+      });
+    }
+    const { rows: owned } = await query(
+      `SELECT coach_plan FROM searches WHERE id = $1 AND account_id = $2`,
+      [runKey, req.user.id]);
+    if (!owned.length) {
+      return res.status(404).json({
+        error: "That analysis was not found.", code: "RUN_NOT_FOUND",
+      });
+    }
+    if (owned[0].coach_plan) {
+      // Unreachable in practice (the lookup above returns it), but a second
+      // plan for one analysis must never be written even if that changes.
+      return res.status(409).json({
+        error: "This analysis already has a plan. Run a fresh analysis for a new one.",
+        code: "PLAN_EXISTS",
       });
     }
   }
@@ -917,6 +945,35 @@ app.get("/api/ml/analyze/:handle", requireAccurateClock, async (req, res) => {
       }
       spendOtherHandleRun = true;
     } else {
+      // Own handle: 3 runs a week on Plus, 1 on free, and at least 24h
+      // between them. A rating barely moves inside a day, so back-to-back
+      // runs spend compute to show the same numbers again.
+      const { rows: recent } = await query(
+        `SELECT searched_at FROM searches
+          WHERE account_id = $1 AND ok
+            AND lower(cf_handle) = lower($2)
+            AND searched_at > now() - interval '7 days'
+          ORDER BY searched_at DESC`,
+        [req.user.id, req.user.cf_handle]);
+      const w = ownHandleWindow(req.user, recent.map(r => r.searched_at));
+      if (!w.allowed) {
+        const hours = Math.max(1, Math.ceil(w.retry_after_seconds / 3600));
+        return res.status(429).json({
+          error: w.reason === "TOO_SOON"
+            ? `You can analyse your own handle once every 24 hours. `
+              + `Try again in ${hours} hour${hours === 1 ? "" : "s"}.`
+            : (w.allowance === 1
+                ? "You have used this week's analysis."
+                : `You have used all ${w.allowance} of this week's analyses.`)
+              + (w.plan === "pro" ? "" : " Plus raises this to 3 a week."),
+          code: w.reason,
+          next_at: w.next_at,
+          retry_after_seconds: w.retry_after_seconds,
+          used: w.used,
+          allowance: w.allowance,
+          plan: w.plan,
+        });
+      }
       // Use the stored spelling so history rows stay consistent.
       handle = req.user.cf_handle;
     }

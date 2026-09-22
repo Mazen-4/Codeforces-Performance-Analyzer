@@ -252,7 +252,9 @@ export default function Dashboard() {
                 {user?.cf_handle}
               </div>
               <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 7 }}>
-                Unlimited runs on your own handle.
+                {user?.limits?.own_handle_per_week
+                  ? `${user.limits.own_handle_per_week} analyses a week, at least 24h apart.`
+                  : "Unlimited runs on your own handle."}
               </div>
               </div>
             </div>
