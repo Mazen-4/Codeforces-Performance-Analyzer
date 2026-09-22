@@ -517,7 +517,7 @@ app.post("/api/coach", async (req, res) => {
 USER PROFILE
 Handle: ${handle} | Max rating: ${estimatedRating} | Total problems solved: ${totalSolved}
 
-WEAK TAGS (peer-benchmarked — these are where the user falls behind similar-rated players):
+LOWEST-SCORING TAGS (peer-benchmarked 0-100; these are this user's weakest, which does NOT mean they are weak in absolute terms — read the numbers before describing them):
 ${weakSection}
 
 STRONG TAGS (skip these — user already outperforms peers here):
@@ -553,6 +553,7 @@ PLAN RULES — follow every one strictly:
 9. FOCUS = one concrete micro-skill (e.g. "spot when a problem reduces to prefix sums", not "study arrays").
 10. CHECK = a verifiable thing the student can test on themselves by the end of the day, phrased so the answer is yes or no. Good: "You can write a 1D DP from an empty file in under 10 minutes without looking anything up." Bad: "Understand DP better."
 11. Write to the student as "you". Be direct and encouraging without inflating what a week achieves.
+12. Describe the scores honestly. A tag at 80+/100 is a STRENGTH even if it is the user's lowest — for a student like that, frame the day as sharpening an already-good topic or pushing into harder problems within it, never as "under-trained" or "falling behind". Only call a tag weak when its score is genuinely low (under about 50). Getting this wrong makes the whole plan read as if it did not look at the data.
 
 Output SEVEN days, Day 1 to Day 7. A plan with fewer than seven days is wrong.
 
