@@ -185,3 +185,53 @@ export async function passwordResetWindow(accountId) {
 export async function recordPasswordReset(accountId) {
   await query(`INSERT INTO password_resets (account_id) VALUES ($1)`, [accountId]);
 }
+
+/* ── address plausibility ────────────────────────────────────────────────── */
+
+import { promises as dnsPromises } from "node:dns";
+
+// Domains that are reserved by RFC or exist only inside a network. These can
+// never receive mail from the internet, so they are refused without a lookup.
+const UNROUTABLE_TLDS = new Set([
+  "invalid", "test", "example", "local", "localhost", "localdomain", "internal",
+]);
+
+/**
+ * Can this domain receive mail at all?
+ *
+ * This proves a domain accepts mail, NOT that the mailbox exists -- `local.com`
+ * is a real domain with Google MX records, so `anything@local.com` passes here
+ * and is caught only by the verification code. The check exists to reject
+ * typos and invented domains early, before spending a send on them.
+ *
+ * A DNS failure resolves as "allowed": refusing a real signup because a
+ * resolver blipped is worse than accepting an address the code will catch.
+ */
+export async function domainCanReceiveMail(email) {
+  const domain = String(email || "").split("@")[1]?.toLowerCase().trim();
+  if (!domain || !domain.includes(".")) {
+    return { ok: false, reason: "NO_DOMAIN" };
+  }
+  const tld = domain.split(".").pop();
+  if (UNROUTABLE_TLDS.has(tld)) {
+    return { ok: false, reason: "UNROUTABLE_TLD" };
+  }
+  try {
+    const mx = await dnsPromises.resolveMx(domain);
+    if (mx && mx.length && mx.some(r => r.exchange)) return { ok: true };
+  } catch { /* fall through to the A-record check */ }
+
+  // A domain with no MX but an A record still accepts mail by the SMTP
+  // fallback rule, so it is not rejected.
+  try {
+    const a = await dnsPromises.resolve4(domain);
+    if (a && a.length) return { ok: true };
+  } catch { /* neither MX nor A */ }
+
+  try {
+    await dnsPromises.resolve6(domain);
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "NO_MAIL_HOST" };
+  }
+}

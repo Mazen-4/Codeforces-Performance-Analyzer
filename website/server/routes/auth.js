@@ -15,8 +15,10 @@ import {
 import {
   sendWindow, recordSend, issueToken, consumeToken, recordFailedAttempt,
   passwordResetWindow, recordPasswordReset,
-  RESEND_COOLDOWN_MS, SENDS_PER_DAY,
+  RESEND_COOLDOWN_MS, SENDS_PER_DAY, domainCanReceiveMail, newCode,
+  CODE_TTL_MS, MAX_CODE_ATTEMPTS,
 } from "../services/emailAuth.js";
+import { createHash } from "node:crypto";
 import {
   sendVerificationCode, sendPasswordReset, mailConfigured,
 } from "../services/mail.js";
@@ -89,6 +91,10 @@ async function codeforcesHandleExists(handle) {
   }
 }
 
+const sha256 = (v) => createHash("sha256").update(String(v)).digest("hex");
+
+/** Create a pending signup and email its code. No account exists until the
+ *  code is confirmed, so an address nobody controls leaves nothing behind. */
 router.post("/signup", async (req, res) => {
   const parsed = signupSchema.safeParse(req.body || {});
   if (!parsed.success) {
@@ -104,56 +110,191 @@ router.post("/signup", async (req, res) => {
       return res.status(409).json({ error: "An account with this email already exists" });
     }
 
+    // Reject domains that cannot receive mail before spending a send on them.
+    // This catches typos and invented domains; it cannot tell whether the
+    // mailbox itself exists, which is what the code proves.
+    const reachable = await domainCanReceiveMail(email);
+    if (!reachable.ok) {
+      return res.status(400).json({
+        error: reachable.reason === "UNROUTABLE_TLD"
+          ? "That domain cannot receive email. Use an address you can open."
+          : "We could not find a mail server for that address. Check the spelling.",
+        code: "EMAIL_UNDELIVERABLE",
+      });
+    }
+
     if (!(await codeforcesHandleExists(cf_handle))) {
       return res.status(400).json({
         error: `Codeforces has no user named "${cf_handle}". Check the spelling.`,
       });
     }
 
+    if (!mailConfigured()) {
+      return res.status(503).json({
+        error: "Sign-up is unavailable right now: we cannot send verification "
+             + "codes. Try again shortly.",
+        code: "MAIL_NOT_CONFIGURED",
+      });
+    }
+
+    // The per-address send limits apply here too, so signup cannot be used to
+    // mail someone repeatedly.
+    const w = await sendWindow(emailLower, "verify");
+    if (!w.allowed) {
+      return res.status(429).json({
+        error: w.reason === "DAILY_LIMIT"
+          ? `That address has already been sent ${SENDS_PER_DAY} codes today.`
+          : `A code was just sent. Wait ${w.retry_after_seconds}s before asking for another.`,
+        code: w.reason,
+        retry_after_seconds: w.retry_after_seconds,
+      });
+    }
+
     const password_hash = await hashPassword(password);
-    // The first account to register becomes the admin, so a fresh deployment
-    // has someone who can reach the admin area without manual SQL.
+    const code = newCode();
+
+    // Upsert: signing up twice with the same address replaces the pending row
+    // and its code rather than erroring, which is what someone retrying after
+    // a mistyped code expects.
+    await query(
+      `INSERT INTO pending_signups
+         (email, email_lower, password_hash, cf_handle, code_hash,
+          terms_version, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6, now() + ($7 || ' milliseconds')::interval)
+       ON CONFLICT (email_lower) DO UPDATE SET
+         email = EXCLUDED.email, password_hash = EXCLUDED.password_hash,
+         cf_handle = EXCLUDED.cf_handle, code_hash = EXCLUDED.code_hash,
+         terms_version = EXCLUDED.terms_version,
+         expires_at = EXCLUDED.expires_at, attempts = 0, created_at = now()`,
+      [email, emailLower, password_hash, cf_handle, sha256(code),
+       TERMS_VERSION, String(CODE_TTL_MS)]);
+
+    const sent = await sendVerificationCode(email, code);
+    await recordSend(null, emailLower, "verify", sent.ok);
+    if (!sent.ok) {
+      // Nothing was created, so the address stays free to try again.
+      await query(`DELETE FROM pending_signups WHERE email_lower = $1`, [emailLower]);
+      return res.status(502).json({
+        error: "We could not send a code to that address. Check it and try again.",
+        code: "SEND_FAILED",
+      });
+    }
+
+    // Deliberately no session: there is no account to sign in to yet.
+    res.status(202).json({
+      pending: true,
+      email,
+      message: "Enter the 6-digit code we sent to finish creating your account.",
+    });
+  } catch (err) {
+    console.error("signup failed:", err.message);
+    res.status(500).json({ error: "Could not start sign-up. Try again." });
+  }
+});
+
+/** Confirm a pending signup's code — this is where the account is created. */
+router.post("/signup/confirm", async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const code  = String(req.body?.code  || "").replace(/\D/g, "");
+  if (!email || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: "Enter the 6-digit code from your email." });
+  }
+
+  try {
+    const { rows } = await query(
+      `SELECT * FROM pending_signups WHERE email_lower = $1`, [email]);
+    const pend = rows[0];
+    if (!pend || new Date(pend.expires_at) < new Date()) {
+      return res.status(400).json({
+        error: "That code has expired. Start sign-up again.",
+        code: "EXPIRED",
+      });
+    }
+    if (pend.attempts >= MAX_CODE_ATTEMPTS) {
+      return res.status(429).json({
+        error: "Too many wrong codes. Start sign-up again.",
+        code: "TOO_MANY_ATTEMPTS",
+      });
+    }
+    if (pend.code_hash !== sha256(code)) {
+      await query(
+        `UPDATE pending_signups SET attempts = attempts + 1 WHERE id = $1`,
+        [pend.id]);
+      return res.status(400).json({
+        error: "That code is not right.", code: "BAD_CODE",
+      });
+    }
+
+    // Race guard: deleting the pending row first means only one request can
+    // proceed to create the account.
+    const claim = await query(
+      `DELETE FROM pending_signups WHERE id = $1 RETURNING id`, [pend.id]);
+    if (!claim.rowCount) {
+      return res.status(409).json({ error: "That code was just used." });
+    }
+
     const { rows: countRows } = await query(`SELECT count(*)::int AS n FROM accounts`);
     const role = countRows[0].n === 0 ? "admin" : "user";
 
-    // New accounts start unverified. The column defaults to true so that
-    // accounts created before verification existed are not locked out; new
-    // rows therefore have to say false explicitly.
-    //
-    // Creating the account records acceptance of the terms, which the sign-up
-    // form states directly above the button.
-    const { rows } = await query(
+    const { rows: made } = await query(
       `INSERT INTO accounts (email, email_lower, password_hash, cf_handle, role,
-                             email_verified, terms_accepted_at,
-                             terms_accepted_version)
-       VALUES ($1, $2, $3, $4, $5, false, now(), $6)
+                             email_verified, email_verified_at,
+                             terms_accepted_at, terms_accepted_version)
+       VALUES ($1,$2,$3,$4,$5, true, now(), now(), $6)
        RETURNING *`,
-      [email, emailLower, password_hash, cf_handle, role, TERMS_VERSION]
-    );
-    const user = rows[0];
+      [pend.email, pend.email_lower, pend.password_hash, pend.cf_handle, role,
+       pend.terms_version || TERMS_VERSION]);
 
-    // Sign them in regardless: an unverified session can reach the dashboard
-    // and the verification screen but not the paid surfaces, which is far
-    // kinder than a dead end if the email is slow to arrive.
+    const user = made[0];
     const token = await createSession(user.id, req);
     res.cookie(COOKIE_NAME, token, cookieOptions());
-
-    // Best effort. A mail failure must not undo a created account, so the
-    // response reports it and the user can resend from the banner.
-    let emailed = false;
-    try {
-      const code = await issueToken(user.id, "verify");
-      const r = await sendVerificationCode(email, code);
-      emailed = r.ok;
-      await recordSend(user.id, emailLower, "verify", r.ok);
-    } catch (err) {
-      console.error("verification send failed:", err.message);
-    }
-
-    res.status(201).json({ user: publicUser(user), verification_sent: emailed });
+    res.status(201).json({ user: publicUser(user) });
   } catch (err) {
-    console.error("signup failed:", err.message);
-    res.status(500).json({ error: "Could not create the account. Try again." });
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "An account with this email already exists" });
+    }
+    console.error("signup confirm failed:", err.message);
+    res.status(500).json({ error: "Could not finish sign-up. Try again." });
+  }
+});
+
+/** Resend the code for a pending signup. */
+router.post("/signup/resend", async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const generic = { ok: true };
+  if (!email) return res.status(400).json({ error: "Enter your email address." });
+
+  const w = await sendWindow(email, "verify");
+  if (!w.allowed) {
+    return res.status(429).json({
+      error: w.reason === "DAILY_LIMIT"
+        ? `You can request ${SENDS_PER_DAY} codes a day. Try again tomorrow.`
+        : `Wait ${w.retry_after_seconds}s before asking for another code.`,
+      code: w.reason,
+      retry_after_seconds: w.retry_after_seconds,
+    });
+  }
+  try {
+    const { rows } = await query(
+      `SELECT * FROM pending_signups WHERE email_lower = $1`, [email]);
+    const pend = rows[0];
+    // Answer the same way whether or not a pending signup exists, so this
+    // cannot be used to discover which addresses are mid-signup.
+    if (!pend) { await recordSend(null, email, "verify", true); return res.json(generic); }
+
+    const code = newCode();
+    await query(
+      `UPDATE pending_signups
+          SET code_hash = $2, attempts = 0,
+              expires_at = now() + ($3 || ' milliseconds')::interval
+        WHERE id = $1`,
+      [pend.id, sha256(code), String(CODE_TTL_MS)]);
+    const sent = await sendVerificationCode(pend.email, code);
+    await recordSend(null, email, "verify", sent.ok);
+    res.json(generic);
+  } catch (err) {
+    console.error("signup resend failed:", err.message);
+    res.json(generic);
   }
 });
 

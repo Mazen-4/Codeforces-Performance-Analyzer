@@ -301,3 +301,27 @@ CREATE INDEX IF NOT EXISTS idx_password_resets_account
 -- reads as "predates the terms" rather than "refused them".
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS terms_accepted_at      TIMESTAMPTZ;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;
+
+-- ── pending signups ─────────────────────────────────────────────────────────
+-- A signup lives here until its code is confirmed; only then is a row created
+-- in `accounts`. This keeps unverified addresses out of the real table, so a
+-- mistyped or fabricated address cannot occupy an email forever and the
+-- account count means something.
+--
+-- The password is stored already hashed, exactly as it would be in accounts:
+-- this row is no more sensitive than the account it becomes.
+CREATE TABLE IF NOT EXISTS pending_signups (
+    id             BIGSERIAL PRIMARY KEY,
+    email          TEXT NOT NULL,
+    email_lower    TEXT NOT NULL UNIQUE,
+    password_hash  TEXT NOT NULL,
+    cf_handle      TEXT NOT NULL,
+    code_hash      TEXT NOT NULL,
+    attempts       INT NOT NULL DEFAULT 0,
+    terms_version  TEXT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at     TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pending_signups_expiry
+    ON pending_signups (expires_at);

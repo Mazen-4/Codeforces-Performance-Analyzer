@@ -32,7 +32,15 @@ export function AuthProvider({ children }) {
     user, ready, accountsEnabled,
     isAdmin: user?.role === "admin",
     async login(body)  { const r = await api.login(body);  setUser(r.user); return r.user; },
-    async signup(body) { const r = await api.signup(body); setUser(r.user); return r.user; },
+    // Signup no longer returns a session: it starts a pending signup and the
+    // account is created when the code is confirmed. Returns the raw response
+    // so the form can move to its code step.
+    async signup(body) { return api.signup(body); },
+    async confirmSignup(email, code) {
+      const r = await api.confirmSignup(email, code);
+      setUser(r.user);
+      return r.user;
+    },
     async logout()     { await api.logout(); setUser(null); },
     setUser,
     refresh,

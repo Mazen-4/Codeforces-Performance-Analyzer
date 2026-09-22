@@ -47,6 +47,10 @@ export const api = {
   changePassword: (body) => request("/api/auth/password", { method: "POST", body }),
 
   // Email verification and password recovery.
+  confirmSignup: (email, code) =>
+    request("/api/auth/signup/confirm", { method: "POST", body: { email, code } }),
+  resendSignupCode: (email) =>
+    request("/api/auth/signup/resend", { method: "POST", body: { email } }),
   verifyStatus: ()     => request("/api/auth/verify/status"),
   verifyEmail:  (code) => request("/api/auth/verify", { method: "POST", body: { code } }),
   verifyResend: ()     => request("/api/auth/verify/resend", { method: "POST" }),
