@@ -278,11 +278,14 @@ app.get("/api/cf/:handle", async (req, res) => {
 
 // Models an admin may select. Restricting to a list means a typo in the admin
 // UI cannot point production at a model that does not exist.
+// Costs are measured from real plans, not estimated: a 7-day plan runs about
+// 3.6k input and 2.5k output tokens, and output is ~78% of the bill.
 const COACH_MODELS = {
-  "claude-opus-5":   { label: "Opus 5",   note: "Most capable. ~2¢ per plan." },
-  "claude-sonnet-5": { label: "Sonnet 5", note: "Cheaper and faster. ~1¢ per plan." },
+  "claude-opus-5":   { label: "Opus 5",   note: "Most capable. ~25¢ per plan." },
+  "claude-sonnet-5": { label: "Sonnet 5", note: "Balanced. ~5¢ per plan." },
+  "claude-haiku-4-5-20251001": { label: "Haiku 4.5", note: "Fastest and cheapest. ~1.6¢ per plan." },
 };
-const DEFAULT_COACH_MODEL = "claude-opus-5";
+const DEFAULT_COACH_MODEL = "claude-sonnet-5";
 
 // How many plans a free account may generate before Plus is required.
 const FREE_COACH_PLANS = 2;
@@ -316,6 +319,59 @@ app.get("/api/coach/config", async (req, res) => {
     label: COACH_MODELS[model]?.label ?? model,
   });
 });
+
+/**
+ * Turn the model's JSON into the HTML the page renders.
+ *
+ * The model used to emit HTML directly, but markup was 41% of every generated
+ * day -- tags like `target="_blank" rel="noopener noreferrer"` rewritten seven
+ * times, billed at output rates. It now writes fields and this builds the
+ * markup for free, which also means the page's structure cannot be broken by
+ * a malformed tag.
+ */
+function renderPlanHtml(raw) {
+  const esc = (v) => String(v ?? "").trim()
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  let days;
+  try {
+    // Tolerate a fenced block: models sometimes wrap JSON in ```json even when
+    // told not to, and refusing a good plan over that would be wasteful.
+    const text = String(raw).replace(/^\s*```(?:json)?/i, "").replace(/```\s*$/, "").trim();
+    const start = text.indexOf("[");
+    const end = text.lastIndexOf("]");
+    if (start === -1 || end === -1) return "";
+    days = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return "";   // caller reports a malformed plan rather than storing one
+  }
+  if (!Array.isArray(days) || !days.length) return "";
+
+  return days.map((d) => {
+    // Only http(s) links are rendered; anything else becomes plain text so a
+    // malformed or injected URL cannot become a live link.
+    const url = /^https?:\/\//i.test(d?.resource_url || "") ? esc(d.resource_url) : null;
+    const title = esc(d?.resource_title);
+    const note = esc(d?.resource_note);
+    const resource = title
+      ? (url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${title}</a>` : title)
+        + (note ? ` — ${note}` : "")
+      : "No resource needed — go straight to the problems.";
+
+    const li = [];
+    if (d?.warmup) li.push(`<li><b>Warm-up:</b> ${esc(d.warmup)}</li>`);
+    if (d?.then)   li.push(`<li><b>Then:</b> ${esc(d.then)}</li>`);
+    if (d?.time)   li.push(`<li><b>Time:</b> ${esc(d.time)}</li>`);
+    if (d?.focus)  li.push(`<li><b>Focus:</b> ${esc(d.focus)}</li>`);
+    li.push(`<li><b>Resource:</b> ${resource}</li>`);
+    if (d?.check)  li.push(`<li><b>Check:</b> ${esc(d.check)}</li>`);
+    if (d?.why)    li.push(`<li><b>Why:</b> ${esc(d.why)}</li>`);
+
+    return `<div class="day"><span class="day-label">Day ${esc(d?.day)}</span> – `
+         + `<strong>${esc(d?.topic)}</strong><ul>${li.join("")}</ul></div>`;
+  }).join("\n");
+}
 
 /**
  * Strip repeated Codeforces problem IDs from a generated plan.
@@ -498,11 +554,18 @@ PLAN RULES — follow every one strictly:
 10. CHECK = a verifiable thing the student can test on themselves by the end of the day, phrased so the answer is yes or no. Good: "You can write a 1D DP from an empty file in under 10 minutes without looking anything up." Bad: "Understand DP better."
 11. Write to the student as "you". Be direct and encouraging without inflating what a week achieves.
 
-Output SEVEN day divs, Day 1 to Day 7. A plan with fewer than seven days is wrong.
+Output SEVEN days, Day 1 to Day 7. A plan with fewer than seven days is wrong.
 
-Format each day exactly like this — nothing else, no markdown, no text outside the divs:
-<div class="day"><span class="day-label">Day N</span> – <strong>Topic</strong><ul><li><b>Warm-up:</b> problem ID (rating)</li><li><b>Then:</b> problem IDs with ratings</li><li><b>Time:</b> realistic range</li><li><b>Focus:</b> one concrete micro-skill</li><li><b>Resource:</b> <a href="URL" target="_blank" rel="noopener noreferrer">Exact Title</a> — why this one, in a few words</li><li><b>Check:</b> a yes/no test the student can run on themselves</li><li><b>Why:</b> one sentence on why the model flagged this tag for this user</li></ul></div>`;
+Return ONLY a JSON array, nothing else — no markdown fences, no prose before or after. The website builds the page from this, so any text outside the array breaks it.
 
+Each element:
+{"day":1,"topic":"Dynamic Programming","warmup":"1woo_A (1300)","then":"1526_C1 (1400), 455_A (1500)","time":"2h 00m – 2h 40m","focus":"spot the state transition before writing code","resource_title":"Errichto — Dynamic Programming lessons","resource_url":"https://www.youtube.com/playlist?list=PLl0KD3g-oDOHpWRyyGBUJ9jmul0lUOD80","resource_note":"builds intuition from zero","check":"can you write a 1D DP from an empty file in under 10 minutes?","why":"dp is your weakest tag at 28% and unlocks the most rating"}
+
+Every field is a plain string except "day", which is a number. Never include HTML. If a tag has no resource, set resource_title to "" and resource_url to "".`;
+
+        // Haiku 4.5 predates adaptive thinking and rejects the field, so the
+        // reasoning options are only sent to models that accept them.
+        const supportsThinking = !/haiku/i.test(coachModel);
         const message = await anthropic.messages.create({
             model: coachModel,
             // max_tokens covers thinking AND the answer. At 4000 with adaptive
@@ -513,12 +576,13 @@ Format each day exactly like this — nothing else, no markdown, no text outside
             // The plan is a judgement task over ML signals, so let the model
             // think; "low" keeps reasoning proportionate to a 7-day schedule
             // and the cost near a cent per plan.
-            thinking: { type: "adaptive" },
             // "low" is the floor the API accepts (low/medium/high/xhigh/max).
-            // Thinking is about 70% of the cost here, so this is as cheap as
-            // the plan gets without dropping adaptive thinking entirely --
-            // which is what keeps the day-to-day progression coherent.
-            output_config: { effort: "low" },
+            // Thinking is roughly 45% of output tokens, so this is as cheap as
+            // a thinking model gets without dropping it entirely -- which is
+            // what keeps the day-to-day progression coherent.
+            ...(supportsThinking
+              ? { thinking: { type: "adaptive" }, output_config: { effort: "low" } }
+              : {}),
             messages: [{ role: "user", content: prompt }],
         });
 
@@ -534,7 +598,17 @@ Format each day exactly like this — nothing else, no markdown, no text outside
         // one plan in three slips a duplicate onto a later day. An instruction
         // cannot guarantee this; a pass over the output can. Later mentions
         // are replaced with a generic prompt so the day still has work in it.
-        plan = dedupeProblemIds(plan);
+        const rendered = renderPlanHtml(plan);
+        // If nothing parsed, the model ignored the format. Report that rather
+        // than storing an empty plan the user has already been charged for.
+        if (!rendered) {
+            console.error("coach output did not parse. first 200 chars:",
+                          plan.slice(0, 200));
+            return res.status(502).json({
+                error: "That plan came back malformed. Try again.",
+            });
+        }
+        plan = dedupeProblemIds(rendered);
 
         if (!plan) {
             // Distinguish "ran out of room" from "said nothing": they need
