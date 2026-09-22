@@ -104,7 +104,11 @@ export default function AdminPayments() {
                     <div style={{ fontSize: 12.5, color: T.textFaint, marginTop: 5 }}>
                       {p.months} month{p.months === 1 ? "" : "s"} ·{" "}
                       <strong style={{ color: T.textDim, fontFamily: font.mono }}>
-                        {Number(p.amount)} {p.currency}
+                        {/* A promo that covered the whole price records a 0
+                            payment; "0 EGP" alone reads like a mistake. */}
+                        {Number(p.amount) === 0
+                          ? "Free (promo)"
+                          : `${Number(p.amount)} ${p.currency}`}
                       </strong>
                       {" "}· {new Date(p.created_at).toLocaleString(undefined,
                         { dateStyle: "medium", timeStyle: "short" })}

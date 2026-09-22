@@ -65,6 +65,10 @@ export const api = {
   siteStats: ()    => request("/api/stats"),
   paymentConfig: () => request("/api/payments/config"),
   submitInstapay: (b) => request("/api/payments/instapay", { method: "POST", body: b }),
+  previewPromo: (plan, code) =>
+    request("/api/payments/promo", { method: "POST", body: { plan, code } }),
+  redeemFree: (plan, code) =>
+    request("/api/payments/redeem-free", { method: "POST", body: { plan, code } }),
   myPayments: ()   => request("/api/payments/mine"),
   adminPayments: (status) => request(`/api/admin/payments?status=${status || "pending"}`),
   adminReviewPayment: (id, action, note) =>

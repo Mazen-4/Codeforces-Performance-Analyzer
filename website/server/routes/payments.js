@@ -9,20 +9,15 @@ import {
   verifyInstapayScreenshot, decodeBase64Image, PLANS, priceFor,
   normalizeReference,
 } from "../services/instapayVerification.js";
+import {
+  lookupPromo, consumePromo, PROMO_MESSAGES, discountAppliesTo,
+} from "../services/promos.js";
 
 const router = express.Router();
 
 const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
 const CURRENCY = String(process.env.INSTAPAY_CURRENCY || "EGP").toUpperCase();
 const HANDLE = String(process.env.INSTAPAY_HANDLE || "").trim();
-
-/** A discount with no plan list covers everything; otherwise only its list. */
-function discountAppliesTo(discount, planKey) {
-  if (!discount?.percent_off) return false;
-  const list = discount.applies_to;
-  if (!Array.isArray(list) || list.length === 0) return true;
-  return list.includes(planKey);
-}
 
 function requireUser(req, res) {
   if (!req.user) {
@@ -34,51 +29,146 @@ function requireUser(req, res) {
 
 /** What the checkout page needs: plans, where to send, and current status. */
 router.get("/config", async (req, res) => {
-  let claimed = null;
-  try {
-    if (req.user) {
-      // A discount the user already claimed applies to whatever they buy next.
-      const { rows } = await query(
-        `SELECT r.percent_off, d.code, d.applies_to
-           FROM discount_redemptions r
-           JOIN discount_codes d ON d.id = r.code_id
-          WHERE r.account_id = $1
-          ORDER BY r.redeemed_at DESC
-          LIMIT 1`, [req.user.id]);
-      if (rows.length) {
-        claimed = {
-          code: rows[0].code,
-          percent_off: rows[0].percent_off,
-          applies_to: rows[0].applies_to,   // null = every plan
-        };
-      }
-    }
-  } catch { /* the page works without it */ }
-
   res.json({
     configured: Boolean(HANDLE),
     handle: HANDLE || null,
     currency: CURRENCY,
-    discount: claimed,
+    // No discount is applied here any more. A promo is entered during
+    // checkout and previewed through /promo, so the price shown is always the
+    // result of a code this person just typed.
+    discount: null,
     plans: Object.values(PLANS).map(p => {
-      const pct = discountAppliesTo(claimed, p.key) ? claimed.percent_off : 0;
-      const price = priceFor(p.key, pct);
-      // What the same term would cost at the monthly rate. This is the term
-      // discount, which exists whether or not a coupon was claimed — sent from
-      // here so the price shown and the price charged come from one source.
       const listPrice = PLANS.monthly.price * p.months;
       return {
         ...p,
-        price_after_discount: price,
-        per_month: Math.round(price / p.months),
-        discounted: pct > 0,
+        price_after_discount: p.price,
+        per_month: Math.round(p.price / p.months),
+        discounted: false,
         list_price: listPrice,
-        saving: Math.max(0, listPrice - price),
+        saving: Math.max(0, listPrice - p.price),
         saving_percent: listPrice > 0
-          ? Math.round((1 - price / listPrice) * 100) : 0,
+          ? Math.round((1 - p.price / listPrice) * 100) : 0,
       };
     }),
   });
+});
+
+/** Preview a promo code against a plan. Consumes nothing. */
+router.post("/promo", async (req, res) => {
+  if (!requireUser(req, res)) return;
+
+  const planKey = String(req.body?.plan || "");
+  const plan = PLANS[planKey];
+  if (!plan) return res.status(400).json({ error: "Choose a plan first." });
+
+  const found = await lookupPromo(req.body?.code, req.user.id);
+  if (!found.ok) {
+    return res.status(400).json({
+      error: PROMO_MESSAGES[found.reason] || "That code cannot be used.",
+      code: found.reason,
+    });
+  }
+  if (!discountAppliesTo(found, planKey)) {
+    // Say which plans it does cover, so the answer is actionable.
+    const names = (found.applies_to || [])
+      .map(k => PLANS[k]?.label).filter(Boolean).join(", ");
+    return res.status(400).json({
+      error: names
+        ? `That code only applies to: ${names}.`
+        : PROMO_MESSAGES.NOT_FOR_PLAN,
+      code: "NOT_FOR_PLAN",
+      applies_to: found.applies_to,
+    });
+  }
+
+  const price = priceFor(planKey, found.percent_off);
+  res.json({
+    ok: true,
+    code: found.code,
+    percent_off: found.percent_off,
+    applies_to: found.applies_to,
+    remaining: found.remaining,
+    plan: planKey,
+    original_price: plan.price,
+    price: price,
+    saving: plan.price - price,
+    // At zero there is nothing to transfer, so checkout skips InstaPay.
+    free: price <= 0,
+  });
+});
+
+/** Redeem a code that covers the whole price. No transfer, immediate access. */
+router.post("/redeem-free", async (req, res) => {
+  if (!requireUser(req, res)) return;
+
+  if (req.user.email_verified === false) {
+    return res.status(403).json({
+      error: "Confirm your email address first.", code: "EMAIL_UNVERIFIED",
+    });
+  }
+
+  const planKey = String(req.body?.plan || "");
+  const plan = PLANS[planKey];
+  if (!plan) return res.status(400).json({ error: "Choose a plan." });
+
+  const found = await lookupPromo(req.body?.code, req.user.id);
+  if (!found.ok) {
+    return res.status(400).json({
+      error: PROMO_MESSAGES[found.reason] || "That code cannot be used.",
+      code: found.reason,
+    });
+  }
+  if (!discountAppliesTo(found, planKey)) {
+    return res.status(400).json({
+      error: PROMO_MESSAGES.NOT_FOR_PLAN, code: "NOT_FOR_PLAN",
+    });
+  }
+
+  // The price is recomputed from the code, never taken from the request: a
+  // client claiming "this is free" must not be believed.
+  const price = priceFor(planKey, found.percent_off);
+  if (price > 0) {
+    return res.status(400).json({
+      error: "That code does not cover the whole price. Pay the rest by InstaPay.",
+      code: "NOT_FREE",
+      price,
+    });
+  }
+
+  const spent = await consumePromo(found.id, req.user.id, found.percent_off);
+  if (!spent.ok) {
+    return res.status(409).json({
+      error: PROMO_MESSAGES[spent.reason] || "That code could not be used.",
+      code: spent.reason,
+    });
+  }
+
+  try {
+    // Recorded as an approved payment of 0 so a free grant appears in the
+    // admin list and the user's history alongside every other purchase.
+    const { rows } = await query(
+      `INSERT INTO payments
+         (account_id, plan_key, months, amount, currency, discount_code_id,
+          percent_off, status, auto_verdict, reasons, reviewed_at)
+       VALUES ($1,$2,$3,0,$4,$5,$6,'approved','promo',$7::jsonb, now())
+       RETURNING id, created_at`,
+      [req.user.id, planKey, plan.months, CURRENCY, found.id,
+       found.percent_off,
+       JSON.stringify([`Covered in full by promo code ${found.code}.`])]);
+
+    await grantPlus(req.user.id, plan.months);
+
+    res.json({
+      status: "approved",
+      free: true,
+      payment_id: rows[0].id,
+      months: plan.months,
+      code: found.code,
+    });
+  } catch (err) {
+    console.error("free redeem failed:", err.message);
+    res.status(500).json({ error: "Could not grant access. Contact us." });
+  }
 });
 
 /** Submit a transfer receipt. */
@@ -154,28 +244,43 @@ router.post("/instapay", async (req, res) => {
     }
   } catch { /* fall through rather than block a genuine payment */ }
 
-  // The price must be recomputed here from the user's own claimed discount.
-  // Trusting an amount from the request would let anyone pay 1 EGP.
-  let percentOff = 0, discountId = null;
-  try {
-    const { rows } = await query(
-      `SELECT r.percent_off, r.code_id, d.applies_to
-         FROM discount_redemptions r
-         JOIN discount_codes d ON d.id = r.code_id
-        WHERE r.account_id = $1
-        ORDER BY r.redeemed_at DESC LIMIT 1`, [req.user.id]);
-    if (rows.length) {
-      const claimed = { percent_off: rows[0].percent_off, applies_to: rows[0].applies_to };
-      // Scoped codes only reduce the plans they name. A user holding a
-      // 6-month code cannot pay the discounted figure for a 1-month term.
-      if (discountAppliesTo(claimed, planKey)) {
-        percentOff = rows[0].percent_off;
-        discountId = rows[0].code_id;
-      }
+  // The promo is re-read from the database and the price recomputed here.
+  // Nothing about the discount is taken from the request: a client claiming
+  // "90% off" must not be believed.
+  //
+  // The code is NOT consumed yet -- that happens once the payment is recorded,
+  // so an abandoned or rejected checkout does not burn a limited use.
+  let percentOff = 0, discountId = null, promo = null;
+  if (req.body?.code) {
+    const found = await lookupPromo(req.body.code, req.user.id);
+    if (!found.ok) {
+      return res.status(400).json({
+        error: PROMO_MESSAGES[found.reason] || "That code cannot be used.",
+        code: found.reason,
+      });
     }
-  } catch { /* no discount */ }
+    // Scoped codes only reduce the plans they name. A user holding a 6-month
+    // code cannot pay the discounted figure for a 1-month term.
+    if (!discountAppliesTo(found, planKey)) {
+      return res.status(400).json({
+        error: PROMO_MESSAGES.NOT_FOR_PLAN, code: "NOT_FOR_PLAN",
+      });
+    }
+    promo = found;
+    percentOff = found.percent_off;
+    discountId = found.id;
+  }
 
   const expectedAmount = priceFor(planKey, percentOff);
+
+  // A code covering the whole price has its own route: there is no transfer to
+  // verify, and asking for a receipt of a 0 EGP payment makes no sense.
+  if (expectedAmount <= 0) {
+    return res.status(400).json({
+      error: "That code covers the whole price. No transfer is needed.",
+      code: "USE_FREE_REDEEM",
+    });
+  }
 
   // The payer types the reference from their own receipt. It is required:
   // matching it against the printed one is the check that a borrowed

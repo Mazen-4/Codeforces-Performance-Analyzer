@@ -19,6 +19,13 @@ export default function Checkout({ onDone }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [reference, setReference] = useState("");
+  // A promo is entered here, not claimed in advance. `promo` holds the
+  // server's verdict for the CURRENT plan; changing plan clears it, because a
+  // scoped code may not apply to the new one.
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoBusy, setPromoBusy] = useState(false);
   const inputRef = useRef(null);
 
   // Digits only. References print as one long number, and people paste them
@@ -52,6 +59,9 @@ export default function Checkout({ onDone }) {
   }
 
   const chosen = cfg.plans.find((p) => p.key === plan) || cfg.plans[0];
+  // What to actually transfer: the promo price when one is applied, otherwise
+  // the plan price. Verification checks the receipt against this exact figure.
+  const payable = promo && !promo.free ? promo.price : chosen.price_after_discount;
 
   function pickFile(f) {
     if (!f) return;
@@ -62,12 +72,42 @@ export default function Checkout({ onDone }) {
     reader.readAsDataURL(f);
   }
 
+
+  /** Check a code against the chosen plan. Consumes nothing. */
+  async function applyPromo() {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoBusy(true); setPromoError(""); setPromo(null);
+    try {
+      const r = await api.previewPromo(plan, code);
+      setPromo(r);
+    } catch (err) {
+      setPromoError(err.message || "That code could not be used.");
+    } finally {
+      setPromoBusy(false);
+    }
+  }
+
+  /** A code covering the whole price: no transfer, access straight away. */
+  async function claimFree() {
+    setBusy(true); setError("");
+    try {
+      const r = await api.redeemFree(plan, promo.code);
+      setResult(r);   // `result` short-circuits the whole panel to Outcome
+    } catch (err) {
+      setError(err.message || "Could not grant access.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit() {
     if (!file) return;
     setBusy(true); setError("");
     try {
       const r = await api.submitInstapay({
         plan, screenshot: file.dataUrl, reference: refDigits,
+        code: promo?.code || undefined,
       });
       setResult(r);
       if (r.status === "approved") onDone?.();
@@ -112,7 +152,13 @@ export default function Checkout({ onDone }) {
               const savingPct = p.saving_percent ?? 0;
               return (
                 <button
-                  key={p.key} onClick={() => setPlan(p.key)}
+                  key={p.key}
+                  onClick={() => {
+                    setPlan(p.key);
+                    // A code valid for one term may not cover another, so the
+                    // preview is re-fetched rather than carried over.
+                    setPromo(null); setPromoError("");
+                  }}
                   style={{
                     display: "flex", alignItems: "center", gap: 13, width: "100%",
                     padding: "15px 16px", borderRadius: T.radiusSm, cursor: "pointer",
@@ -167,10 +213,89 @@ export default function Checkout({ onDone }) {
                 </button>
               );
             })}
+            {/* Promo entry lives with the plan choice: the discount depends on
+                which term is selected, so the two belong together. */}
+            <div style={{ marginTop: 4 }}>
+              {!promo ? (
+                <>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      value={promoInput}
+                      onChange={(e) => { setPromoInput(e.target.value); setPromoError(""); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
+                      placeholder="Promo code"
+                      aria-label="Promo code"
+                      autoComplete="off"
+                      style={{
+                        flex: 1, padding: "10px 13px", borderRadius: T.radiusSm,
+                        background: T.bgAlt, color: T.text,
+                        border: `1px solid ${promoError ? T.risk : T.borderHi}`,
+                        fontFamily: font.sans, fontSize: 13.5,
+                        letterSpacing: 0.5, textTransform: "uppercase",
+                        outline: "none",
+                      }}
+                    />
+                    <Button variant="subtle" onClick={applyPromo}
+                            loading={promoBusy}
+                            disabled={promoBusy || !promoInput.trim()}>
+                      Apply
+                    </Button>
+                  </div>
+                  {promoError && (
+                    <div style={{ fontSize: 12.5, color: T.risk, marginTop: 8,
+                                  lineHeight: 1.5 }}>
+                      {promoError}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <m.div
+                  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "12px 14px", borderRadius: T.radiusSm,
+                    background: `${T.good}12`, border: `1px solid ${T.good}44`,
+                  }}
+                >
+                  <span style={{ color: T.good, display: "flex" }}>
+                    <Icon name="checkCircle" size={16} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 650 }}>
+                      {promo.code} — {promo.percent_off}% off
+                    </div>
+                    <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
+                      {promo.free
+                        ? "This covers the whole price."
+                        : `You pay ${promo.price} ${cfg.currency} instead of ${promo.original_price}.`}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setPromo(null); setPromoInput(""); }}
+                    aria-label="Remove promo code"
+                    style={{ background: "none", border: "none", padding: 4,
+                             cursor: "pointer", color: T.textFaint, display: "flex" }}
+                  >
+                    <Icon name="cross" size={14} />
+                  </button>
+                </m.div>
+              )}
+            </div>
+
             <div style={{ marginTop: 6 }}>
-              <Button onClick={() => setStep(2)} style={{ width: "100%" }}>
-                Continue
-              </Button>
+              {/* At zero there is nothing to transfer, so the InstaPay steps
+                  are skipped entirely. */}
+              {promo?.free ? (
+                <Button onClick={claimFree} loading={busy} disabled={busy}
+                        style={{ width: "100%" }}>
+                  {busy ? "Unlocking" : "Get Plus free"}
+                </Button>
+              ) : (
+                <Button onClick={() => setStep(2)} style={{ width: "100%" }}>
+                  Continue
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -183,7 +308,7 @@ export default function Checkout({ onDone }) {
               Open InstaPay and send exactly this amount to this handle.
             </p>
 
-            <CopyRow label="Amount" value={`${chosen.price_after_discount} EGP`} mono />
+            <CopyRow label="Amount" value={`${payable} ${cfg.currency}`} mono />
             <CopyRow label="Send to" value={cfg.handle} mono />
 
             <div style={{ display: "flex", gap: 11, alignItems: "flex-start",
@@ -368,8 +493,14 @@ function CopyRow({ label, value, mono }) {
 
 function Outcome({ result, onRetry }) {
   const map = {
-    approved: { icon: "checkCircle", tone: T.good, title: "You're on Plus",
-      body: `${result.months} month${result.months === 1 ? "" : "s"} added to your account. Everything is unlocked now.` },
+    approved: {
+      icon: "checkCircle", tone: T.good,
+      title: result.free ? "Your code covered it" : "You're on Plus",
+      body: result.free
+        ? `${result.code} covered the whole price. `
+          + `${result.months} month${result.months === 1 ? "" : "s"} of Plus `
+          + "is on your account — nothing to pay."
+        : `${result.months} month${result.months === 1 ? "" : "s"} added to your account. Everything is unlocked now.` },
     pending: { icon: "clock", tone: T.warn, title: "Sent for review",
       body: "We could not confirm every detail automatically, so a human will check it. You'll have Plus as soon as it's approved — usually within a day." },
     // A rejection is never final: automatic checks read a screenshot with a

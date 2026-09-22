@@ -593,74 +593,10 @@ app.get("/api/discounts/:code", async (req, res) => {
   }
 });
 
-app.post("/api/discounts/:code/redeem", async (req, res) => {
-  if (!ACCOUNTS_ENABLED || !req.user) {
-    return res.status(401).json({ error: "Sign in to claim a discount" });
-  }
-  const code = String(req.params.code || "").trim().toUpperCase();
-  if (!code) return res.status(400).json({ error: "Enter a code" });
-
-  try {
-    // Claim the use atomically. The WHERE clause carries every condition, so
-    // two people racing for the last use cannot both win: exactly one UPDATE
-    // matches a row.
-    const { rows } = await query(
-      `UPDATE discount_codes
-          SET used_count = used_count + 1
-        WHERE code_upper = $1
-          AND active
-          AND expires_at > now()
-          AND used_count < max_uses
-        RETURNING id, percent_off, max_uses, used_count, expires_at, applies_to`,
-      [code]);
-
-    if (!rows.length) {
-      // Distinguish "never existed" from "no longer claimable".
-      const { rows: probe } = await query(
-        `SELECT active, expires_at, used_count, max_uses
-           FROM discount_codes WHERE code_upper = $1`, [code]);
-      if (!probe.length) {
-        return res.status(404).json({ error: "That code does not exist.", code: "NOT_FOUND" });
-      }
-      const d = probe[0];
-      if (!d.active) return res.status(410).json({ error: "That code is no longer active.", code: "INACTIVE" });
-      if (new Date(d.expires_at).getTime() <= Date.now()) {
-        return res.status(410).json({ error: "That code has expired.", code: "EXPIRED" });
-      }
-      return res.status(410).json({ error: "That code has been fully claimed.", code: "EXHAUSTED" });
-    }
-
-    const d = rows[0];
-    try {
-      await query(
-        `INSERT INTO discount_redemptions (code_id, account_id, percent_off)
-         VALUES ($1, $2, $3)`, [d.id, req.user.id, d.percent_off]);
-    } catch (dupErr) {
-      if (dupErr.code === "23505") {
-        // Already claimed by this account: give the use back and say so.
-        await query(
-          `UPDATE discount_codes SET used_count = used_count - 1 WHERE id = $1`,
-          [d.id]);
-        return res.status(409).json({
-          error: "You have already claimed this code.", code: "ALREADY_CLAIMED",
-        });
-      }
-      throw dupErr;
-    }
-
-    res.json({
-      ok: true,
-      percent_off: d.percent_off,
-      remaining: d.max_uses - d.used_count,
-      max_uses: d.max_uses,
-      expires_at: d.expires_at,
-      applies_to: d.applies_to,
-    });
-  } catch (err) {
-    console.error("discount redeem failed:", err.message);
-    res.status(500).json({ error: "Could not claim that code." });
-  }
-});
+// Claiming a code ahead of time is gone: promos are entered during checkout
+// and consumed only when a purchase completes, so an abandoned checkout no
+// longer burns one of a limited run. The lookup above stays for the "is this
+// code real?" case; redemption lives in routes/payments.js.
 
 // Re-open a past analysis from storage. No model run, no database egress:
 // this is the same payload the user already saw.

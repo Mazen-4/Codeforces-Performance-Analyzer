@@ -4,3 +4,6 @@
 __pycache__
 .vscode/
 .DS_Store
+
+# Scratch test harnesses run from the scratchpad, not part of the app.
+website/server/*_test.mjs

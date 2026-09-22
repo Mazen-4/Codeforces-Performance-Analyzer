@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { T } from "../lib/theme.js";
 import { useAuth } from "../lib/auth.jsx";
-import DiscountClaim from "../components/DiscountClaim.jsx";
 import { api } from "../lib/api.js";
 import { Button, Field, Input, Card, Badge, Toast } from "../components/ui.jsx";
 import Icon from "../components/Icon.jsx";
@@ -53,18 +52,6 @@ export default function Profile() {
       <p style={{ color: T.textDim, fontSize: 14.5, margin: "0 0 26px" }}>
         Only your handle, email and password are required. The rest is yours to fill in.
       </p>
-
-      {user?.plan !== "pro" && (
-        <Card style={{ marginBottom: 20 }}>
-          <h3 style={{ fontSize: 15.5, fontWeight: 700, margin: "0 0 4px" }}>
-            Have a discount code?
-          </h3>
-          <p style={{ color: T.textDim, fontSize: 13.5, margin: "0 0 16px" }}>
-            Apply it here and it will be waiting when you upgrade to Plus.
-          </p>
-          <DiscountClaim />
-        </Card>
-      )}
 
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 20,
