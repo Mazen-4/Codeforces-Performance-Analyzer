@@ -19,6 +19,7 @@ import paymentRoutes from "./routes/payments.js";
 import {
   otherHandleWindow, waitMessage, OTHER_HANDLE_DAYS,
 } from "./services/quotas.js";
+import { resourceLinesFor } from "./services/resources.js";
 
 dotenv.config();
 
@@ -316,6 +317,28 @@ app.get("/api/coach/config", async (req, res) => {
   });
 });
 
+/**
+ * Strip repeated Codeforces problem IDs from a generated plan.
+ *
+ * The first appearance of an ID is kept; any later one is swapped for a
+ * generic instruction, because a student who has already solved a problem
+ * gains nothing from being sent back to it. Operates only on the text inside
+ * list items, so it cannot damage the surrounding markup.
+ */
+function dedupeProblemIds(html) {
+  const seen = new Set();
+  // Codeforces IDs as the prompt emits them: digits, underscore, index.
+  return String(html).replace(/\b(\d+[A-Za-z0-9]*_[A-Z][0-9]*)\b(\s*\(\d{3,4}\))?/g,
+    (match, id, rating) => {
+      const key = id.toUpperCase();
+      if (!seen.has(key)) { seen.add(key); return match; }
+      const band = rating ? rating.trim().slice(1, -1) : "";
+      return band
+        ? `another problem of the same tag rated around ${band}`
+        : "another problem of the same tag";
+    });
+}
+
 app.post("/api/coach", async (req, res) => {
   const { handle, estimatedRating, weakTags, strongTags, recommendedProblems,
           totalSolved, tagImpact, runId } = req.body;
@@ -419,6 +442,16 @@ app.post("/api/coach", async (req, res) => {
           .map(t => `  - ${t.label}: current strength ${Math.round((t.current_strength ?? t.strength ?? 0) * 100)}%, improving it unlocks +${t.delta_problems} problems → est. +${t.est_rating_gain ?? t.estimated_rating_gain ?? 0} rating pts`)
           .join("\n");
 
+        // Only the tags this plan can draw on, so the prompt stays small and
+        // the model cannot cite a resource for a topic it was told to skip.
+        const planTags = [
+          ...(tagImpact || []).map(t => t.tag || t.label),
+          ...(weakTags || []).map(t => t.tag),
+        ].filter(Boolean);
+        const uniqueTags = [...new Set(planTags)].slice(0, 10);
+        const resourceSection = resourceLinesFor(uniqueTags, estimatedRating)
+          || "  (none available — tell the student to go straight to the problems)";
+
         const comfortFloor = Math.max(800,  estimatedRating - 300);
         const comfortCeil  = Math.min(3500, estimatedRating + 100);
         const stretchCeil  = Math.min(3500, estimatedRating + 300);
@@ -444,28 +477,48 @@ ${recsSection}
 COUNTERFACTUAL TAG IMPACT (from the success model — which tags unlock the most problems if improved):
 ${impactSection}
 
+LEARNING RESOURCES (curated — use ONLY these, never invent a link):
+${resourceSection}
+
 PLAN RULES — follow every one strictly:
 1. Prioritize tags from the counterfactual impact list first — these are the tags the model says will unlock the most rating gain.
-2. For each day's tag, prefer assigning recommended problems from the list above that match that tag and have high weakness_boost.
-3. For each recommended problem you assign, include its ID and rating — don't invent problem IDs.
-4. Day 1–2: problems rated ${comfortFloor}–${comfortCeil} only. Build confidence with problems the model says are easy/moderate.
-5. Day 3–5: problems rated ${comfortCeil}–${stretchCeil}. Use moderate-difficulty problems from the recommendations.
-6. Day 6–7: problems rated ${stretchCeil}–${Math.min(3500, estimatedRating + 400)}. Harder problems; it's fine if there are no exact matches.
-7. ONE tag per day. Do not mix topics in one day.
-8. 3–5 problems per day. This is a focused 1–2 hour session.
-9. Focus line = ONE concrete micro-skill for that tag (e.g. "identify when a problem reduces to prefix sums", not just "study arrays").
-10. Never assign a tag the user is already strong at.
+2. ONE tag per day. Do not mix topics in one day. Never assign a tag the user is already strong at.
+3. For each day's tag, assign recommended problems from the list above that match that tag and have high weakness_boost. Include each problem's ID and rating exactly as given — never invent an ID.
+3a. NEVER assign the same problem ID twice anywhere in the plan. Each problem appears on exactly one day. If you run out of listed problems for a tag, append the shortfall to the SAME "Then:" line as plain text — e.g. "Then: 580_C (1500), plus 1 more graphs problem rated 1450–1550 from the Codeforces problemset". Do NOT write the word "Then:" twice in one day. A repeated problem is worse than no problem, because the student has already solved it.
+3b. The plan is ALWAYS exactly seven days, Day 1 through Day 7. Never stop early. If the recommended list runs out, keep going with "pick N <tag> problems rated XXXX-YYYY from the Codeforces problemset" — the student can always find more problems, but a four-day plan tells them the week is over when it is not.
+3c. Prefer giving a high-priority tag two or three days over introducing a tag the model did not flag. Repeating a TAG across days is good; repeating a PROBLEM is not.
+4. Every day must open with ONE warm-up problem clearly easier than the rest of that day (roughly 100–200 below the day's band), then step up. Someone who stalls on the first problem usually abandons the plan.
+5. Day 1–2: main problems rated ${comfortFloor}–${comfortCeil}.
+   Day 3–5: ${comfortCeil}–${stretchCeil}.
+   Day 6–7: ${stretchCeil}–${Math.min(3500, estimatedRating + 400)}.
+6. 3–5 problems per day including the warm-up.
+7. TIME must be realistic and specific, not a flat figure. Estimate from the problems you assigned: a problem near the user's rating takes roughly 25–40 minutes including reading and debugging; a stretch problem 45–70. Add 15–20 minutes when the day has a resource to read or watch. Give a range like "1h 45m – 2h 15m". Days 6–7 should show HIGHER time for fewer problems — that is the honest picture, and a plan that pretends otherwise gets abandoned.
+8. Each day names exactly ONE resource from the curated list above, matching that day's tag. Use its exact title and URL. If the list has nothing for that tag, write "No resource needed — go straight to the problems." Never invent or guess a link.
+9. FOCUS = one concrete micro-skill (e.g. "spot when a problem reduces to prefix sums", not "study arrays").
+10. CHECK = a verifiable thing the student can test on themselves by the end of the day, phrased so the answer is yes or no. Good: "You can write a 1D DP from an empty file in under 10 minutes without looking anything up." Bad: "Understand DP better."
+11. Write to the student as "you". Be direct and encouraging without inflating what a week achieves.
 
-Format each day exactly like this — nothing else:
-<div class="day"><span class="day-label">Day N</span> – <strong>Topic</strong><ul><li>Difficulty: XXXX–YYYY</li><li>Problems: X problems (include IDs from the recommended list where available, e.g. 1234_A, 1234_B)</li><li>Time: Xhr</li><li>Focus: one concrete micro-skill to drill</li><li>Why: one sentence explaining why the model flagged this tag for this user</li></ul></div>`;
+Output SEVEN day divs, Day 1 to Day 7. A plan with fewer than seven days is wrong.
+
+Format each day exactly like this — nothing else, no markdown, no text outside the divs:
+<div class="day"><span class="day-label">Day N</span> – <strong>Topic</strong><ul><li><b>Warm-up:</b> problem ID (rating)</li><li><b>Then:</b> problem IDs with ratings</li><li><b>Time:</b> realistic range</li><li><b>Focus:</b> one concrete micro-skill</li><li><b>Resource:</b> <a href="URL" target="_blank" rel="noopener noreferrer">Exact Title</a> — why this one, in a few words</li><li><b>Check:</b> a yes/no test the student can run on themselves</li><li><b>Why:</b> one sentence on why the model flagged this tag for this user</li></ul></div>`;
 
         const message = await anthropic.messages.create({
             model: coachModel,
-            max_tokens: 4000,
+            // max_tokens covers thinking AND the answer. At 4000 with adaptive
+            // thinking the model spent 3999 tokens reasoning and emitted an
+            // empty plan -- the richer prompt gives it more to weigh, so the
+            // ceiling has to leave room for the output itself.
+            max_tokens: 10000,
             // The plan is a judgement task over ML signals, so let the model
-            // think; medium effort keeps the cost near a cent per plan.
+            // think; "low" keeps reasoning proportionate to a 7-day schedule
+            // and the cost near a cent per plan.
             thinking: { type: "adaptive" },
-            output_config: { effort: "medium" },
+            // "low" is the floor the API accepts (low/medium/high/xhigh/max).
+            // Thinking is about 70% of the cost here, so this is as cheap as
+            // the plan gets without dropping adaptive thinking entirely --
+            // which is what keeps the day-to-day progression coherent.
+            output_config: { effort: "low" },
             messages: [{ role: "user", content: prompt }],
         });
 
@@ -474,11 +527,28 @@ Format each day exactly like this — nothing else:
             return res.status(502).json({ error: "Could not generate a plan. Try again." });
         }
 
-        const plan = message.content
+        let plan = message.content
             .filter(b => b.type === "text").map(b => b.text).join("").trim();
 
+        // The prompt forbids repeating a problem and usually obeys, but about
+        // one plan in three slips a duplicate onto a later day. An instruction
+        // cannot guarantee this; a pass over the output can. Later mentions
+        // are replaced with a generic prompt so the day still has work in it.
+        plan = dedupeProblemIds(plan);
+
         if (!plan) {
-            return res.status(502).json({ error: "The coach returned an empty plan." });
+            // Distinguish "ran out of room" from "said nothing": they need
+            // different fixes and the log should not conflate them.
+            const truncated = message.stop_reason === "max_tokens";
+            console.error("coach produced no plan. stop_reason:", message.stop_reason,
+                          "blocks:", JSON.stringify(message.content?.map(b => b.type)),
+                          "output_tokens:", message.usage?.output_tokens,
+                          "thinking_tokens:", message.usage?.output_tokens_details?.thinking_tokens);
+            return res.status(502).json({
+                error: truncated
+                    ? "That plan was cut short. Try again."
+                    : "The coach returned an empty plan.",
+            });
         }
 
         // Count the use only once a plan actually came back, so a failure does
