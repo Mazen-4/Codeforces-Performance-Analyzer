@@ -358,6 +358,7 @@ export default function Dashboard() {
                 userRating={data?.recommendation?.recommendation?.cf_rating
                          ?? data?.cf_rating ?? null}
                 isPro={user?.plan === "pro"}
+                isAdmin={isAdmin}
                 onUpgrade={upgrade.show}
               />
             </div>

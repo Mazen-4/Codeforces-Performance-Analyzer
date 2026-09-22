@@ -33,7 +33,7 @@ function splitDays(html) {
   }
 }
 
-export default function Coach({ data, handle, isPro, onUpgrade }) {
+export default function Coach({ data, handle, isPro, isAdmin, onUpgrade }) {
   const [available, setAvailable] = useState(null);
   const [plan, setPlan] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -62,7 +62,10 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
   const days = useMemo(() => splitDays(shown?.plan), [shown?.plan]);
   // Progress belongs to a saved run: there is nothing to attach it to
   // otherwise, and only Plus accounts have plans at all.
-  const canTrack = Boolean(runId && isPro);
+  // Admins reach the coach without a Plus plan, so gate tracking on access
+  // rather than on the plan alone -- otherwise an admin sees a plan with no
+  // checkboxes and no pin.
+  const canTrack = Boolean(runId && (isPro || isAdmin));
   const pct = days?.length
     ? Math.round((doneDays.length / days.length) * 100) : 0;
 
@@ -125,7 +128,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
   if (!data) return null;
   if (available === false && !shown) return null;
 
-  async function generate() {
+  async function generate(regenerate = false) {
     setBusy(true); setError(""); setLocked(false);
     try {
       const ts = data.tag_strengths || {};
@@ -139,6 +142,8 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
 
       const r = await api.coach({
         handle,
+        // Admins only: ask the server for a fresh plan on a run that has one.
+        ...(regenerate === true ? { regenerate: true } : {}),
         // Ties the plan to this exact analysis, so the server can store it
         // and hand it back later instead of writing a new one.
         runId,
@@ -190,7 +195,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
           )}
         </div>
         {!shown && available && (
-          isPro ? (
+          (isPro || isAdmin) ? (
             <Button onClick={generate} loading={busy} disabled={busy}>
               {busy ? "Writing your plan" : "Build my plan"}
             </Button>
@@ -317,6 +322,13 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
                 <Icon name="check" size={12} />
                 Saved with this analysis
               </span>
+              {isAdmin && runId && shown && (
+                <Button size="sm" variant="ghost"
+                        onClick={() => generate(true)} loading={busy}
+                        disabled={busy}>
+                  Regenerate
+                </Button>
+              )}
               {canTrack && runId && (
                 <Button
                   size="sm"

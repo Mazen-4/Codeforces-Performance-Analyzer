@@ -41,7 +41,7 @@ function useTags(data) {
   }, [data]);
 }
 
-export default function Results({ data, handle, userRating, isPro, onUpgrade }) {
+export default function Results({ data, handle, userRating, isPro, onUpgrade, isAdmin}) {
   const tags = useTags(data);
   if (!tags.length) return null;
 
@@ -77,7 +77,8 @@ export default function Results({ data, handle, userRating, isPro, onUpgrade }) 
                   isPro={isPro} onUpgrade={onUpgrade} />
       )}
 
-      <Coach data={data} handle={handle} isPro={isPro} onUpgrade={onUpgrade} />
+      <Coach data={data} handle={handle} isPro={isPro} isAdmin={isAdmin}
+             onUpgrade={onUpgrade} />
 
       <Peers peers={data?.peers} isPro={isPro} onUpgrade={onUpgrade} />
     </div>

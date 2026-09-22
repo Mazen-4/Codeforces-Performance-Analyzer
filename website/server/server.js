@@ -415,7 +415,12 @@ app.post("/api/coach", async (req, res) => {
   // because the key is missing or a free trial is used up -- the user has
   // already paid for this plan and it is simply being read back.
   const runKey = Number(runId);
-  if (ACCOUNTS_ENABLED && req.user && Number.isInteger(runKey) && runKey > 0) {
+  // An admin may ask for a fresh plan on a run that already has one, to
+  // compare models or prompt changes. Everyone else always gets the stored
+  // plan back, which is free and is work they already paid for.
+  const forceRegen = req.user?.role === "admin" && Boolean(req.body?.regenerate);
+  if (ACCOUNTS_ENABLED && req.user && !forceRegen
+      && Number.isInteger(runKey) && runKey > 0) {
     try {
       const { rows } = await query(
         `SELECT coach_plan, coach_model, coach_written_at
@@ -451,10 +456,16 @@ app.post("/api/coach", async (req, res) => {
   }
   // Entitlement: the AI Coach is a Plus feature. Enforced here rather than
   // only in the UI, because the endpoint is reachable directly.
-  if (ACCOUNTS_ENABLED) {
-    if (!req.user) {
-      return res.status(401).json({ error: "Sign in to use the AI Coach" });
-    }
+  //
+  // Admins are exempt from the plan requirement and from one-plan-per-run:
+  // they need to be able to regenerate freely while tuning how the coach
+  // writes, which is the whole point of the model switcher in the admin
+  // panel. They are exempt from the analysis quotas for the same reason.
+  const isAdmin = req.user?.role === "admin";
+  if (ACCOUNTS_ENABLED && !req.user) {
+    return res.status(401).json({ error: "Sign in to use the AI Coach" });
+  }
+  if (ACCOUNTS_ENABLED && !isAdmin) {
     if (req.user.plan !== "pro") {
       return res.status(402).json({
         error: "The AI Coach is part of Plus.",
@@ -664,6 +675,10 @@ Every field is a plain string except "day", which is a number. Never include HTM
         //
         // `coach_plan IS NULL` makes this a no-op if two requests raced, so
         // the first plan written is the one that is kept rather than the last.
+        //
+        // Admins are the exception: they can regenerate, and without the
+        // overwrite the response would show a new plan while the stored one
+        // stayed stale -- the two would silently disagree.
         let saved = false;
         if (ACCOUNTS_ENABLED && req.user && Number.isInteger(runKey) && runKey > 0) {
             try {
@@ -671,9 +686,10 @@ Every field is a plain string except "day", which is a number. Never include HTM
                     `UPDATE searches
                         SET coach_plan = $3, coach_model = $4,
                             coach_written_at = now(), coach_day_count = $5
-                      WHERE id = $1 AND account_id = $2 AND coach_plan IS NULL`,
+                      WHERE id = $1 AND account_id = $2
+                        AND (coach_plan IS NULL OR $6)`,
                     [runKey, req.user.id, plan, coachModel,
-                     (plan.match(/class="day"/g) || []).length]);
+                     (plan.match(/class="day"/g) || []).length, isAdmin]);
                 saved = r.rowCount > 0;
             } catch (err) {
                 // The user still gets the plan they paid for; it just will not
