@@ -67,7 +67,8 @@ export async function currentUser(req) {
               -- The quota columns must be here: the window helpers read them
               -- off req.user, and a missing column silently reads as "never
               -- used", which grants an unlimited allowance.
-              a.plus_expires_at, a.cf_handle_changed_at, a.other_handle_run_at
+              a.plus_expires_at, a.cf_handle_changed_at, a.other_handle_run_at,
+              a.email_verified
          FROM sessions s
          JOIN accounts a ON a.id = s.account_id
         WHERE s.token_hash = $1 AND s.expires_at > now()`,

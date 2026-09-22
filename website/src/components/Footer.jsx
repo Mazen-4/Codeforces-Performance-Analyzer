@@ -1,4 +1,5 @@
 import { m } from "framer-motion";
+import { Link } from "react-router-dom";
 import { T, font } from "../lib/theme.js";
 import Icon from "./Icon.jsx";
 
@@ -35,6 +36,13 @@ export default function Footer() {
               place. */}
           Found a problem, or want something added? Tell us.
         </p>
+
+        <Link to="/terms" style={{
+          fontSize: 12.5, color: T.textFaint, textDecoration: "none",
+          fontFamily: font.sans,
+        }}>
+          Terms
+        </Link>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <ReportIssueButton size="sm" />

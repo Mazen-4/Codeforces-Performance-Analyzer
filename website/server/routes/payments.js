@@ -7,6 +7,7 @@ import express from "express";
 import { query } from "../db/pool.js";
 import {
   verifyInstapayScreenshot, decodeBase64Image, PLANS, priceFor,
+  normalizeReference,
 } from "../services/instapayVerification.js";
 
 const router = express.Router();
@@ -90,6 +91,16 @@ router.post("/instapay", async (req, res) => {
     });
   }
 
+  // Paying is the one place where reaching the account later really matters:
+  // a receipt, a refund or a review all go to this address.
+  if (req.user.email_verified === false) {
+    return res.status(403).json({
+      error: "Confirm your email address before paying, so we can reach you "
+           + "about your payment.",
+      code: "EMAIL_UNVERIFIED",
+    });
+  }
+
   const planKey = String(req.body?.plan || "");
   const plan = PLANS[planKey];
   if (!plan) return res.status(400).json({ error: "Choose a plan." });
@@ -166,6 +177,41 @@ router.post("/instapay", async (req, res) => {
 
   const expectedAmount = priceFor(planKey, percentOff);
 
+  // The payer types the reference from their own receipt. It is required:
+  // matching it against the printed one is the check that a borrowed
+  // screenshot cannot pass.
+  const claimedReference = normalizeReference(req.body?.reference);
+  if (!claimedReference) {
+    return res.status(400).json({
+      error: "Enter the reference number shown on your transfer receipt.",
+      code: "REFERENCE_REQUIRED",
+    });
+  }
+  if (claimedReference.length < 6 || claimedReference.length > 24) {
+    return res.status(400).json({
+      error: "That reference number does not look right. It is the long number "
+           + "labelled \"Reference\" on your receipt.",
+      code: "REFERENCE_INVALID",
+    });
+  }
+
+  // Reject a replayed reference BEFORE the model call: reading the screenshot
+  // costs money, and a reference already used is refused whatever it shows.
+  try {
+    const { rows } = await query(
+      `SELECT id FROM payments
+        WHERE instapay_reference = $1 AND status <> 'rejected'`,
+      [claimedReference]);
+    if (rows.length) {
+      return res.status(409).json({
+        status: "rejected",
+        error: "This InstaPay transaction has already been used.",
+        code: "DUPLICATE_REFERENCE",
+        reasons: ["This InstaPay transaction has already been used."],
+      });
+    }
+  } catch { /* the unique index is the real guard */ }
+
   let verification;
   try {
     verification = await verifyInstapayScreenshot({
@@ -174,6 +220,9 @@ router.post("/instapay", async (req, res) => {
       expectedAmount,
       expectedCurrency: CURRENCY,
       expectedRecipientHandle: HANDLE,
+      claimedReference,
+      screenshotBytes: bytes,
+      uploadedAt: new Date(),
     });
   } catch (err) {
     console.error("instapay verification failed:", err.message);
@@ -185,24 +234,11 @@ router.post("/instapay", async (req, res) => {
     });
   }
 
-  const ref = String(verification.extracted?.referenceNumber || "").trim() || null;
-
-  // One transfer buys one term. Checked before insert for a clear message, and
-  // enforced by a unique index for the concurrent case.
-  if (ref) {
-    try {
-      const { rows } = await query(
-        `SELECT id FROM payments
-          WHERE instapay_reference = $1 AND status <> 'rejected'`, [ref]);
-      if (rows.length) {
-        return res.json({
-          status: "rejected",
-          reasons: ["This InstaPay transaction has already been used."],
-          checks: verification.checks,
-        });
-      }
-    } catch { /* the unique index is the real guard */ }
-  }
+  // The typed reference is what the duplicate guard keys on: it was validated
+  // against the screenshot above, and unlike the extracted one it is never
+  // null. Storing the read value instead would leave a hole whenever
+  // extraction missed the field.
+  const ref = claimedReference;
 
   if (verification.status === "rejected") {
     return res.json({

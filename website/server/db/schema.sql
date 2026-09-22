@@ -236,3 +236,68 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_per_day
 ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_plan      TEXT;
 ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_model     TEXT;
 ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_written_at TIMESTAMPTZ;
+
+-- ── email verification and password reset ───────────────────────────────────
+-- Existing accounts are grandfathered in: they predate verification and must
+-- not be locked out, so the column defaults to true and new signups are set
+-- to false explicitly. A later migration cannot tell the two apart, which is
+-- why the distinction is made at insert time rather than by a backfill.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS email_verified  BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+
+-- Verification codes and reset tokens share a table: both are short-lived
+-- single-use secrets sent to an email, and both need the same rate limiting.
+-- `kind` keeps them apart. The secret is stored as a sha256 hash -- a database
+-- leak must not hand out working reset links.
+CREATE TABLE IF NOT EXISTS email_tokens (
+    id           BIGSERIAL PRIMARY KEY,
+    account_id   UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    kind         TEXT NOT NULL CHECK (kind IN ('verify', 'reset')),
+    token_hash   TEXT NOT NULL,
+    -- The 6-digit code is compared in the app, so only its hash lives here.
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    consumed_at  TIMESTAMPTZ,
+    -- Wrong guesses, so a code cannot be brute-forced.
+    attempts     INT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_tokens_lookup
+    ON email_tokens (account_id, kind, created_at DESC);
+-- Finding a token by its hash is the hot path for reset links.
+CREATE INDEX IF NOT EXISTS idx_email_tokens_hash ON email_tokens (token_hash);
+
+-- Every send attempt, kept whether or not it succeeded: the daily caps count
+-- attempts, otherwise a failing mailbox would grant unlimited retries.
+CREATE TABLE IF NOT EXISTS email_sends (
+    id          BIGSERIAL PRIMARY KEY,
+    account_id  UUID REFERENCES accounts(id) ON DELETE CASCADE,
+    email_lower TEXT NOT NULL,
+    kind        TEXT NOT NULL,
+    sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ok          BOOLEAN NOT NULL DEFAULT true
+);
+
+-- The caps are "3 a day" and "one every 3 minutes", both scoped to an address
+-- rather than an account, so requesting a reset for an address that has no
+-- account cannot be used to probe which addresses exist.
+CREATE INDEX IF NOT EXISTS idx_email_sends_window
+    ON email_sends (email_lower, kind, sent_at DESC);
+
+-- Completed password changes, which carry their own quota: 5 a month, the
+-- first immediate and then one a week. Separate from email_sends because a
+-- send is a request and this is a change that actually happened.
+CREATE TABLE IF NOT EXISTS password_resets (
+    id          BIGSERIAL PRIMARY KEY,
+    account_id  UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    reset_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_account
+    ON password_resets (account_id, reset_at DESC);
+
+-- Which version of the terms an account accepted, and when. Acceptance happens
+-- at sign-up, so the column is set at insert; existing rows keep NULL, which
+-- reads as "predates the terms" rather than "refused them".
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS terms_accepted_at      TIMESTAMPTZ;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS terms_accepted_version TEXT;

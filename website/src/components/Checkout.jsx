@@ -18,7 +18,13 @@ export default function Checkout({ onDone }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [reference, setReference] = useState("");
   const inputRef = useRef(null);
+
+  // Digits only. References print as one long number, and people paste them
+  // with stray spaces.
+  const refDigits = reference.replace(/\D/g, "");
+  const refLooksValid = refDigits.length >= 6 && refDigits.length <= 24;
 
   useEffect(() => {
     let alive = true;
@@ -60,7 +66,9 @@ export default function Checkout({ onDone }) {
     if (!file) return;
     setBusy(true); setError("");
     try {
-      const r = await api.submitInstapay({ plan, screenshot: file.dataUrl });
+      const r = await api.submitInstapay({
+        plan, screenshot: file.dataUrl, reference: refDigits,
+      });
       setResult(r);
       if (r.status === "approved") onDone?.();
     } catch (err) {
@@ -205,9 +213,46 @@ export default function Checkout({ onDone }) {
           <div style={{ marginTop: 20 }}>
             <p style={{ fontSize: 13.5, color: T.textDim, lineHeight: 1.65,
                         margin: "0 0 16px" }}>
-              Upload the InstaPay confirmation screenshot. Most are checked in
-              a few seconds.
+              Enter the reference number from your receipt and attach the
+              screenshot. Most are checked in a few seconds.
             </p>
+
+            {/* Typed separately from the screenshot on purpose: checking the
+                two against each other is what a borrowed receipt cannot
+                survive. */}
+            <div style={{ marginBottom: 14 }}>
+              <label htmlFor="instapay-ref" style={{
+                display: "block", fontSize: 12, color: T.textFaint,
+                letterSpacing: 0.4, textTransform: "uppercase",
+                marginBottom: 7,
+              }}>
+                Reference number
+              </label>
+              <input
+                id="instapay-ref"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="246706789697"
+                aria-label="Transaction reference number"
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  padding: "12px 14px", borderRadius: T.radiusSm,
+                  background: T.bgAlt, color: T.text,
+                  fontFamily: font.mono, fontSize: 15, letterSpacing: 1,
+                  border: `1px solid ${
+                    reference && !refLooksValid ? T.risk : T.borderHi}`,
+                  outline: "none",
+                }}
+              />
+              <div style={{ fontSize: 12, color: T.textFaint, marginTop: 7,
+                            lineHeight: 1.55 }}>
+                The long number labelled <strong style={{ color: T.textDim }}>
+                Reference</strong> on your transfer receipt. It must match the
+                screenshot.
+              </div>
+            </div>
 
             <button
               onClick={() => inputRef.current?.click()}
@@ -241,7 +286,8 @@ export default function Checkout({ onDone }) {
               <Button variant="ghost" onClick={() => setStep(2)} disabled={busy}>
                 Back
               </Button>
-              <Button onClick={submit} loading={busy} disabled={!file || busy}
+              <Button onClick={submit} loading={busy}
+                      disabled={!file || !refLooksValid || busy}
                       style={{ flex: 1 }}>
                 {busy ? "Checking your receipt" : "Submit"}
               </Button>

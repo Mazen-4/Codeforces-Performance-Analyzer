@@ -351,6 +351,14 @@ app.post("/api/coach", async (req, res) => {
     }
   }
 
+  // Ahead of the key check: an unverified user's problem is verification, and
+  // saying "not configured" would send them to fix the wrong thing.
+  if (ACCOUNTS_ENABLED && req.user && req.user.email_verified === false) {
+    return res.status(403).json({
+      error: "Confirm your email address first.", code: "EMAIL_UNVERIFIED",
+    });
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({
       error: "The AI Coach is not configured yet.", code: "NO_KEY",
@@ -700,6 +708,17 @@ app.get("/api/me/searches/:id", async (req, res) => {
 app.get("/api/ml/analyze/:handle", requireAccurateClock, async (req, res) => {
   let { handle } = req.params;
   const startedAt = Date.now();
+
+  // An unverified address cannot run the model. Verification is what ties an
+  // account to a person; without it one address could become any number of
+  // accounts, each with its own free allowance.
+  if (ACCOUNTS_ENABLED && req.user && req.user.email_verified === false) {
+    return res.status(403).json({
+      error: "Confirm your email address before running an analysis. "
+           + "We sent you a 6-digit code.",
+      code: "EMAIL_UNVERIFIED",
+    });
+  }
 
   // Analysing the linked handle is unlimited. Analysing someone else's is
   // metered — once every 3 months on free, once a week on Plus — because each

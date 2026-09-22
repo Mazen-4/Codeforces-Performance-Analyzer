@@ -19,6 +19,11 @@ const Signup    = lazy(() => import("./pages/Auth.jsx").then(m => ({ default: m.
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Profile   = lazy(() => import("./pages/Profile.jsx"));
 const Admin     = lazy(() => import("./pages/Admin.jsx"));
+const Terms     = lazy(() => import("./pages/Terms.jsx"));
+const ForgotPassword = lazy(() =>
+  import("./pages/Recover.jsx").then(m => ({ default: m.ForgotPassword })));
+const ResetPassword  = lazy(() =>
+  import("./pages/Recover.jsx").then(m => ({ default: m.ResetPassword })));
 
 function PageFallback() {
   return (
@@ -66,6 +71,10 @@ function Shell() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/login"  element={<GuestOnly><Login /></GuestOnly>} />
         <Route path="/signup" element={<GuestOnly><Signup /></GuestOnly>} />
+        <Route path="/terms" element={<Terms />} />
+        {/* Reachable while signed out, which is the whole point of them. */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />} />
         <Route path="/dashboard" element={<Private><Dashboard /></Private>} />
         <Route path="/profile"   element={<Private><Profile /></Private>} />
         <Route path="/admin"     element={<AdminOnly><Admin /></AdminOnly>} />

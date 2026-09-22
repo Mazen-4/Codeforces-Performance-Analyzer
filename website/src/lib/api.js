@@ -45,6 +45,17 @@ export const api = {
   logout:  ()      => request("/api/auth/logout", { method: "POST" }),
   updateMe:(body)  => request("/api/auth/me", { method: "PATCH", body }),
   changePassword: (body) => request("/api/auth/password", { method: "POST", body }),
+
+  // Email verification and password recovery.
+  verifyStatus: ()     => request("/api/auth/verify/status"),
+  verifyEmail:  (code) => request("/api/auth/verify", { method: "POST", body: { code } }),
+  verifyResend: ()     => request("/api/auth/verify/resend", { method: "POST" }),
+  forgotPassword: (email) =>
+    request("/api/auth/forgot", { method: "POST", body: { email } }),
+  checkResetToken: (token) =>
+    request(`/api/auth/reset/check?token=${encodeURIComponent(token)}`),
+  resetPassword: (token, password) =>
+    request("/api/auth/reset", { method: "POST", body: { token, password } }),
   mySearches: ()   => request("/api/me/searches"),
   mlVersion: ()    => request("/api/ml/version"),
   siteStats: ()    => request("/api/stats"),

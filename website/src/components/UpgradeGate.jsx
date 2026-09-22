@@ -30,6 +30,11 @@ function unlockPercent() {
 /** Should a free user see this now? Weekly at most, never for Plus. */
 export function shouldShowUpgrade(user) {
   if (!user || user.plan === "pro") return false;
+  // Not before the address is confirmed. A new account's next action is
+  // entering the code in the banner, and covering that with a sales pitch
+  // both hides the instruction and asks someone to pay before they can use
+  // the free tier at all.
+  if (user.email_verified === false) return false;
   try {
     const last = Number(localStorage.getItem(SEEN_KEY) || 0);
     return !Number.isFinite(last) || Date.now() - last > EVERY_MS;

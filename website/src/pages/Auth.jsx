@@ -102,11 +102,33 @@ function AuthForm({ mode }) {
               </m.div>
             )}
 
+            {/* Acceptance is implicit in creating the account, so it is
+                stated next to the button rather than hidden behind a checkbox
+                nobody reads. */}
+            {isSignup && (
+              <p style={{ fontSize: 12, color: T.textFaint, lineHeight: 1.6,
+                          margin: "0 0 14px", textAlign: "center" }}>
+                By creating an account you agree to our{" "}
+                <Link to="/terms" style={{ color: T.textDim, fontWeight: 600 }}>
+                  Terms and Conditions
+                </Link>.
+              </p>
+            )}
+
             <Button type="submit" loading={busy} disabled={busy}
                     style={{ width: "100%" }} size="lg">
               {isSignup ? "Create account" : "Sign in"}
             </Button>
           </form>
+
+          {!isSignup && (
+            <div style={{ marginTop: 16, textAlign: "center" }}>
+              <Link to="/forgot-password"
+                    style={{ color: T.textDim, fontSize: 13, textDecoration: "none" }}>
+                Forgot your password?
+              </Link>
+            </div>
+          )}
 
           <div style={{ marginTop: 22, textAlign: "center", fontSize: 13.5,
                         color: T.textDim }}>

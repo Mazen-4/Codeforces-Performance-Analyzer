@@ -7,6 +7,7 @@ import { Button, Input, Card, Spinner, Badge, Toast } from "../components/ui.jsx
 import Results from "../components/Results.jsx";
 import Compare from "../components/Compare.jsx";
 import ClockWarning, { useClockCheck } from "../components/ClockWarning.jsx";
+import VerifyBanner from "../components/VerifyBanner.jsx";
 import { shouldShowUpgrade } from "../components/UpgradeGate.jsx";
 import { useUpgrade } from "../lib/upgrade.jsx";
 import { tagInfo } from "../lib/copy.js";
@@ -180,6 +181,9 @@ export default function Dashboard() {
             : "See where your gaps are, and what to practise next."}
         </p>
       </m.div>
+
+      {/* Renders nothing once the address is confirmed. */}
+      <VerifyBanner />
 
       {clockBad && (
         <ClockWarning

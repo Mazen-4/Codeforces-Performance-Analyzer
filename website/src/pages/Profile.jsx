@@ -5,6 +5,7 @@ import DiscountClaim from "../components/DiscountClaim.jsx";
 import { api } from "../lib/api.js";
 import { Button, Field, Input, Card, Badge, Toast } from "../components/ui.jsx";
 import Icon from "../components/Icon.jsx";
+import { FEEDBACK_URL } from "../components/Footer.jsx";
 
 export default function Profile() {
   const { user, setUser } = useAuth();
@@ -73,6 +74,15 @@ export default function Profile() {
           </Badge>
           {user?.role === "admin" && <Badge color={T.warn}>Administrator</Badge>}
           <span style={{ fontSize: 13, color: T.textFaint }}>{user?.email}</span>
+          {/* The address is fixed once the account exists, so say where to go
+              rather than leaving someone hunting for a field that is not
+              there. */}
+          <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer"
+             style={{ fontSize: 12, color: T.textFaint, textDecoration: "none",
+                      display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <Icon name="lock" size={11} />
+            Contact us to change it
+          </a>
         </div>
 
         <form onSubmit={save}>
