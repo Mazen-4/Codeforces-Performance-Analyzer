@@ -317,7 +317,39 @@ app.get("/api/coach/config", async (req, res) => {
 });
 
 app.post("/api/coach", async (req, res) => {
-  const { handle, estimatedRating, weakTags, strongTags, recommendedProblems, totalSolved, tagImpact } = req.body;
+  const { handle, estimatedRating, weakTags, strongTags, recommendedProblems,
+          totalSolved, tagImpact, runId } = req.body;
+
+  // A plan belongs to one analysis. If this run already has one, return it
+  // instead of writing another: a second plan would cost another model call
+  // and would replace the one the user already has, which is not a thing a
+  // "generate" button should do silently.
+  //
+  // This runs BEFORE the API-key and entitlement guards on purpose. Handing
+  // back a stored plan calls no model and costs nothing, so it must not fail
+  // because the key is missing or a free trial is used up -- the user has
+  // already paid for this plan and it is simply being read back.
+  const runKey = Number(runId);
+  if (ACCOUNTS_ENABLED && req.user && Number.isInteger(runKey) && runKey > 0) {
+    try {
+      const { rows } = await query(
+        `SELECT coach_plan, coach_model, coach_written_at
+           FROM searches WHERE id = $1 AND account_id = $2`,
+        [runKey, req.user.id]);
+      if (rows.length && rows[0].coach_plan) {
+        return res.json({
+          plan: rows[0].coach_plan,
+          model: rows[0].coach_model,
+          saved: true,
+          written_at: rows[0].coach_written_at,
+        });
+      }
+    } catch (err) {
+      // A read failure must not block a genuine request; the worst case is
+      // regenerating a plan, which is what used to happen every time.
+      console.error("coach plan lookup failed:", err.message);
+    }
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({
@@ -449,9 +481,33 @@ Format each day exactly like this — nothing else:
               .catch(e => console.error("coach_uses insert failed:", e.message));
         }
 
+        // Save the plan against the run it was written from, and await it:
+        // responding first would lose the plan for anyone who reloads straight
+        // away, and the user has already been charged for it.
+        //
+        // `coach_plan IS NULL` makes this a no-op if two requests raced, so
+        // the first plan written is the one that is kept rather than the last.
+        let saved = false;
+        if (ACCOUNTS_ENABLED && req.user && Number.isInteger(runKey) && runKey > 0) {
+            try {
+                const r = await query(
+                    `UPDATE searches
+                        SET coach_plan = $3, coach_model = $4,
+                            coach_written_at = now()
+                      WHERE id = $1 AND account_id = $2 AND coach_plan IS NULL`,
+                    [runKey, req.user.id, plan, coachModel]);
+                saved = r.rowCount > 0;
+            } catch (err) {
+                // The user still gets the plan they paid for; it just will not
+                // survive a reload. Better than failing the whole request.
+                console.error("coach plan save failed:", err.message);
+            }
+        }
+
         res.json({
             plan,
             model: coachModel,
+            saved,
             usage: {
                 input_tokens: message.usage?.input_tokens,
                 output_tokens: message.usage?.output_tokens,
@@ -611,7 +667,8 @@ app.get("/api/me/searches/:id", async (req, res) => {
   try {
     // Scoped to the signed-in account: one user must never read another's run.
     const { rows } = await query(
-      `SELECT id, cf_handle, searched_at, cf_rating, result
+      `SELECT id, cf_handle, searched_at, cf_rating, result,
+              coach_plan, coach_model, coach_written_at
          FROM searches
         WHERE id = $1 AND account_id = $2`, [id, req.user.id]);
     if (!rows.length) return res.status(404).json({ error: "Analysis not found" });
@@ -628,6 +685,11 @@ app.get("/api/me/searches/:id", async (req, res) => {
       run_id: row.id,
       cached: true,
       searched_at: row.searched_at,
+      // The plan written for this exact run, so reopening an analysis shows
+      // the coaching the user already has rather than an empty panel.
+      coach_plan: row.coach_plan ?? null,
+      coach_model: row.coach_model ?? null,
+      coach_written_at: row.coach_written_at ?? null,
     });
   } catch (err) {
     console.error("stored analysis failed:", err.message);

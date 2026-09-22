@@ -16,6 +16,19 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
   const [error, setError] = useState("");
   const [trialUsed, setTrialUsed] = useState(false);
 
+  const runId = data?.run_id ?? null;
+
+  // A plan belongs to one run, so what is shown is derived from the run on
+  // screen rather than held as free-floating state. `plan` only counts while
+  // it is tagged with the current run: switching analyses then falls back to
+  // that run's saved plan, or to none, instead of leaving stale coaching up
+  // that cites a different analysis's problems.
+  const generated = plan && plan.runId === runId ? plan : null;
+  const shown = generated
+    || (data?.coach_plan
+      ? { plan: data.coach_plan, model: data.coach_model, saved: true }
+      : null);
+
   useEffect(() => {
     let alive = true;
     api.coachConfig?.()
@@ -24,8 +37,11 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
     return () => { alive = false; };
   }, []);
 
-  // Nothing to offer until the key is configured.
-  if (available === false || !data) return null;
+  // Nothing to offer until the key is configured -- unless this run already
+  // has a plan, which is the user's own saved work and must stay readable
+  // whether or not the coach can currently write new ones.
+  if (!data) return null;
+  if (available === false && !shown) return null;
 
   async function generate() {
     setBusy(true); setError(""); setTrialUsed(false);
@@ -41,6 +57,9 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
 
       const r = await api.coach({
         handle,
+        // Ties the plan to this exact analysis, so the server can store it
+        // and hand it back later instead of writing a new one.
+        runId,
         estimatedRating: data?.recommendation?.recommendation?.cf_rating
                       ?? data?.cf_rating ?? 1200,
         totalSolved: rows.reduce((s, t) => s + (t.solved || 0), 0),
@@ -49,7 +68,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
         recommendedProblems: (data.recommended_problems || []).slice(0, 25),
         tagImpact: data.tag_impact || [],
       });
-      setPlan(r);
+      setPlan({ ...r, runId });
     } catch (err) {
       if (err.code === "TRIAL_USED") { setTrialUsed(true); setError(err.message); }
       else setError(err.message || "Could not generate a plan.");
@@ -60,8 +79,8 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
 
   return (
     <Card style={{
-      borderColor: plan ? T.borderHi : T.border,
-      background: plan
+      borderColor: shown ? T.borderHi : T.border,
+      background: shown
         ? T.surface
         : `linear-gradient(180deg, ${T.violet}0d, transparent 55%), ${T.surface}`,
     }}>
@@ -81,7 +100,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
             the model picked for you.
           </p>
         </div>
-        {!plan && (
+        {!shown && available && (
           <Button onClick={generate} loading={busy} disabled={busy}>
             {busy ? "Writing your plan" : "Build my plan"}
           </Button>
@@ -120,7 +139,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
           </m.div>
         )}
 
-        {plan && !busy && (
+        {shown && !busy && (
           <m.div
             key="plan"
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -132,7 +151,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
               /* The prompt constrains output to a fixed set of divs and lists.
                  It is model output, so it is rendered in a styled container
                  rather than trusted as page-level markup. */
-              dangerouslySetInnerHTML={{ __html: plan.plan }}
+              dangerouslySetInnerHTML={{ __html: shown.plan }}
             />
             <div style={{ display: "flex", gap: 12, alignItems: "center",
                           marginTop: 18, paddingTop: 14,
@@ -140,7 +159,13 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
                           fontSize: 12, color: T.textFaint, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <Icon name="sparkle" size={12} />
-                Written by {plan.model?.includes("opus") ? "Claude Opus" : "Claude Sonnet"}
+                Written by {shown.model?.includes("opus") ? "Claude Opus" : "Claude Sonnet"}
+              </span>
+              {/* Says the plan is kept, so nobody feels they must copy it out
+                  before leaving the page. */}
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="check" size={12} />
+                Saved with this analysis
               </span>
             </div>
           </m.div>

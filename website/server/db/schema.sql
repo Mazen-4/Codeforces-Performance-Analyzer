@@ -226,3 +226,13 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS other_handle_run_at TIMESTAMPTZ;
 -- and the stricter one wins, which is the safe direction.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_per_day
     ON payments (account_id, (((created_at AT TIME ZONE 'UTC'))::date));
+
+-- ── saved AI Coach plans ────────────────────────────────────────────────────
+-- A plan belongs to the exact analysis it was written from: it cites that
+-- run's problems and weak tags, so showing it beside a different run would be
+-- wrong. Stored on the row rather than in a side table because there is
+-- exactly one plan per run -- generating a second would silently replace work
+-- the user already paid for.
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_plan      TEXT;
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_model     TEXT;
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_written_at TIMESTAMPTZ;
