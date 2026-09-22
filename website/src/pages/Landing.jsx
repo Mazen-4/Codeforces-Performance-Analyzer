@@ -5,6 +5,7 @@ import { T, font } from "../lib/theme.js";
 import { api } from "../lib/api.js";
 import { Button, Card, Badge } from "../components/ui.jsx";
 import Aurora from "../components/Aurora.jsx";
+import ProductLoop from "../components/ProductLoop.jsx";
 import Icon, { IconTile } from "../components/Icon.jsx";
 
 const PLUS_PRICE = 399;          // EGP per month
@@ -29,6 +30,7 @@ export default function Landing() {
       <Hero trainingUsers={trainingUsers} />
       <StatsBand stats={stats} trainingUsers={trainingUsers} />
       <HowItWorks />
+      <InAction />
       <Features />
       <WeeklyModel trainingUsers={trainingUsers} />
       <Pricing />
@@ -198,6 +200,64 @@ function HeroPreview({ trainingUsers }) {
         rated competitors
       </div>
     </Card>
+  );
+}
+
+/* ── In action ───────────────────────────────────────────────────────────── */
+
+/** The product showing itself. Sits after "how it works" so the loop lands on
+ *  someone who already knows what they are looking at, and before the feature
+ *  list so it answers "what is this actually like" before the specifics. */
+function InAction() {
+  return (
+    <Section alt id="in-action">
+      <SectionHead
+        eyebrow="See it run"
+        title="Thirty seconds, start to finish"
+        sub="One handle in. Every topic scored, your weakest found, and a week of practice you can actually follow."
+      />
+      <div style={{
+        display: "grid", gap: 40, alignItems: "center",
+        // Two columns only when both genuinely fit; below that they stack,
+        // or a 260 + 280 grid overflows a phone viewport.
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
+        maxWidth: 880, margin: "0 auto",
+      }}>
+        <Reveal>
+          <ProductLoop />
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <div style={{ display: "grid", gap: 20 }}>
+            {[
+              { icon: "search", tone: T.accent, title: "No setup",
+                body: "Your public Codeforces history is all it needs. No account linking, no imports." },
+              { icon: "chart", tone: T.cyan, title: "Scored against your peers",
+                body: "Every topic measured against players at your rating, so a 60 means something." },
+              { icon: "target", tone: T.warn, title: "Told where to start",
+                body: "The one topic with the most to gain, not a list of twenty things to fix." },
+              { icon: "sparkle", tone: T.violet, title: "A week you can follow",
+                body: "Specific problems, a warm-up each day, and a check you can tick off." },
+            ].map((f) => (
+              <div key={f.title} style={{ display: "flex", gap: 13,
+                                          alignItems: "flex-start" }}>
+                <IconTile name={f.icon} color={f.tone} size={34} iconSize={16} />
+                <div>
+                  <div style={{ fontSize: 14.5, fontWeight: 680,
+                                marginBottom: 4 }}>
+                    {f.title}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: T.textDim,
+                              lineHeight: 1.6 }}>
+                    {f.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </Section>
   );
 }
 
