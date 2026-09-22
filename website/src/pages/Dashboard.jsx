@@ -8,6 +8,7 @@ import Results from "../components/Results.jsx";
 import Compare from "../components/Compare.jsx";
 import ClockWarning, { useClockCheck } from "../components/ClockWarning.jsx";
 import VerifyBanner from "../components/VerifyBanner.jsx";
+import PinnedPlan from "../components/PinnedPlan.jsx";
 import { shouldShowUpgrade } from "../components/UpgradeGate.jsx";
 import { useUpgrade } from "../lib/upgrade.jsx";
 import { tagInfo } from "../lib/copy.js";
@@ -184,6 +185,9 @@ export default function Dashboard() {
 
       {/* Renders nothing once the address is confirmed. */}
       <VerifyBanner />
+
+      {/* The week's work, first thing. Renders nothing without a pinned plan. */}
+      <PinnedPlan onOpenRun={(id, handle) => openSaved({ id, cf_handle: handle })} />
 
       {clockBad && (
         <ClockWarning

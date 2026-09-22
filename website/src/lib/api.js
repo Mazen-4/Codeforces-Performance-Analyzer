@@ -74,6 +74,14 @@ export const api = {
   adminReviewPayment: (id, action, note) =>
     request(`/api/admin/payments/${id}/${action}`, { method: "POST", body: { note } }),
   coachConfig: ()  => request("/api/coach/config"),
+  pinnedPlan: ()   => request("/api/me/coach/pinned"),
+  pinPlan: (runId) =>
+    request("/api/me/coach/pin", { method: "POST", body: { run_id: runId } }),
+  setCoachDay: (runId, day, done, topic) =>
+    request("/api/me/coach/day", {
+      method: "POST", body: { run_id: runId, day, done, topic },
+    }),
+  adminCoachStats: () => request("/api/admin/coach/stats"),
   coach: (body)    => request("/api/coach", { method: "POST", body }),
   adminCoach: ()   => request("/api/admin/coach"),
   adminSetCoachModel: (model) =>

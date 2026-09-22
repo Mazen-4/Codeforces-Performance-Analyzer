@@ -288,7 +288,8 @@ const COACH_MODELS = {
 const DEFAULT_COACH_MODEL = "claude-sonnet-5";
 
 // How many plans a free account may generate before Plus is required.
-const FREE_COACH_PLANS = 2;
+// The AI Coach is Plus-only; there is no free trial to size.
+// (kept as a named constant so the removal is visible in history)
 
 // Cached so a plan request does not hit the database first. Invalidated on
 // write, so an admin change takes effect on the next request.
@@ -368,7 +369,11 @@ function renderPlanHtml(raw) {
     if (d?.check)  li.push(`<li><b>Check:</b> ${esc(d.check)}</li>`);
     if (d?.why)    li.push(`<li><b>Why:</b> ${esc(d.why)}</li>`);
 
-    return `<div class="day"><span class="day-label">Day ${esc(d?.day)}</span> – `
+    // The day number and topic ride along as data attributes so the client can
+    // tick a day off and the server can record WHICH topic was completed,
+    // without either side re-parsing the rendered text.
+    return `<div class="day" data-day="${esc(d?.day)}" data-topic="${esc(d?.topic)}">`
+         + `<span class="day-label">Day ${esc(d?.day)}</span> – `
          + `<strong>${esc(d?.topic)}</strong><ul>${li.join("")}</ul></div>`;
   }).join("\n");
 }
@@ -443,25 +448,17 @@ app.post("/api/coach", async (req, res) => {
       error: "The AI Coach is not configured yet.", code: "NO_KEY",
     });
   }
-  // Entitlement: Plus gets the coach; Free gets a limited trial. Enforced here
-  // rather than only in the UI, because the endpoint is reachable directly.
+  // Entitlement: the AI Coach is a Plus feature. Enforced here rather than
+  // only in the UI, because the endpoint is reachable directly.
   if (ACCOUNTS_ENABLED) {
     if (!req.user) {
       return res.status(401).json({ error: "Sign in to use the AI Coach" });
     }
     if (req.user.plan !== "pro") {
-      try {
-        const { rows } = await query(
-          `SELECT count(*)::int AS n FROM coach_uses WHERE account_id = $1`,
-          [req.user.id]);
-        if (rows[0].n >= FREE_COACH_PLANS) {
-          return res.status(402).json({
-            error: `Your free trial of the AI Coach is used up (${FREE_COACH_PLANS} plans). `
-                 + "Plus includes it in full.",
-            code: "TRIAL_USED",
-          });
-        }
-      } catch { /* never block on the counter failing */ }
+      return res.status(402).json({
+        error: "The AI Coach is part of Plus.",
+        code: "PLUS_ONLY",
+      });
     }
   }
 
@@ -626,9 +623,8 @@ Every field is a plain string except "day", which is a number. Never include HTM
             });
         }
 
-        // Count the use only once a plan actually came back, so a failure does
-        // not burn someone's trial.
-        if (ACCOUNTS_ENABLED && req.user && req.user.plan !== "pro") {
+        // Every generation is logged for cost tracking, whatever the plan.
+        if (ACCOUNTS_ENABLED && req.user) {
             query(`INSERT INTO coach_uses (account_id, model) VALUES ($1, $2)`,
                   [req.user.id, coachModel])
               .catch(e => console.error("coach_uses insert failed:", e.message));
@@ -646,9 +642,10 @@ Every field is a plain string except "day", which is a number. Never include HTM
                 const r = await query(
                     `UPDATE searches
                         SET coach_plan = $3, coach_model = $4,
-                            coach_written_at = now()
+                            coach_written_at = now(), coach_day_count = $5
                       WHERE id = $1 AND account_id = $2 AND coach_plan IS NULL`,
-                    [runKey, req.user.id, plan, coachModel]);
+                    [runKey, req.user.id, plan, coachModel,
+                     (plan.match(/class="day"/g) || []).length]);
                 saved = r.rowCount > 0;
             } catch (err) {
                 // The user still gets the plan they paid for; it just will not
@@ -676,6 +673,101 @@ Every field is a plain string except "day", which is a number. Never include HTM
                 : "Could not generate a plan. Try again.",
         });
     }
+});
+
+/* ── pinned plan and day progress ────────────────────────────────────────── */
+
+/** Pin a plan to the dashboard, or unpin it. One pin per account. */
+app.post("/api/me/coach/pin", requireAuth, async (req, res) => {
+  const id = Number(req.body?.run_id);
+  try {
+    if (!id) {
+      await query(`UPDATE accounts SET pinned_search_id = NULL WHERE id = $1`,
+                  [req.user.id]);
+      return res.json({ pinned: null });
+    }
+    // Scoped to this account, and only a run that actually has a plan: a pin
+    // pointing at someone else's run, or at a plan that was never generated,
+    // would render an empty card.
+    const { rows } = await query(
+      `SELECT id FROM searches
+        WHERE id = $1 AND account_id = $2 AND coach_plan IS NOT NULL`,
+      [id, req.user.id]);
+    if (!rows.length) {
+      return res.status(404).json({ error: "No plan found for that analysis." });
+    }
+    await query(`UPDATE accounts SET pinned_search_id = $2 WHERE id = $1`,
+                [req.user.id, id]);
+    res.json({ pinned: id });
+  } catch (err) {
+    console.error("pin failed:", err.message);
+    res.status(500).json({ error: "Could not pin that plan." });
+  }
+});
+
+/** The pinned plan and which of its days are ticked. */
+app.get("/api/me/coach/pinned", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.id, s.cf_handle, s.searched_at, s.coach_plan, s.coach_model,
+              s.coach_written_at, s.coach_day_count
+         FROM accounts a
+         JOIN searches s ON s.id = a.pinned_search_id
+        WHERE a.id = $1`, [req.user.id]);
+    if (!rows.length) return res.json({ plan: null });
+
+    const { rows: done } = await query(
+      `SELECT day_number FROM coach_day_progress
+        WHERE search_id = $1 ORDER BY day_number`, [rows[0].id]);
+    res.json({
+      plan: rows[0],
+      completed_days: done.map(d => d.day_number),
+    });
+  } catch (err) {
+    console.error("pinned plan failed:", err.message);
+    res.status(500).json({ error: "Could not load your plan." });
+  }
+});
+
+/** Tick or untick one day of a plan. */
+app.post("/api/me/coach/day", requireAuth, async (req, res) => {
+  const runId = Number(req.body?.run_id);
+  const day = Number(req.body?.day);
+  const done = Boolean(req.body?.done);
+  const topic = String(req.body?.topic || "").slice(0, 80) || null;
+
+  if (!runId || !Number.isInteger(day) || day < 1 || day > 14) {
+    return res.status(400).json({ error: "Not a valid day." });
+  }
+  try {
+    // Ownership is checked against searches, so one account cannot write
+    // progress onto another's plan.
+    const { rows } = await query(
+      `SELECT id FROM searches WHERE id = $1 AND account_id = $2`,
+      [runId, req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: "Plan not found." });
+
+    if (done) {
+      await query(
+        `INSERT INTO coach_day_progress (search_id, account_id, day_number, topic)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (search_id, day_number) DO UPDATE
+           SET completed_at = now(), topic = EXCLUDED.topic`,
+        [runId, req.user.id, day, topic]);
+    } else {
+      await query(
+        `DELETE FROM coach_day_progress WHERE search_id = $1 AND day_number = $2`,
+        [runId, day]);
+    }
+
+    const { rows: all } = await query(
+      `SELECT day_number FROM coach_day_progress
+        WHERE search_id = $1 ORDER BY day_number`, [runId]);
+    res.json({ completed_days: all.map(d => d.day_number) });
+  } catch (err) {
+    console.error("day progress failed:", err.message);
+    res.status(500).json({ error: "Could not save that." });
+  }
 });
 
 /* ───────────── ML Pipeline ───────────── */

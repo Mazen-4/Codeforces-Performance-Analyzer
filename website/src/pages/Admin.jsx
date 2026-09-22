@@ -9,6 +9,7 @@ import {
 import { tagInfo } from "../lib/copy.js";
 import AdminDiscounts from "../components/AdminDiscounts.jsx";
 import AdminCoach from "../components/AdminCoach.jsx";
+import AdminCoachStats from "../components/AdminCoachStats.jsx";
 import AdminPayments from "../components/AdminPayments.jsx";
 
 export default function Admin() {
@@ -42,7 +43,7 @@ export default function Admin() {
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[["users", "Users"], ["activity", "Activity"], ["discounts", "Discounts"], ["coach", "AI Coach"], ["payments", "Payments"]].map(([id, label]) => (
+        {[["users", "Users"], ["activity", "Activity"], ["discounts", "Discounts"], ["coach", "AI Coach"], ["progress", "Plan progress"], ["payments", "Payments"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             padding: "9px 18px", borderRadius: 9, cursor: "pointer",
             fontFamily: font.sans, fontSize: 14, fontWeight: 620,
@@ -57,6 +58,7 @@ export default function Admin() {
       {tab === "activity"  && <Activity />}
       {tab === "discounts" && <AdminDiscounts />}
       {tab === "coach"     && <AdminCoach />}
+      {tab === "progress"  && <AdminCoachStats />}
       {tab === "payments"  && <AdminPayments />}
       <Toast message={toast?.message} tone={toast?.tone} onDone={() => setToast(null)} />
     </div>

@@ -468,3 +468,87 @@ router.post("/payments/:id/:action", async (req, res) => {
     res.status(500).json({ error: "Could not record that decision." });
   }
 });
+
+/* ── AI Coach completion ─────────────────────────────────────────────────────
+ * Whether people actually follow the plans, which is the signal for tuning
+ * how the coach writes them. A plan nobody finishes past day 3 is telling you
+ * days 4-7 are too ambitious, not that the students are lazy.
+ */
+router.get("/coach/stats", async (_req, res) => {
+  try {
+    // Headline: plans generated, how many were started, and the share of all
+    // planned days actually ticked off.
+    const { rows: [overall] } = await query(`
+      SELECT
+        count(*)::int                                        AS plans,
+        count(*) FILTER (WHERE p.done > 0)::int              AS started,
+        count(*) FILTER (WHERE p.done >= s.coach_day_count)::int AS finished,
+        COALESCE(sum(p.done), 0)::int                        AS days_done,
+        COALESCE(sum(s.coach_day_count), 0)::int             AS days_total
+      FROM searches s
+      LEFT JOIN LATERAL (
+        SELECT count(*)::int AS done FROM coach_day_progress g
+         WHERE g.search_id = s.id
+      ) p ON true
+      WHERE s.coach_plan IS NOT NULL`);
+
+    // Drop-off: of the plans that reach each day, how many tick it. This is
+    // the most actionable view -- it shows exactly where people stop.
+    const { rows: byDay } = await query(`
+      SELECT d.day_number,
+             count(g.*)::int AS completed,
+             (SELECT count(*)::int FROM searches s
+               WHERE s.coach_plan IS NOT NULL
+                 AND COALESCE(s.coach_day_count, 7) >= d.day_number) AS eligible
+        FROM generate_series(1, 7) AS d(day_number)
+        LEFT JOIN coach_day_progress g ON g.day_number = d.day_number
+       GROUP BY d.day_number
+       ORDER BY d.day_number`);
+
+    // By topic: which subjects get finished and which get skipped.
+    const { rows: byTopic } = await query(`
+      SELECT topic, count(*)::int AS completed
+        FROM coach_day_progress
+       WHERE topic IS NOT NULL AND topic <> ''
+       GROUP BY topic
+       ORDER BY completed DESC
+       LIMIT 20`);
+
+    // Per user, most recently active first.
+    const { rows: users } = await query(`
+      SELECT a.email, a.cf_handle, s.id AS run_id,
+             s.coach_written_at,
+             COALESCE(s.coach_day_count, 7)             AS day_count,
+             count(g.*)::int                            AS days_done,
+             max(g.completed_at)                        AS last_activity,
+             (a.pinned_search_id = s.id)                AS pinned
+        FROM searches s
+        JOIN accounts a ON a.id = s.account_id
+        LEFT JOIN coach_day_progress g ON g.search_id = s.id
+       WHERE s.coach_plan IS NOT NULL
+       GROUP BY a.email, a.cf_handle, s.id, s.coach_written_at,
+                s.coach_day_count, a.pinned_search_id
+       ORDER BY max(g.completed_at) DESC NULLS LAST, s.coach_written_at DESC
+       LIMIT 100`);
+
+    res.json({
+      overall: {
+        ...overall,
+        completion_percent: overall.days_total
+          ? Math.round((overall.days_done / overall.days_total) * 100) : 0,
+        start_rate: overall.plans
+          ? Math.round((overall.started / overall.plans) * 100) : 0,
+      },
+      by_day: byDay,
+      by_topic: byTopic,
+      users: users.map(u => ({
+        ...u,
+        percent: u.day_count
+          ? Math.round((u.days_done / u.day_count) * 100) : 0,
+      })),
+    });
+  } catch (err) {
+    console.error("coach stats failed:", err.message);
+    res.status(500).json({ error: "Could not load coach stats." });
+  }
+});

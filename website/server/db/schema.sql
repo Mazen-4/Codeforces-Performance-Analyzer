@@ -325,3 +325,40 @@ CREATE TABLE IF NOT EXISTS pending_signups (
 
 CREATE INDEX IF NOT EXISTS idx_pending_signups_expiry
     ON pending_signups (expires_at);
+
+-- ── pinned plan and day-by-day progress ─────────────────────────────────────
+-- One pinned plan per account: the dashboard asks "what am I following this
+-- week?", which has one answer. Pinning a new plan moves the pin.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS pinned_search_id BIGINT
+    REFERENCES searches(id) ON DELETE SET NULL;
+
+-- Which days of a plan the student has ticked off.
+--
+-- One row per (plan, day) rather than a JSON blob on the plan: the admin view
+-- needs "how many people finished day 4" and "which topics get skipped", and
+-- those are aggregate queries over rows, not over documents.
+--
+-- The topic is copied in at tick time. It could be parsed back out of the
+-- stored HTML, but denormalising it here is what makes the by-topic report a
+-- GROUP BY instead of a scan-and-regex over every plan.
+CREATE TABLE IF NOT EXISTS coach_day_progress (
+    search_id    BIGINT NOT NULL REFERENCES searches(id) ON DELETE CASCADE,
+    account_id   UUID   NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    day_number   INT    NOT NULL CHECK (day_number BETWEEN 1 AND 14),
+    topic        TEXT,
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (search_id, day_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_coach_progress_account
+    ON coach_day_progress (account_id, completed_at DESC);
+-- Drives the per-day drop-off report.
+CREATE INDEX IF NOT EXISTS idx_coach_progress_day
+    ON coach_day_progress (day_number);
+-- Drives the by-topic report.
+CREATE INDEX IF NOT EXISTS idx_coach_progress_topic
+    ON coach_day_progress (topic) WHERE topic IS NOT NULL;
+
+-- How many days each plan has, so completion percentage has a denominator
+-- without re-parsing the stored HTML on every query.
+ALTER TABLE searches ADD COLUMN IF NOT EXISTS coach_day_count INT;

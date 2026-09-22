@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { m, AnimatePresence } from "framer-motion";
 import { T } from "../lib/theme.js";
 import { api } from "../lib/api.js";
@@ -9,12 +9,40 @@ import Icon, { IconTile } from "./Icon.jsx";
  *
  *  The plan is generated on demand rather than with every analysis — each one
  *  costs real money, and most people do not want a new plan on every run. */
+
+/** Split the rendered plan into days so each can carry a checkbox.
+ *
+ *  The server already tags every day with data-day and data-topic, so this
+ *  reads those rather than parsing the visible text. Falls back to rendering
+ *  the whole plan untouched if the shape is not what we expect — an older
+ *  saved plan should still display, just without checkboxes. */
+function splitDays(html) {
+  if (typeof document === "undefined" || !html) return null;
+  try {
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    const nodes = [...host.querySelectorAll(".day")];
+    if (!nodes.length) return null;
+    return nodes.map((n) => ({
+      day: Number(n.getAttribute("data-day")),
+      topic: n.getAttribute("data-topic") || "",
+      html: n.outerHTML,
+    })).filter(d => Number.isInteger(d.day) && d.day > 0);
+  } catch {
+    return null;
+  }
+}
+
 export default function Coach({ data, handle, isPro, onUpgrade }) {
   const [available, setAvailable] = useState(null);
   const [plan, setPlan] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [trialUsed, setTrialUsed] = useState(false);
+  const [locked, setLocked] = useState(false);
+  // Which days the student has ticked, and whether this plan is pinned.
+  const [doneDays, setDoneDays] = useState([]);
+  const [pinned, setPinned] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
 
   const runId = data?.run_id ?? null;
 
@@ -28,6 +56,60 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
     || (data?.coach_plan
       ? { plan: data.coach_plan, model: data.coach_model, saved: true }
       : null);
+
+  // Days are derived from the rendered plan, so an older plan without the
+  // data attributes still displays -- just without checkboxes.
+  const days = useMemo(() => splitDays(shown?.plan), [shown?.plan]);
+  // Progress belongs to a saved run: there is nothing to attach it to
+  // otherwise, and only Plus accounts have plans at all.
+  const canTrack = Boolean(runId && isPro);
+  const pct = days?.length
+    ? Math.round((doneDays.length / days.length) * 100) : 0;
+
+  // Load this run's ticks and whether it is the pinned one.
+  useEffect(() => {
+    if (!canTrack) return;
+    let alive = true;
+    api.pinnedPlan?.()
+      .then((r) => {
+        if (!alive) return;
+        setPinned(r?.plan?.id === runId);
+        if (r?.plan?.id === runId) setDoneDays(r.completed_days || []);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [canTrack, runId]);
+
+  async function toggleDay(d) {
+    if (!canTrack) return;
+    const next = doneDays.includes(d.day);
+    // Optimistic: a checkbox that waits on the network feels broken.
+    setDoneDays((prev) => next
+      ? prev.filter((x) => x !== d.day)
+      : [...prev, d.day].sort((a, b) => a - b));
+    try {
+      const r = await api.setCoachDay(runId, d.day, !next, d.topic);
+      if (Array.isArray(r?.completed_days)) setDoneDays(r.completed_days);
+    } catch {
+      // Put it back: the server is the record, not the checkbox.
+      setDoneDays((prev) => next
+        ? [...prev, d.day].sort((a, b) => a - b)
+        : prev.filter((x) => x !== d.day));
+    }
+  }
+
+  async function togglePin() {
+    if (!canTrack) return;
+    setPinBusy(true);
+    try {
+      const r = await api.pinPlan(pinned ? null : runId);
+      setPinned(r?.pinned === runId);
+    } catch (err) {
+      setError(err.message || "Could not pin that plan.");
+    } finally {
+      setPinBusy(false);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -44,7 +126,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
   if (available === false && !shown) return null;
 
   async function generate() {
-    setBusy(true); setError(""); setTrialUsed(false);
+    setBusy(true); setError(""); setLocked(false);
     try {
       const ts = data.tag_strengths || {};
       const score = (v) => typeof v === "object"
@@ -70,7 +152,7 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
       });
       setPlan({ ...r, runId });
     } catch (err) {
-      if (err.code === "TRIAL_USED") { setTrialUsed(true); setError(err.message); }
+      if (err.code === "PLUS_ONLY") { setLocked(true); setError(err.message); }
       else setError(err.message || "Could not generate a plan.");
     } finally {
       setBusy(false);
@@ -99,11 +181,30 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
             A seven-day plan built from your weakest topics and the problems
             the model picked for you.
           </p>
+          {!isPro && !shown && (
+            <p style={{ color: T.textFaint, fontSize: 12.5, lineHeight: 1.6,
+                        margin: "8px 0 0" }}>
+              Each day gets a warm-up, a time budget, a learning resource and a
+              check you can tick off as you go.
+            </p>
+          )}
         </div>
         {!shown && available && (
-          <Button onClick={generate} loading={busy} disabled={busy}>
-            {busy ? "Writing your plan" : "Build my plan"}
-          </Button>
+          isPro ? (
+            <Button onClick={generate} loading={busy} disabled={busy}>
+              {busy ? "Writing your plan" : "Build my plan"}
+            </Button>
+          ) : (
+            // Free accounts see what the coach does and how to get it, rather
+            // than a button that fails. The card is a sales surface, not a
+            // dead end.
+            <Button variant="subtle" onClick={onUpgrade}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                <Icon name="lock" size={13} />
+                Unlock with Plus
+              </span>
+            </Button>
+          )
         )}
       </div>
 
@@ -125,12 +226,12 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
             style={{ marginTop: 16, display: "flex", gap: 10,
                      alignItems: "flex-start" }}
           >
-            <span style={{ color: trialUsed ? T.violet : T.risk, marginTop: 1 }}>
-              <Icon name={trialUsed ? "lock" : "alert"} size={15} />
+            <span style={{ color: locked ? T.violet : T.risk, marginTop: 1 }}>
+              <Icon name={locked ? "lock" : "alert"} size={15} />
             </span>
             <div style={{ fontSize: 13, color: T.textDim, lineHeight: 1.6 }}>
               {error}
-              {trialUsed && !isPro && (
+              {locked && !isPro && (
                 <div style={{ marginTop: 10 }}>
                   <Button size="sm" onClick={onUpgrade}>See Plus</Button>
                 </div>
@@ -146,13 +247,62 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
             transition={{ duration: 0.4 }}
             style={{ marginTop: 20 }}
           >
-            <div
-              className="coach-plan"
-              /* The prompt constrains output to a fixed set of divs and lists.
-                 It is model output, so it is rendered in a styled container
-                 rather than trusted as page-level markup. */
-              dangerouslySetInnerHTML={{ __html: shown.plan }}
-            />
+            {days ? (
+              <div className="coach-plan">
+                {days.map((d) => {
+                  const checked = doneDays.includes(d.day);
+                  return (
+                    <div key={d.day} style={{ display: "flex", gap: 11,
+                                              alignItems: "flex-start" }}>
+                      <label style={{
+                        display: "flex", alignItems: "center", paddingTop: 16,
+                        cursor: canTrack ? "pointer" : "default",
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={!canTrack}
+                          onChange={() => toggleDay(d)}
+                          aria-label={`Mark day ${d.day} complete`}
+                          style={{ width: 17, height: 17, accentColor: T.good,
+                                   cursor: canTrack ? "pointer" : "default" }}
+                        />
+                      </label>
+                      <div
+                        style={{ flex: 1, minWidth: 0,
+                                 opacity: checked ? 0.55 : 1,
+                                 transition: "opacity .18s" }}
+                        /* Model output, rendered inside a styled container
+                           rather than trusted as page-level markup. */
+                        dangerouslySetInnerHTML={{ __html: d.html }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div
+                className="coach-plan"
+                dangerouslySetInnerHTML={{ __html: shown.plan }}
+              />
+            )}
+
+            {canTrack && days && (
+              <div style={{ marginTop: 14, display: "flex", alignItems: "center",
+                            gap: 11, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 160, height: 6, borderRadius: 99,
+                              background: T.bgAlt, overflow: "hidden" }}>
+                  <m.div
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.35 }}
+                    style={{ height: "100%", background: T.good }}
+                  />
+                </div>
+                <span style={{ fontSize: 12.5, color: T.textDim }}>
+                  {doneDays.length} of {days.length} days done
+                </span>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 12, alignItems: "center",
                           marginTop: 18, paddingTop: 14,
                           borderTop: `1px solid ${T.border}`,
@@ -167,6 +317,18 @@ export default function Coach({ data, handle, isPro, onUpgrade }) {
                 <Icon name="check" size={12} />
                 Saved with this analysis
               </span>
+              {canTrack && runId && (
+                <Button
+                  size="sm"
+                  variant={pinned ? "subtle" : "ghost"}
+                  onClick={togglePin}
+                  loading={pinBusy}
+                  disabled={pinBusy}
+                  style={{ marginLeft: "auto" }}
+                >
+                  {pinned ? "Pinned to dashboard" : "Pin to dashboard"}
+                </Button>
+              )}
             </div>
           </m.div>
         )}
